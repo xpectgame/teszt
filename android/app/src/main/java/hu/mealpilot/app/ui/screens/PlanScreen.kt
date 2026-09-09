@@ -426,8 +426,8 @@ private fun GeneratorDialog(
                     )
                     Spacer(Modifier.height(10.dp))
                     Text(
-                        "A terv a megadott adataid és kéréseid alapján készül. " +
-                            "Tájékoztató jellegű, nem orvosi tanács.",
+                        "Egy hét összeállítása fél-egy perc. A terv a megadott adataid és " +
+                            "kéréseid alapján készül, tájékoztató jellegű, nem orvosi tanács.",
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )

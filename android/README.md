@@ -135,6 +135,13 @@ egy átcsúszott allergén nem. Két finomság, ami ebből következik: a kazein
 a laktózérzékenységnél (a laktózmentes tej is tiltott marad), a vegán stílus pedig
 automatikusan kizárja a tejet és a tojást akkor is, ha külön nem jelölted be.
 
+**Az elcsúszott napot kiszámoljuk, nem újrakérjük.** Ha egy nap 2200 kcal-ra jön ki az
+1932-es cél helyett, arányosan visszaveszünk az adagokból — pontosan úgy, ahogy egy
+dietetikus is tenné. Ez azonnali és ingyenes, szemben egy újabb modellhívással, ami percekbe
+és pénzbe kerül. A darabra mért hozzávalókhoz (tojás, gerezd fokhagyma) nem nyúlunk, mert a
+„2,1 db tojás" használhatatlan utasítás, és ha a skálázás a fehérjét vinné a cél alá, akkor
+marad a valódi újratervezés.
+
 **Az AI válaszát nem hisszük el vakon.** Minden legenerált nap átmegy egy ellenőrzésen:
 stimmel-e a napi kalória és fehérje, konzisztensek-e a makrók a megadott energiával,
 van-e mindenhol hozzávaló és értelmes időpont. Ha nem, egy javító kör indul a konkrét

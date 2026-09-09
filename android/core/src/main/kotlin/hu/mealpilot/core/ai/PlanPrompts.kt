@@ -60,10 +60,15 @@ GYAKORLATI SZABÁLYOK
 
 VÁLASZ FORMÁTUMA
 Kizárólag egyetlen JSON objektummal válaszolj, magyarázó szöveg és kódkerítés nélkül.
+Légy tömör: a hosszú szövegmezők csak lassítják a választ, a tápértékadatok a lényeg.
+- "description": egy rövid mondat.
+- "recipe_steps": legfeljebb 4 lépés, egyenként legfeljebb 12 szó.
+- "summary": legfeljebb 2 mondat. "coach_notes": legfeljebb 2 tipp.
+- "swap_hint": egy rövid tagmondat, vagy üres string.
 Séma:
 {
   "plan_title": "rövid cím",
-  "summary": "2-3 mondat a terv logikájáról",
+  "summary": "legfeljebb 2 mondat a terv logikájáról",
   "days": [
     {
       "day_index": 0,
@@ -74,10 +79,10 @@ Séma:
           "slot": "BREAKFAST|MORNING_SNACK|LUNCH|AFTERNOON_SNACK|DINNER|EVENING_SNACK",
           "time": "07:30",
           "name": "fogás neve",
-          "description": "1-2 mondat",
+          "description": "egy rövid mondat",
           "prep_minutes": 15,
           "servings": 1,
-          "recipe_steps": ["lépés 1", "lépés 2"],
+          "recipe_steps": ["rövid lépés", "rövid lépés"],
           "ingredients": [
             {
               "name": "csirkemell",
@@ -96,7 +101,7 @@ Séma:
       ]
     }
   ],
-  "coach_notes": ["1-3 rövid, gyakorlatias tipp"]
+  "coach_notes": ["legfeljebb 2 rövid, gyakorlatias tipp"]
 }
 
 A "pantry_staple" akkor true, ha a hozzávaló jellemzően otthon van (só, bors, olaj,

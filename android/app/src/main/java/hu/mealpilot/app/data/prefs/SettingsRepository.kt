@@ -24,12 +24,12 @@ private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(na
 
 /** Melyik modellel dolgozzon az app. A drágább modell pontosabban tartja a kalóriakereteket. */
 enum class AiModel(val id: String, val label: String, val note: String) {
-    OPUS("claude-opus-5", "Claude Opus 5", "Legpontosabb tervek, legdrágább"),
-    SONNET("claude-sonnet-5", "Claude Sonnet 5", "Jó egyensúly ár és minőség között"),
-    HAIKU("claude-haiku-4-5", "Claude Haiku 4.5", "Leggyorsabb és legolcsóbb");
+    SONNET("claude-sonnet-5", "Claude Sonnet 5", "Alapértelmezett: gyors és pontosan tartja a keretet"),
+    OPUS("claude-opus-5", "Claude Opus 5", "Alaposabb, de lassabb és nagyságrenddel drágább"),
+    HAIKU("claude-haiku-4-5", "Claude Haiku 4.5", "Leggyorsabb és legolcsóbb, pontatlanabb");
 
     companion object {
-        fun fromId(id: String?) = entries.firstOrNull { it.id == id } ?: OPUS
+        fun fromId(id: String?) = entries.firstOrNull { it.id == id } ?: SONNET
     }
 }
 
@@ -39,7 +39,7 @@ enum class AiEffort(val apiValue: String, val label: String) {
     HIGH("high", "Alapos");
 
     companion object {
-        fun fromValue(value: String?) = entries.firstOrNull { it.apiValue == value } ?: HIGH
+        fun fromValue(value: String?) = entries.firstOrNull { it.apiValue == value } ?: MEDIUM
     }
 }
 
@@ -52,8 +52,8 @@ data class AppSettings(
     val dailySummaryEnabled: Boolean = true,
     /** Az elégetett edzéskalória hány része írható jóvá a napi keretbe. */
     val eatBackRatio: Double = 0.5,
-    val model: AiModel = AiModel.OPUS,
-    val effort: AiEffort = AiEffort.HIGH,
+    val model: AiModel = AiModel.SONNET,
+    val effort: AiEffort = AiEffort.MEDIUM,
     /**
      * Fejlesztői mód. A modellválasztás és a saját hozzáférési kulcs a felhasználónak
      * nem döntés — a tervezőmotor beállítása a fejlesztő dolga —, ezért ezek csak akkor

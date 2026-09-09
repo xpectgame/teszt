@@ -24,6 +24,7 @@ import hu.mealpilot.core.ai.MealSlot
 import hu.mealpilot.core.ai.PlanChunker
 import hu.mealpilot.core.ai.PlanParser
 import hu.mealpilot.core.ai.PlanPrompts
+import hu.mealpilot.core.ai.PlanRepair
 import hu.mealpilot.core.ai.PlanRequest
 import hu.mealpilot.core.ai.PlanValidator
 import kotlinx.coroutines.CancellationException
@@ -142,33 +143,48 @@ class AnthropicMealAi(
         repeat(MAX_ATTEMPTS) { attempt ->
             coroutineContext.ensureActive()
             val stage = if (attempt == 0) GenerationProgress.Stage.STREAMING else GenerationProgress.Stage.REPAIRING
-            val raw = callModel(client, settings, prompt) { chars ->
-                onProgress(
-                    GenerationProgress(
-                        stage = stage,
-                        currentChunk = chunk.index,
-                        totalChunks = chunk.total,
-                        receivedChars = chars,
-                        message = if (attempt == 0) "Receptek írása…" else "Javítás…",
-                    )
+            val label = if (attempt == 0) "Receptek írása…" else "A kalóriakeret finomhangolása…"
+
+            fun report(chars: Int) = onProgress(
+                GenerationProgress(
+                    stage = stage,
+                    currentChunk = chunk.index,
+                    totalChunks = chunk.total,
+                    receivedChars = chars,
+                    message = label,
                 )
-            }
+            )
+
+            // A jelzést a hívás ELŐTT is kiadjuk. A modell a válasz első karaktere előtt
+            // hosszan gondolkodhat, és addig a korábbi üzenet ragadna kint — pont az kelti
+            // azt a benyomást, hogy az app megállt.
+            report(0)
+            val raw = callModel(client, settings, prompt) { chars -> report(chars) }
 
             onProgress(
                 GenerationProgress(
                     stage = GenerationProgress.Stage.VALIDATING,
                     currentChunk = chunk.index,
                     totalChunks = chunk.total,
-                    message = "Tápértékek ellenőrzése…",
+                    message = "Ellenőrzés…",
                 )
             )
 
             val parsed = PlanParser.parsePlan(raw)
-            val plan = parsed.getOrElse { error ->
+            val rawPlan = parsed.getOrElse { error ->
                 lastProblems = listOf(error.message ?: "A válasz nem volt értelmezhető JSON.")
                 prompt = basePrompt + "\n\n" + PlanPrompts.repairPrompt(lastProblems)
                 return@repeat
             }
+
+            // Az arányos kalóriaeltérést kiszámoljuk, nem újrakérjük. Egy 10%-kal elcsúszott
+            // nap miatt az egész hetet újragenerálni percekbe és pénzbe kerülne, miközben az
+            // adagok arányos igazítása ugyanazt az eredményt adja azonnal.
+            val repaired = PlanRepair.normalize(rawPlan, chunkRequest.budget.target)
+            if (repaired.adjusted.isNotEmpty()) {
+                Log.i(TAG, "Adagok igazítva a kerethez: ${repaired.adjusted}")
+            }
+            val plan = repaired.plan
 
             val problems = PlanValidator.validate(
                 plan = plan,
