@@ -11,7 +11,10 @@ captures/
 *.iml
 .DS_Store
 
-# Kulcstárak — soha ne kerüljenek verziókezelésbe
+# Kulcstárak — soha ne kerüljenek verziókezelésbe.
+# Kivétel a debug kulcs: az nem titok (a jelszava mindenhol "android"), és csak azért
+# van benne a repóban, hogy a CI által épített APK-k egymásra frissíthetők legyenek.
 *.jks
 *.keystore
+!app/debug.keystore
 keystore.properties

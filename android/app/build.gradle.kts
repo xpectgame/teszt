@@ -15,9 +15,28 @@ android {
         minSdk = 26
         targetSdk = 35
         versionCode = 1
-        versionName = "0.1.0"
+        // A CI a futás sorszámát is beleírja, hogy a telefonon a Névjegyben látszódjon,
+        // melyik buildet használod éppen.
+        versionName = System.getenv("MEALPILOT_BUILD")
+            ?.takeIf { it.isNotBlank() }
+            ?.let { "0.1.0 ($it)" }
+            ?: "0.1.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         resourceConfigurations += listOf("hu", "en")
+    }
+
+    signingConfigs {
+        // Rögzített debug kulcs a repóban. Enélkül minden CI-futás új kulcsot generálna,
+        // és a telefonon lévő korábbi verzióra nem lehetne ráfrissíteni — az étkezés-,
+        // súly- és mozgásnapló minden frissítéskor elveszne.
+        // Ez KIZÁRÓLAG debug build aláírására való. Éles kiadáshoz külön, titkos kulcs kell,
+        // ami soha nem kerülhet verziókezelésbe.
+        getByName("debug") {
+            storeFile = file("debug.keystore")
+            storePassword = "android"
+            keyAlias = "androiddebugkey"
+            keyPassword = "android"
+        }
     }
 
     buildTypes {
@@ -28,6 +47,7 @@ android {
         }
         debug {
             applicationIdSuffix = ".debug"
+            signingConfig = signingConfigs.getByName("debug")
         }
     }
 

@@ -45,6 +45,8 @@ jobs:
         run: ./gradlew :core:test
 
       - name: Debug APK
+        env:
+          MEALPILOT_BUILD: "build ${{ github.run_number }}"
         run: ./gradlew :app:assembleDebug --stacktrace
 
       - name: APK feltöltése
