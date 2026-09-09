@@ -1,11 +1,11 @@
-// A Kotlin pluginokat itt, a közös szülőben deklaráljuk (alkalmazás nélkül), a modulok
-// pedig verzió nélkül hivatkoznak rájuk. Enélkül a Kotlin plugin modulonként külön
-// töltődne be, amire a fordító jogosan figyelmeztet.
-// Az Android Gradle Plugin szándékosan csak az :app modulban szerepel, így a tisztán
-// Kotlin :core modul Android SDK nélkül is fordítható és tesztelhető.
+// Minden plugin itt, a gyökérben van deklarálva (alkalmazás nélkül), a modulok pedig
+// verzió nélkül hivatkoznak rájuk. Ez az Android projektek bevett elrendezése, és két
+// dolgot old meg: a Kotlin plugin nem töltődik be modulonként külön, és a Kotlin Android
+// plugin ugyanazon a classpath-en látja az Android Gradle Plugint, amire szüksége van.
 plugins {
-    alias(libs.plugins.kotlin.jvm) apply false
+    alias(libs.plugins.android.application) apply false
     alias(libs.plugins.kotlin.android) apply false
+    alias(libs.plugins.kotlin.jvm) apply false
     alias(libs.plugins.kotlin.compose) apply false
     alias(libs.plugins.kotlin.serialization) apply false
     alias(libs.plugins.ksp) apply false
