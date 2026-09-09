@@ -250,7 +250,7 @@ fun ProfileForm(
             modifier = Modifier.fillMaxWidth(),
         )
         Text(
-            "Ezt minden tervezésnél figyelembe veszi az AI.",
+            "Ezt minden tervezésnél figyelembe vesszük.",
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )

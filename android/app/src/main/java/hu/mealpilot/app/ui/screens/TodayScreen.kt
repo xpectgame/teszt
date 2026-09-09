@@ -169,7 +169,7 @@ fun TodayScreen(
             item {
                 EmptyState(
                     title = "Még nincs étrended",
-                    message = "Készíttess egyet az AI-jal — megadhatod, mit szeretsz, mire van időd, mit nem eszel meg.",
+                    message = "Készíts egyet pár másodperc alatt — megadhatod, mit szeretsz, mire van időd, mit nem eszel meg.",
                     action = { Button(onClick = onCreatePlan) { Text("Terv készítése") } },
                 )
             }

@@ -54,6 +54,12 @@ data class AppSettings(
     val eatBackRatio: Double = 0.5,
     val model: AiModel = AiModel.OPUS,
     val effort: AiEffort = AiEffort.HIGH,
+    /**
+     * Fejlesztői mód. A modellválasztás és a saját hozzáférési kulcs a felhasználónak
+     * nem döntés — a tervezőmotor beállítása a fejlesztő dolga —, ezért ezek csak akkor
+     * jelennek meg, ha ezt a kapcsolót valaki szándékosan bekapcsolja.
+     */
+    val developerMode: Boolean = false,
 )
 
 class SettingsRepository(context: Context) {
@@ -104,6 +110,7 @@ class SettingsRepository(context: Context) {
             p[K_EAT_BACK] = settings.eatBackRatio
             p[K_MODEL] = settings.model.id
             p[K_EFFORT] = settings.effort.apiValue
+            p[K_DEVELOPER] = settings.developerMode
         }
     }
 
@@ -145,6 +152,7 @@ class SettingsRepository(context: Context) {
         eatBackRatio = this[K_EAT_BACK] ?: 0.5,
         model = AiModel.fromId(this[K_MODEL]),
         effort = AiEffort.fromValue(this[K_EFFORT]),
+        developerMode = this[K_DEVELOPER] ?: false,
     )
 
     private companion object {
@@ -172,5 +180,6 @@ class SettingsRepository(context: Context) {
         val K_EAT_BACK = doublePreferencesKey("eat_back_ratio")
         val K_MODEL = stringPreferencesKey("ai_model")
         val K_EFFORT = stringPreferencesKey("ai_effort")
+        val K_DEVELOPER = booleanPreferencesKey("developer_mode")
     }
 }

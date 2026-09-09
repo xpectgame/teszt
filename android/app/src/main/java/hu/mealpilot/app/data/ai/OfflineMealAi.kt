@@ -13,11 +13,11 @@ import hu.mealpilot.core.ai.PlanRequest
 import kotlin.math.roundToInt
 
 /**
- * Internet és API kulcs nélküli tartalék tervező.
+ * Tartalék tervező, ami internetkapcsolat nélkül is működik.
  *
  * Egy beépített receptbankból forgat étrendet, és a napi kalóriacélhoz méretezi az adagokat.
- * Nem helyettesíti az AI-t (nem érti a szabad szöveges kéréseket), de a napi keretet és a
- * makrókat pontosan tartja, így az app kulcs nélkül is kipróbálható és használható.
+ * A szabad szöveges kéréseket nem érti, de a napi keretet és a makrókat pontosan tartja,
+ * így az app a tervezőszolgáltatás elérhetetlensége esetén sem marad használhatatlan.
  */
 class OfflineMealAi : MealAi {
 
@@ -44,7 +44,7 @@ class OfflineMealAi : MealAi {
             AiDay(
                 dayIndex = dayIndex,
                 title = "${dayIndex + 1}. nap",
-                note = "Offline sablonból, a napi kerethez méretezve.",
+                note = "Sablonból, a napi kerethez méretezve.",
                 meals = slots.mapIndexed { slotIndex, slot ->
                     val bank = bankFor(slot)
                     val template = bank[(dayIndex * slots.size + slotIndex) % bank.size]
@@ -67,13 +67,13 @@ class OfflineMealAi : MealAi {
         )
 
         AiPlanResponse(
-            planTitle = "Offline étrend",
-            summary = "API kulcs nélküli, sablonokból épített terv. A napi kalória és a makrók " +
-                "a célodhoz vannak méretezve, de a szabad szöveges kéréseket ez a mód nem érti.",
+            planTitle = "Gyors étrend",
+            summary = "Sablonokból épített terv: a napi kalória és a makrók a célodhoz vannak " +
+                "méretezve. A szabad szöveges kéréseidet ez a változat nem veszi figyelembe.",
             days = days,
             coachNotes = listOf(
-                "Az AI tervezéshez adj meg Anthropic API kulcsot a Beállításokban.",
                 "Igyál napi 2–3 liter folyadékot.",
+                "A fehérjét oszd el egyenletesen a nap folyamán.",
             ),
         )
     }
@@ -83,7 +83,7 @@ class OfflineMealAi : MealAi {
         currentDayJson: String,
         instruction: String,
     ): Result<AiDayResponse> = Result.failure(
-        MealAiException("A szabad szöveges finomhangoláshoz AI kulcs kell — az offline mód ezt nem tudja.")
+        MealAiException("Ez a változat nem tudja átírni a napokat. Próbáld újra, ha van internetkapcsolatod.")
     )
 
     /** A napi kalória elosztása az étkezések között. */
@@ -139,7 +139,7 @@ class OfflineMealAi : MealAi {
                     saturatedFatG = round1(nutrition.saturatedFatG * factor),
                     sodiumMg = round1(nutrition.sodiumMg * factor),
                 ),
-                swapHint = "Offline sablon — AI kulccsal cserélhető.",
+                swapHint = "",
             )
         }
 

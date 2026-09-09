@@ -70,7 +70,8 @@ import kotlin.math.roundToInt
 data class PlanUiState(
     val plan: PlanEntity? = null,
     val meals: List<MealWithIngredients> = emptyList(),
-    val hasApiKey: Boolean = false,
+    /** Igaz, ha a tervezőszolgáltatás elérhető, tehát egy nap szavakkal átírható. */
+    val canRefine: Boolean = false,
 ) {
     val byDay: Map<Int, List<MealWithIngredients>>
         get() = meals.groupBy { it.meal.dayIndex }.toSortedMap()
@@ -88,9 +89,9 @@ class PlanViewModel(private val container: AppContainer) : ViewModel() {
     @OptIn(ExperimentalCoroutinesApi::class)
     val state: StateFlow<PlanUiState> = container.planRepository.observeActivePlan()
         .flatMapLatest { plan ->
-            if (plan == null) flowOf(PlanUiState(hasApiKey = container.hasApiKey))
+            if (plan == null) flowOf(PlanUiState(canRefine = container.hasApiKey))
             else container.planRepository.observePlanMeals(plan.id).map { meals ->
-                PlanUiState(plan = plan, meals = meals, hasApiKey = container.hasApiKey)
+                PlanUiState(plan = plan, meals = meals, canRefine = container.hasApiKey)
             }
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), PlanUiState())
@@ -100,7 +101,7 @@ class PlanViewModel(private val container: AppContainer) : ViewModel() {
 
     private var generationJob: Job? = null
 
-    fun generate(days: Int, startTomorrow: Boolean, freeText: String, forceOffline: Boolean) {
+    fun generate(days: Int, startTomorrow: Boolean, freeText: String) {
         if (generationJob?.isActive == true) return
         generationJob = viewModelScope.launch {
             _generation.value = GenerationState.Running(
@@ -111,7 +112,7 @@ class PlanViewModel(private val container: AppContainer) : ViewModel() {
             val start = if (startTomorrow) LocalDate.now().plusDays(1) else LocalDate.now()
 
             val result = container.planRepository.generateAndSave(
-                ai = container.mealAi(forceOffline),
+                ai = container.mealAi(),
                 profile = profile,
                 budget = budget,
                 startDate = start,
@@ -209,8 +210,8 @@ fun PlanScreen(
             item {
                 EmptyState(
                     title = "Nincs aktív terved",
-                    message = "Az AI a testadataid és a szabad szöveges kéréseid alapján állít össze " +
-                        "kalóriadeficites étrendet, hozzá bevásárlólistát és emlékeztetőket.",
+                    message = "A testadataid és a szabad szöveges kéréseid alapján összeáll egy " +
+                        "kalóriadeficites étrend, hozzá bevásárlólista és emlékeztetők.",
                     action = { Button(onClick = { showGenerator = true }) { Text("Terv készítése") } },
                 )
             }
@@ -233,6 +234,13 @@ fun PlanScreen(
                             Text("• $note", style = MaterialTheme.typography.bodySmall)
                         }
                     }
+                    Spacer(Modifier.height(12.dp))
+                    Text(
+                        "Az étrendet gépi tervező állította össze a megadott adataid alapján. " +
+                            "Tájékoztató jellegű, nem orvosi tanács.",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
                 }
             }
 
@@ -246,7 +254,7 @@ fun PlanScreen(
                     onToggle = { expandedDay = if (expandedDay == dayIndex) null else dayIndex },
                     onOpenMeal = onOpenMeal,
                     onRefine = { refineDayIndex = dayIndex },
-                    refineEnabled = state.hasApiKey,
+                    refineEnabled = state.canRefine,
                 )
             }
         }
@@ -255,12 +263,11 @@ fun PlanScreen(
     if (showGenerator) {
         GeneratorDialog(
             generation = generation,
-            hasApiKey = state.hasApiKey,
             onDismiss = {
                 if (generation is GenerationState.Running) viewModel.cancelGeneration()
                 showGenerator = false
             },
-            onGenerate = { days, tomorrow, text, offline -> viewModel.generate(days, tomorrow, text, offline) },
+            onGenerate = { days, tomorrow, text -> viewModel.generate(days, tomorrow, text) },
         )
     }
 
@@ -337,9 +344,9 @@ private fun DayCard(
                             )
                         }
                     }
-                    Spacer(Modifier.height(8.dp))
-                    OutlinedButton(onClick = onRefine, enabled = refineEnabled) {
-                        Text(if (refineEnabled) "Írd át szavakkal" else "Átíráshoz AI kulcs kell")
+                    if (refineEnabled) {
+                        Spacer(Modifier.height(8.dp))
+                        OutlinedButton(onClick = onRefine) { Text("Írd át szavakkal") }
                     }
                 }
             }
@@ -351,14 +358,12 @@ private fun DayCard(
 @Composable
 private fun GeneratorDialog(
     generation: GenerationState,
-    hasApiKey: Boolean,
     onDismiss: () -> Unit,
-    onGenerate: (days: Int, startTomorrow: Boolean, freeText: String, forceOffline: Boolean) -> Unit,
+    onGenerate: (days: Int, startTomorrow: Boolean, freeText: String) -> Unit,
 ) {
     var days by remember { mutableStateOf(7) }
     var startTomorrow by remember { mutableStateOf(false) }
     var freeText by remember { mutableStateOf("") }
-    var forceOffline by remember { mutableStateOf(!hasApiKey) }
     val running = generation is GenerationState.Running
 
     AlertDialog(
@@ -419,21 +424,13 @@ private fun GeneratorDialog(
                         minLines = 3,
                         modifier = Modifier.fillMaxWidth(),
                     )
-                    if (hasApiKey) {
-                        Spacer(Modifier.height(8.dp))
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Switch(checked = forceOffline, onCheckedChange = { forceOffline = it })
-                            Text("  Offline sablonokból (nem hív AI-t)", style = MaterialTheme.typography.bodySmall)
-                        }
-                    } else {
-                        Spacer(Modifier.height(8.dp))
-                        Text(
-                            "Nincs AI kulcs beállítva, ezért az offline sablontervező készíti a tervet. " +
-                                "A szabad szöveges kérést csak az AI érti — a kulcsot a Beállításokban adhatod meg.",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
+                    Spacer(Modifier.height(10.dp))
+                    Text(
+                        "A terv a megadott adataid és kéréseid alapján készül. " +
+                            "Tájékoztató jellegű, nem orvosi tanács.",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
                 }
             }
         },
@@ -443,7 +440,7 @@ private fun GeneratorDialog(
                     CircularProgressIndicator(Modifier.height(20.dp))
                 }
             } else {
-                Button(onClick = { onGenerate(days, startTomorrow, freeText, forceOffline) }) {
+                Button(onClick = { onGenerate(days, startTomorrow, freeText) }) {
                     Text("Generálás")
                 }
             }

@@ -4,6 +4,7 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Build
 import android.provider.Settings
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -44,6 +45,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import hu.mealpilot.app.AppContainer
+import hu.mealpilot.app.BuildConfig
 import hu.mealpilot.app.data.prefs.AiEffort
 import hu.mealpilot.app.data.prefs.AiModel
 import hu.mealpilot.app.data.prefs.AppSettings
@@ -98,6 +100,7 @@ fun SettingsScreen(
     var apiKeyInput by remember { mutableStateOf("") }
     var maskedKey by remember { mutableStateOf(viewModel.maskedKey()) }
     var editedProfile by remember { mutableStateOf<UserProfile?>(null) }
+    var versionTaps by remember { mutableStateOf(0) }
 
     LaunchedEffect(storedProfile) {
         if (editedProfile == null && storedProfile != null) editedProfile = storedProfile
@@ -116,89 +119,100 @@ fun SettingsScreen(
         Text("Beállítások", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
         Spacer(Modifier.height(16.dp))
 
-        SectionCard(title = "AI hozzáférés") {
-            Text(
-                "Az étrendet az Anthropic Claude modellje írja. A kulcsod a telefonodon marad, " +
-                    "titkosítva, és nem kerül felhőmentésbe. Kulcsot a console.anthropic.com oldalon kapsz.",
-                style = MaterialTheme.typography.bodySmall,
-            )
-            if (viewModel.usingInsecureFallback()) {
-                Spacer(Modifier.height(8.dp))
+        // A modellválasztás és a hozzáférési kulcs nem felhasználói döntés: aki az appot
+        // használja, étrendet akar, nem tervezőmotort konfigurálni. Ezért ezek a Névjegy
+        // hétszeri megérintésével előhozható fejlesztői részbe kerültek.
+        if (current.developerMode) {
+            SectionCard(title = "Fejlesztői beállítások") {
                 Text(
-                    "⚠ A titkosított tároló nem érhető el ezen az eszközön, ezért a kulcs " +
-                        "egyszerű tárolóba került. Csak akkor add meg, ha ezt elfogadod.",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.error,
+                    "Saját Anthropic hozzáférési kulcs. A kulcs a telefonon marad, titkosítva, " +
+                        "és nem kerül felhőmentésbe. Éles kiadásban ezt a saját backend váltja ki.",
+                    style = MaterialTheme.typography.bodySmall,
                 )
-            }
-            Spacer(Modifier.height(12.dp))
-            maskedKey?.let {
-                Text("Jelenlegi kulcs: $it", style = MaterialTheme.typography.bodyMedium)
+                if (viewModel.usingInsecureFallback()) {
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        "⚠ A titkosított tároló nem érhető el ezen az eszközön, ezért a kulcs " +
+                            "egyszerű tárolóba került. Csak akkor add meg, ha ezt elfogadod.",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.error,
+                    )
+                }
+                Spacer(Modifier.height(12.dp))
+                maskedKey?.let {
+                    Text("Jelenlegi kulcs: $it", style = MaterialTheme.typography.bodyMedium)
+                    Spacer(Modifier.height(8.dp))
+                }
+                OutlinedTextField(
+                    value = apiKeyInput,
+                    onValueChange = { apiKeyInput = it.trim() },
+                    label = { Text("sk-ant-…") },
+                    singleLine = true,
+                    visualTransformation = PasswordVisualTransformation(),
+                    modifier = Modifier.fillMaxWidth(),
+                )
                 Spacer(Modifier.height(8.dp))
-            }
-            OutlinedTextField(
-                value = apiKeyInput,
-                onValueChange = { apiKeyInput = it.trim() },
-                label = { Text("sk-ant-…") },
-                singleLine = true,
-                visualTransformation = PasswordVisualTransformation(),
-                modifier = Modifier.fillMaxWidth(),
-            )
-            Spacer(Modifier.height(8.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Button(
-                    onClick = {
-                        viewModel.saveApiKey(apiKeyInput)
-                        maskedKey = viewModel.maskedKey()
-                        apiKeyInput = ""
-                        scope.launch { snackbarHostState.showSnackbar("Kulcs elmentve.") }
-                    },
-                    enabled = apiKeyInput.length > 20,
-                ) { Text("Mentés") }
-                if (maskedKey != null) {
-                    OutlinedButton(onClick = {
-                        viewModel.clearApiKey()
-                        maskedKey = null
-                        scope.launch { snackbarHostState.showSnackbar("Kulcs törölve.") }
-                    }) { Text("Törlés") }
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Button(
+                        onClick = {
+                            viewModel.saveApiKey(apiKeyInput)
+                            maskedKey = viewModel.maskedKey()
+                            apiKeyInput = ""
+                            scope.launch { snackbarHostState.showSnackbar("Kulcs elmentve.") }
+                        },
+                        enabled = apiKeyInput.length > 20,
+                    ) { Text("Mentés") }
+                    if (maskedKey != null) {
+                        OutlinedButton(onClick = {
+                            viewModel.clearApiKey()
+                            maskedKey = null
+                            scope.launch { snackbarHostState.showSnackbar("Kulcs törölve.") }
+                        }) { Text("Törlés") }
+                    }
                 }
-            }
 
-            Spacer(Modifier.height(16.dp))
-            Text("Modell", style = MaterialTheme.typography.labelLarge)
-            Spacer(Modifier.height(4.dp))
-            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                AiModel.entries.forEach { model ->
-                    FilterChip(
-                        selected = current.model == model,
-                        onClick = { viewModel.saveSettings(current.copy(model = model)) },
-                        label = { Text(model.label) },
-                    )
+                Spacer(Modifier.height(16.dp))
+                Text("Modell", style = MaterialTheme.typography.labelLarge)
+                Spacer(Modifier.height(4.dp))
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    AiModel.entries.forEach { model ->
+                        FilterChip(
+                            selected = current.model == model,
+                            onClick = { viewModel.saveSettings(current.copy(model = model)) },
+                            label = { Text(model.label) },
+                        )
+                    }
                 }
-            }
-            Text(
-                current.model.note,
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
+                Text(
+                    current.model.note,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
 
-            Spacer(Modifier.height(12.dp))
-            Text("Alaposság", style = MaterialTheme.typography.labelLarge)
-            Spacer(Modifier.height(4.dp))
-            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                AiEffort.entries.forEach { effort ->
-                    FilterChip(
-                        selected = current.effort == effort,
-                        onClick = { viewModel.saveSettings(current.copy(effort = effort)) },
-                        label = { Text(effort.label) },
-                    )
+                Spacer(Modifier.height(12.dp))
+                Text("Alaposság", style = MaterialTheme.typography.labelLarge)
+                Spacer(Modifier.height(4.dp))
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    AiEffort.entries.forEach { effort ->
+                        FilterChip(
+                            selected = current.effort == effort,
+                            onClick = { viewModel.saveSettings(current.copy(effort = effort)) },
+                            label = { Text(effort.label) },
+                        )
+                    }
                 }
+                Text(
+                    "Az alaposabb beállítás pontosabban tartja a kalóriakeretet, de több tokent használ.",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+
+                Spacer(Modifier.height(12.dp))
+                TextButton(onClick = {
+                    versionTaps = 0
+                    viewModel.saveSettings(current.copy(developerMode = false))
+                }) { Text("Fejlesztői mód kikapcsolása") }
             }
-            Text(
-                "Az alaposabb beállítás pontosabban tartja a kalóriakeretet, de több tokent használ.",
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
         }
 
         Spacer(Modifier.height(12.dp))
@@ -296,6 +310,30 @@ fun SettingsScreen(
                 },
                 modifier = Modifier.fillMaxWidth(),
             ) { Text("Profil mentése") }
+        }
+
+        Spacer(Modifier.height(12.dp))
+        SectionCard(title = "Névjegy") {
+            Text(
+                "MealPilot ${BuildConfig.VERSION_NAME}",
+                style = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier.clickable {
+                    if (current.developerMode) return@clickable
+                    versionTaps++
+                    if (versionTaps >= 7) {
+                        viewModel.saveSettings(current.copy(developerMode = true))
+                        scope.launch { snackbarHostState.showSnackbar("Fejlesztői beállítások bekapcsolva.") }
+                    }
+                },
+            )
+            Spacer(Modifier.height(8.dp))
+            Text(
+                "Az étrendeket gépi tervező állítja össze a megadott adataid alapján. " +
+                    "Az app tájékoztató jellegű, nem orvosi tanács — betegség, terhesség vagy " +
+                    "rendszeres gyógyszerszedés esetén beszéld át orvossal.",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         }
 
         Spacer(Modifier.height(32.dp))

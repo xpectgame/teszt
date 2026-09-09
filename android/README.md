@@ -56,14 +56,22 @@ Követelmények: JDK 17, Android SDK 35, minSdk 26 (Android 8.0).
 
 ---
 
-## AI kulcs
+## A tervezőmotor
 
-Az app a **saját Anthropic API kulcsoddal** dolgozik (Beállítások → AI hozzáférés).
-A kulcsot a `console.anthropic.com` oldalon kapod, és az eszközön marad,
-`EncryptedSharedPreferences`-ben, a felhőmentésből kizárva.
+A felhasználó nem konfigurál semmit: nincs modellválasztó, nincs kulcsbeviteli mező,
+és a felület nem beszél „AI"-ról. Aki az appot használja, étrendet akar, nem tervezőmotort.
+Egyetlen őszinte sor marad, a Névjegyben és a terv fejlécében: *„Az étrendeket gépi tervező
+állítja össze a megadott adataid alapján."* Ez a Play Áruház generatív AI-ra vonatkozó
+szabályzata és az EU AI Act átláthatósági elve miatt is kell, és egészségügyi témánál
+egyszerűen tisztességes.
 
-Kulcs nélkül is használható: ilyenkor a beépített **offline sablontervező** áll össze
-a napi kerethez méretezett étrenddé — csak a szabad szöveges kéréseket nem érti.
+**Fejlesztéshez** a saját Anthropic kulcsod adható meg: Beállítások → Névjegy →
+koppints hétszer a verziószámra. Ekkor előjön a fejlesztői rész a kulccsal, a
+modellválasztással és az alaposság-szinttel. A kulcs `EncryptedSharedPreferences`-ben,
+a felhőmentésből kizárva marad.
+
+Ha a tervezőszolgáltatás nem érhető el, a beépített **sablontervező** ugrik be, és a napi
+kerethez méretezett étrendet ad — csak a szabad szöveges kéréseket nem veszi figyelembe.
 
 **Költség.** Alapértelmezés a `claude-opus-5` (a legpontosabban tartja a kalóriakeretet).
 Egy hét étrend nagyjából egy hívás; egy hónapos terv 5 hívásra bomlik. Ha olcsóbb kell,

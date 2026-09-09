@@ -112,7 +112,8 @@ fun OnboardingScreen(
 
         Spacer(Modifier.height(16.dp))
         Text(
-            "Az app tájékoztató jellegű, nem orvosi tanács. Ha betegséged van, terhes vagy, " +
+            "Az étrendeket gépi tervező állítja össze a megadott adataid alapján. " +
+                "Az app tájékoztató jellegű, nem orvosi tanács — ha betegséged van, terhes vagy, " +
                 "vagy gyógyszert szedsz, beszéld át orvossal a diétát.",
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
