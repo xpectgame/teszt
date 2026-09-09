@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">MealPilot</string>
+    <string name="channel_meals_name">Étkezési emlékeztetők</string>
+    <string name="channel_meals_desc">Szól, amikor egy tervezett étkezés ideje van.</string>
+    <string name="channel_summary_name">Napi összefoglaló</string>
+    <string name="channel_summary_desc">Esti visszajelzés a napról.</string>
+    <string name="channel_achievements_name">Eredmények</string>
+    <string name="channel_achievements_desc">Értesítés új achievement feloldásakor.</string>
+</resources>

@@ -1,0 +1,17 @@
+# Gradle / build
+.gradle/
+build/
+*/build/
+local.properties
+captures/
+.cxx/
+
+# IDE
+.idea/
+*.iml
+.DS_Store
+
+# Kulcstárak — soha ne kerüljenek verziókezelésbe
+*.jks
+*.keystore
+keystore.properties

@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<full-backup-content>
+    <!-- Az API kulcs a felhasználó eszközéhez kötött kulccsal titkosított, ne kerüljön mentésbe. -->
+    <exclude domain="sharedpref" path="mealpilot_secure_prefs.xml" />
+</full-backup-content>

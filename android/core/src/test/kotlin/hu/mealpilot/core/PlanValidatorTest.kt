@@ -1,0 +1,115 @@
+package hu.mealpilot.core
+
+import hu.mealpilot.core.ai.AiDay
+import hu.mealpilot.core.ai.AiIngredient
+import hu.mealpilot.core.ai.AiMeal
+import hu.mealpilot.core.ai.AiNutrition
+import hu.mealpilot.core.ai.AiPlanResponse
+import hu.mealpilot.core.ai.MealSlot
+import hu.mealpilot.core.ai.PlanValidator
+import hu.mealpilot.core.model.DailyTarget
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
+import org.junit.Test
+
+class PlanValidatorTest {
+
+    private val target = DailyTarget(kcal = 2000, proteinG = 160, carbsG = 175, fatG = 67, fiberG = 28)
+
+    /** Négy egyforma étkezés, amik együtt pontosan a célt adják ki. */
+    private fun okDay(index: Int) = AiDay(
+        dayIndex = index,
+        title = "Nap $index",
+        meals = List(4) { i ->
+            AiMeal(
+                slot = MealSlot.forMealsPerDay(4)[i].name,
+                time = listOf("07:30", "12:30", "16:00", "19:30")[i],
+                name = "Fogás $index-$i",
+                ingredients = listOf(AiIngredient(name = "alapanyag", quantity = 100.0, unit = "g")),
+                nutrition = AiNutrition(kcal = 500.0, proteinG = 40.0, carbsG = 44.0, fatG = 16.75),
+            )
+        },
+    )
+
+    @Test
+    fun `a well formed plan has no problems`() {
+        val plan = AiPlanResponse(days = List(3) { okDay(it) })
+        assertTrue(PlanValidator.validate(plan, target, expectedDays = 3, expectedMealsPerDay = 4).isEmpty())
+    }
+
+    @Test
+    fun `an empty plan is reported`() {
+        val problems = PlanValidator.validate(AiPlanResponse(), target, 7, 4)
+        assertEquals(1, problems.size)
+        assertTrue(problems[0].contains("egyetlen napot sem"))
+    }
+
+    @Test
+    fun `missing days are reported`() {
+        val plan = AiPlanResponse(days = List(5) { okDay(it) })
+        val problems = PlanValidator.validate(plan, target, 7, 4)
+        assertTrue(problems.any { it.contains("7 napot kértem") })
+    }
+
+    @Test
+    fun `duplicate day indexes are reported`() {
+        val plan = AiPlanResponse(days = listOf(okDay(0), okDay(0)))
+        assertTrue(PlanValidator.validate(plan, target, 2, 4).any { it.contains("Ismétlődő") })
+    }
+
+    @Test
+    fun `calorie overshoot beyond the tolerance is reported`() {
+        val day = okDay(0).let { d ->
+            d.copy(meals = d.meals.map { it.copy(nutrition = it.nutrition.copy(kcal = 650.0, carbsG = 81.5)) })
+        }
+        val problems = PlanValidator.validate(AiPlanResponse(days = listOf(day)), target, 1, 4)
+        assertTrue(problems.any { it.contains("2600 kcal a 2000 kcal cél helyett") })
+    }
+
+    @Test
+    fun `low protein is reported`() {
+        val day = okDay(0).let { d ->
+            d.copy(meals = d.meals.map {
+                it.copy(nutrition = it.nutrition.copy(proteinG = 10.0, carbsG = 74.0))
+            })
+        }
+        val problems = PlanValidator.validate(AiPlanResponse(days = listOf(day)), target, 1, 4)
+        assertTrue(problems.any { it.contains("fehérje") })
+    }
+
+    @Test
+    fun `macro and calorie mismatch inside one meal is caught`() {
+        val day = okDay(0).let { d ->
+            d.copy(meals = d.meals.mapIndexed { i, m ->
+                if (i == 0) m.copy(nutrition = m.nutrition.copy(proteinG = 5.0, carbsG = 5.0, fatG = 5.0)) else m
+            })
+        }
+        val problems = PlanValidator.validate(AiPlanResponse(days = listOf(day)), target, 1, 4)
+        assertTrue(problems.any { it.contains("makrók") })
+    }
+
+    @Test
+    fun `structural problems are caught`() {
+        val broken = AiDay(
+            dayIndex = 0,
+            meals = listOf(
+                AiMeal(name = "", time = "25:99", ingredients = emptyList(), nutrition = AiNutrition(kcal = 0.0)),
+            ),
+        )
+        val problems = PlanValidator.validate(AiPlanResponse(days = listOf(broken)), target, 1, 4)
+        assertTrue(problems.any { it.contains("névtelen") })
+        assertTrue(problems.any { it.contains("hibás időformátum") })
+        assertTrue(problems.any { it.contains("hiányzik a kalóriaérték") })
+        assertTrue(problems.any { it.contains("nincsenek hozzávalók") })
+        assertTrue(problems.any { it.contains("4 étkezést kértem") })
+    }
+
+    @Test
+    fun `day summaries sum the meals`() {
+        val summaries = PlanValidator.daySummaries(AiPlanResponse(days = listOf(okDay(0))))
+        assertEquals(1, summaries.size)
+        assertEquals(2000.0, summaries[0].nutrients.kcal, 0.01)
+        assertEquals(160.0, summaries[0].nutrients.proteinG, 0.01)
+        assertEquals(4, summaries[0].mealCount)
+    }
+}

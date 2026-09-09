@@ -1,0 +1,28 @@
+# --- Anthropic Java SDK + Jackson ---
+# A JSON (de)szerializáció reflexiót használ, ezért a modellosztályok nem kaphatnak
+# obfuszkált nevet, és a Jackson annotációknak is meg kell maradniuk.
+-keep class com.anthropic.** { *; }
+-keepclassmembers class com.anthropic.** { *; }
+-keep class com.fasterxml.jackson.** { *; }
+-keepattributes *Annotation*, Signature, InnerClasses, EnclosingMethod
+-dontwarn com.fasterxml.jackson.databind.**
+-dontwarn com.anthropic.**
+
+# OkHttp / Okio
+-dontwarn okhttp3.**
+-dontwarn okio.**
+-dontwarn org.conscrypt.**
+-dontwarn org.bouncycastle.**
+-dontwarn org.openjsse.**
+
+# kotlinx.serialization: a generált serializer-eket meg kell tartani.
+-keepattributes RuntimeVisibleAnnotations, AnnotationDefault
+-keepclassmembers class hu.mealpilot.** {
+    *** Companion;
+}
+-keepclasseswithmembers class hu.mealpilot.** {
+    kotlinx.serialization.KSerializer serializer(...);
+}
+
+# Room
+-keep class * extends androidx.room.RoomDatabase { <init>(); }
