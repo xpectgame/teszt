@@ -1,6 +1,7 @@
 package hu.mealpilot.core.ai
 
 import hu.mealpilot.core.energy.EnergyBudget
+import hu.mealpilot.core.model.DietRestriction
 import hu.mealpilot.core.model.UserProfile
 import kotlin.math.roundToInt
 
@@ -48,9 +49,14 @@ GYAKORLATI SZABÁLYOK
 - Legyen ésszerű az alapanyag-újrahasznosítás: ami nagy kiszerelésben kapható, azt
   több nap használja fel, hogy ne maradjon romlandó maradék.
 - A hétköznapi ebéd/vacsora max. 30 perc alatt elkészülhessen, hétvégén lehet hosszabb.
-- Ha a felhasználó szabad szöveges kérést ír (allergia, utált étel, konyha, büdzsé,
-  időkeret, böjt), azt MINDEN napra alkalmazd. Az allergia és az intolerancia
-  felülír minden más szempontot.
+- Ha a felhasználó szabad szöveges kérést ír (utált étel, konyha, büdzsé, időkeret,
+  böjt), azt MINDEN napra alkalmazd.
+- A KIZÁRÁSOK szakasz mindent felülír: a kalóriacélt, a változatosságot, a büdzsét is.
+  Egy kizárt alapanyag semmilyen mennyiségben, semmilyen fogásban nem jelenhet meg —
+  nyomokban, ízesítőként, panírként vagy alaplében sem. Ha egy klasszikus recept
+  tartalmazná, válassz másik receptet, ne pedig „elhagyható" megjegyzéssel add meg.
+  Írd ki minden hozzávalónál a pontos nevet (pl. „gluténmentes tészta"), hogy
+  ellenőrizhető legyen.
 
 VÁLASZ FORMÁTUMA
 Kizárólag egyetlen JSON objektummal válaszolj, magyarázó szöveg és kódkerítés nélkül.
@@ -112,6 +118,23 @@ Minden mennyiség szám legyen, ne szöveg. A "day_index" a kért tartomány sze
         sb.appendLine("- Napi mozgásszint edzés nélkül: ${p.activityLevel.hu}")
         sb.appendLine("- Étrendi stílus: ${p.dietStyle.hu}")
         sb.appendLine()
+
+        val restrictions = p.effectiveRestrictions
+        if (restrictions.isNotEmpty()) {
+            val strict = restrictions.filter { it.severity == DietRestriction.Severity.STRICT }
+            val choices = restrictions.filter { it.severity == DietRestriction.Severity.PREFERENCE }
+            sb.appendLine("KIZÁRÁSOK — EZ MINDENT FELÜLÍR")
+            if (strict.isNotEmpty()) {
+                sb.appendLine("Allergia / intolerancia (egészségügyi kockázat, nulla tolerancia):")
+                strict.forEach { sb.appendLine("- ${it.hu}: ${it.rule}") }
+            }
+            if (choices.isNotEmpty()) {
+                sb.appendLine("Étrendi döntés:")
+                choices.forEach { sb.appendLine("- ${it.hu}: ${it.rule}") }
+            }
+            sb.appendLine("Mielőtt válaszolsz, nézd át saját magad minden hozzávalóját e lista ellen.")
+            sb.appendLine()
+        }
 
         sb.appendLine("NAPI CÉLOK (minden napra ezek érvényesek)")
         sb.appendLine("- Kalória: ${t.kcal} kcal (max. ±5% eltérés)")
@@ -177,6 +200,11 @@ Minden mennyiség szám legyen, ne szöveg. A "day_index" a kért tartomány sze
         appendLine("- Tartsd meg a day_index értékét és az étkezések slot/időpont szerkezetét,")
         appendLine("  hacsak a kérés kifejezetten mást nem mond.")
         appendLine("- Csak azt változtasd, amit a kérés érint.")
+        val restrictions = request.profile.effectiveRestrictions
+        if (restrictions.isNotEmpty()) {
+            appendLine("- KIZÁRÁSOK (mindent felülírnak): " +
+                restrictions.joinToString("; ") { "${it.hu} — ${it.rule}" })
+        }
         if (request.profile.preferences.isNotBlank()) {
             appendLine("- Állandó preferenciák: ${request.profile.preferences.trim()}")
         }

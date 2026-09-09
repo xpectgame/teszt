@@ -8,8 +8,12 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Slider
@@ -20,10 +24,12 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import hu.mealpilot.core.ai.MealSlot
 import hu.mealpilot.core.model.ActivityLevel
+import hu.mealpilot.core.model.DietRestriction
 import hu.mealpilot.core.model.DietStyle
 import hu.mealpilot.core.model.MacroPreset
 import hu.mealpilot.core.model.Sex
@@ -173,7 +179,9 @@ fun ProfileForm(
                 )
             }
         }
-        Spacer(Modifier.height(16.dp))
+        Spacer(Modifier.height(20.dp))
+        RestrictionSurvey(profile = profile, onChange = onChange)
+        Spacer(Modifier.height(20.dp))
 
         Text("Makró beállítás", style = MaterialTheme.typography.labelLarge)
         Spacer(Modifier.height(4.dp))
@@ -245,6 +253,101 @@ fun ProfileForm(
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
+    }
+}
+
+/**
+ * Allergia- és érzékenységfelmérés.
+ *
+ * Amit itt bejelölsz, az kikerül az étrendből: bemegy a generálási promptba, és a kész
+ * tervet gépileg is átnézzük ellene ([hu.mealpilot.core.ai.RestrictionChecker]), mert egy
+ * allergiát nem helyes pusztán a modell jólneveltségére bízni.
+ */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+fun RestrictionSurvey(
+    profile: UserProfile,
+    onChange: (UserProfile) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val implied = DietRestriction.impliedBy(profile.dietStyle)
+
+    Column(modifier.fillMaxWidth()) {
+        Text(
+            "Allergiák és érzékenységek",
+            style = MaterialTheme.typography.titleSmall,
+            fontWeight = FontWeight.SemiBold,
+        )
+        Spacer(Modifier.height(2.dp))
+        Text(
+            "Amit bejelölsz, azt az étrend soha nem fogja tartalmazni — sem hozzávalóként, " +
+                "sem ízesítőként. A kész tervet ellenőrizzük is rá.",
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+
+        DietRestriction.byGroup().forEach { (group, items) ->
+            Spacer(Modifier.height(14.dp))
+            Text(
+                group.hu,
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.primary,
+            )
+            Spacer(Modifier.height(6.dp))
+            FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                items.forEach { restriction ->
+                    val auto = restriction in implied
+                    val checked = auto || restriction in profile.restrictions
+                    FilterChip(
+                        selected = checked,
+                        // Az étrendi stílusból következő kizárásokat nem lehet kikapcsolni:
+                        // vegánként a tej akkor is tiltott, ha nincs külön bejelölve.
+                        enabled = !auto,
+                        onClick = {
+                            val next = profile.restrictions.toMutableSet()
+                            if (restriction in next) next -= restriction else next += restriction
+                            onChange(profile.copy(restrictions = next))
+                        },
+                        label = { Text(restriction.hu) },
+                        leadingIcon = if (checked) {
+                            { Icon(Icons.Filled.Check, contentDescription = null, modifier = Modifier.size(16.dp)) }
+                        } else null,
+                    )
+                }
+            }
+            val notes = items.filter { it.note.isNotBlank() && (it in profile.restrictions || it in implied) }
+            notes.forEach { restriction ->
+                Text(
+                    "${restriction.hu}: ${restriction.note}",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(top = 4.dp),
+                )
+            }
+        }
+
+        if (implied.isNotEmpty()) {
+            Spacer(Modifier.height(10.dp))
+            Text(
+                "A(z) \"${profile.dietStyle.hu}\" stílus miatt ezek automatikusan ki vannak zárva: " +
+                    implied.sortedBy { it.hu }.joinToString(", ") { it.hu } + ".",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+
+        val total = profile.effectiveRestrictions.size
+        if (total > 0) {
+            Spacer(Modifier.height(10.dp))
+            Text(
+                "Összesen $total kizárás aktív.",
+                style = MaterialTheme.typography.labelMedium,
+                fontWeight = FontWeight.Medium,
+            )
+        }
     }
 }
 

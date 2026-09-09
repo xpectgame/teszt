@@ -8,8 +8,10 @@ import androidx.datastore.preferences.core.doublePreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
+import androidx.datastore.preferences.core.stringSetPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import hu.mealpilot.core.model.ActivityLevel
+import hu.mealpilot.core.model.DietRestriction
 import hu.mealpilot.core.model.DietStyle
 import hu.mealpilot.core.model.MacroPreset
 import hu.mealpilot.core.model.Sex
@@ -78,6 +80,7 @@ class SettingsRepository(context: Context) {
             p[K_DIET] = profile.dietStyle.name
             p[K_MACRO] = profile.macroPreset.name
             p[K_MEALS_PER_DAY] = profile.mealsPerDay
+            p[K_RESTRICTIONS] = profile.restrictions.map { it.name }.toSet()
             p[K_PREFERENCES] = profile.preferences
             p[K_MEAL_TIMES] = profile.mealTimes.joinToString(",")
         }
@@ -124,6 +127,10 @@ class SettingsRepository(context: Context) {
         macroPreset = runCatching { MacroPreset.valueOf(this[K_MACRO] ?: "HIGH_PROTEIN") }
             .getOrDefault(MacroPreset.HIGH_PROTEIN),
         mealsPerDay = this[K_MEALS_PER_DAY] ?: 4,
+        restrictions = this[K_RESTRICTIONS]
+            ?.mapNotNull(DietRestriction::byName)
+            ?.toSet()
+            ?: emptySet(),
         preferences = this[K_PREFERENCES] ?: "",
         mealTimes = this[K_MEAL_TIMES]?.split(",")?.filter { it.isNotBlank() }
             ?: listOf("07:30", "12:30", "16:00", "19:30"),
@@ -153,6 +160,7 @@ class SettingsRepository(context: Context) {
         val K_DIET = stringPreferencesKey("diet_style")
         val K_MACRO = stringPreferencesKey("macro_preset")
         val K_MEALS_PER_DAY = intPreferencesKey("meals_per_day")
+        val K_RESTRICTIONS = stringSetPreferencesKey("restrictions")
         val K_PREFERENCES = stringPreferencesKey("preferences")
         val K_MEAL_TIMES = stringPreferencesKey("meal_times")
 

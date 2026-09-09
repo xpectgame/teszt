@@ -1,6 +1,7 @@
 package hu.mealpilot.core.ai
 
 import hu.mealpilot.core.model.DailyTarget
+import hu.mealpilot.core.model.DietRestriction
 import hu.mealpilot.core.model.Nutrients
 import kotlin.math.abs
 import kotlin.math.roundToInt
@@ -32,12 +33,17 @@ object PlanValidator {
         target: DailyTarget,
         expectedDays: Int,
         expectedMealsPerDay: Int,
+        restrictions: Set<DietRestriction> = emptySet(),
     ): List<String> {
         val problems = mutableListOf<String>()
 
         if (plan.days.isEmpty()) {
             return listOf("A válasz egyetlen napot sem tartalmaz.")
         }
+
+        // A kizárások mennek elöl: ezek egészségügyi kockázatot jelentenek,
+        // és a javító promptban is ezeket lássa először a modell.
+        problems += RestrictionChecker.check(plan, restrictions)
         if (plan.days.size != expectedDays) {
             problems += "$expectedDays napot kértem, de ${plan.days.size} érkezett."
         }

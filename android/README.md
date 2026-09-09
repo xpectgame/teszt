@@ -16,6 +16,7 @@ alkalmazza, és egy már kész napot is át tudsz íratni egy mondattal.
 | Funkció | Állapot |
 |---|---|
 | Profil → BMR → TDEE → biztonságos deficit → makrócélok | ✅ kész, unit-tesztelt |
+| Allergia- és érzékenységfelmérés, gépi ellenőrzéssel | ✅ kész, unit-tesztelt |
 | AI étrend 1–30 napra, szabad szöveges kéréssel | ✅ kész |
 | Terv minőség-ellenőrzés + automatikus javító kör | ✅ kész, unit-tesztelt |
 | Nap átírása szavakkal („az ebéd legyen hidegen vihető”) | ✅ kész |
@@ -32,18 +33,21 @@ alkalmazza, és egy már kész napot is át tudsz íratni egy mondattal.
 ## Amit tudni kell a build előtt
 
 A `:core` modul (minden számítás, AI-séma, promptok, bevásárlólista, achievementek)
-tiszta Kotlin, és **59 unit teszt fut rá zölden**.
+tiszta Kotlin, és **75 unit teszt fut rá zölden**. Az app modul fordítását és az APK
+építését a GitHub Actions végzi (`.github/workflows/android.yml`).
 
-A `:app` (Android) modult **ebben a környezetben nem lehetett lefordítani**, mert a
-`dl.google.com` — ahonnan az Android Gradle Plugin és az AndroidX csomagok jönnek — el van
-zárva. A kód átment kézi felülvizsgálaton és statikus ellenőrzésen, de **első fordításkor
-számíts apróbb javítanivalókra** (import, egy-egy Compose paraméternév). Az első
-`./gradlew :app:assembleDebug` megmondja, ha van ilyen.
+**A legegyszerűbb telepítés: nem kell hozzá Android Studio.**
+Nyisd meg a repó *Actions* fülét → az „Android build" utolsó futása → *Artifacts* →
+`mealpilot-debug-apk`. Csomagold ki, másold a telefonra, és nyisd meg a fájlt.
+A telefon az ismeretlen forrás engedélyezését fogja kérni.
+
+Helyben:
 
 ```bash
 cd android
 ./gradlew :core:test          # a számítási mag tesztjei
 ./gradlew :app:assembleDebug  # APK: app/build/outputs/apk/debug/
+./gradlew installDebug        # USB-n csatlakoztatott telefonra
 ```
 
 Android Studio-ban egyszerűen nyisd meg az `android/` mappát.
@@ -113,6 +117,15 @@ a Keytel-regresszió (2005) fut. Ha nem, a MET-értéket nem a tankönyvi 3,5 ml
 hanem a *te* alapanyagcserédhez skálázzuk — ez nehezebb vagy idősebb felhasználónál
 érdemben kevesebbet ad, mint a szokásos képlet, és közelebb van a valósághoz.
 A napi keretbe csak a nyugalmi anyagcsere fölötti *többlet* számít bele.
+
+**Egy allergiát nem bízunk a modell jólneveltségére.** A bekapcsoláskori felmérésben
+kipipált allergiák, intoleranciák és étrendi döntések nemcsak a promptba kerülnek be
+kiemelt szabályként: a kész tervet gépileg is átnézzük ellenük, magyar alapanyag-kulcsszavak
+alapján. Ha bármi átcsúszna, a terv nem jut el hozzád, hanem újratervezés indul a konkrét
+találattal. A szűrő szándékosan a szigor felé téved — egy fölösleges újratervezés olcsó,
+egy átcsúszott allergén nem. Két finomság, ami ebből következik: a kazeinallergia szigorúbb
+a laktózérzékenységnél (a laktózmentes tej is tiltott marad), a vegán stílus pedig
+automatikusan kizárja a tejet és a tojást akkor is, ha külön nem jelölted be.
 
 **Az AI válaszát nem hisszük el vakon.** Minden legenerált nap átmegy egy ellenőrzésen:
 stimmel-e a napi kalória és fehérje, konzisztensek-e a makrók a megadott energiával,

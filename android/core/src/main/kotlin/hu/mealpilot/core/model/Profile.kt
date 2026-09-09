@@ -48,7 +48,9 @@ data class UserProfile(
     val dietStyle: DietStyle = DietStyle.OMNIVORE,
     val macroPreset: MacroPreset = MacroPreset.HIGH_PROTEIN,
     val mealsPerDay: Int = 4,
-    /** Szabad szöveges testreszabás: allergiák, utált ételek, konyha, időkeret, büdzsé. */
+    /** Allergiák, intoleranciák és étrendi döntések a bekapcsoláskori felmérésből. */
+    val restrictions: Set<DietRestriction> = emptySet(),
+    /** Szabad szöveges testreszabás: utált ételek, konyha, időkeret, büdzsé. */
     val preferences: String = "",
     /** Étkezési idősávok "HH:mm" formában, hossza legfeljebb [mealsPerDay]. */
     val mealTimes: List<String> = listOf("07:30", "12:30", "16:00", "19:30"),
@@ -58,4 +60,12 @@ data class UserProfile(
     /** Zsírmentes testtömeg, ha ismert a testzsírszázalék. */
     val leanBodyMassKg: Double?
         get() = bodyFatPercent?.let { weightKg * (1.0 - it / 100.0) }
+
+    /**
+     * A ténylegesen érvényes kizárások: amit a felhasználó kipipált, plusz ami az
+     * étrendi stílusból következik (vegánnál a tej és a tojás is tiltott, akkor is,
+     * ha külön nem jelölte be).
+     */
+    val effectiveRestrictions: Set<DietRestriction>
+        get() = restrictions + DietRestriction.impliedBy(dietStyle)
 }

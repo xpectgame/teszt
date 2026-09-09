@@ -175,6 +175,7 @@ class AnthropicMealAi(
                 target = chunkRequest.budget.target,
                 expectedDays = chunkRequest.days,
                 expectedMealsPerDay = expectedMeals,
+                restrictions = chunkRequest.profile.effectiveRestrictions,
             )
             if (problems.isEmpty()) return plan
 
