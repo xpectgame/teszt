@@ -100,10 +100,26 @@ class PlanRepairTest {
 
     @Test
     fun `gram quantities are rounded to usable numbers`() {
-        val over = day(0, 2222.0, dayProtein = 190.0)
-        val fixed = PlanRepair.scaleDay(over, PlanRepair.scaleFactor(over, target)!!)
-        val chicken = fixed.meals[0].ingredients.first { it.name == "csirkemell" }
-        assertEquals("50 g fölött ötösével kerekítünk", 0.0, chicken.quantity % 5, 0.001)
+        // A kerekítés a skálázástól külön lépés, és MINDEN napra lefut — akkor is, ha
+        // a nap eleve a kereten belül volt, és nem kellett hozzányúlni.
+        val over = PlanRepair.normalize(
+            AiPlanResponse(days = listOf(day(0, 2222.0, dayProtein = 190.0))), target
+        ).plan
+        val scaledChicken = over.days[0].meals[0].ingredients.first { it.name == "csirkemell" }
+        assertEquals("50 g fölött ötösével kerekítünk", 0.0, scaledChicken.quantity % 5, 0.001)
+
+        // Kereten belüli nap, de kimérhetetlen mennyiséggel — pont ez a valódi eset.
+        val exact = day(0, target.kcal.toDouble(), dayProtein = 190.0).let { d ->
+            d.copy(meals = d.meals.map { m ->
+                m.copy(ingredients = m.ingredients.map {
+                    if (it.name == "csirkemell") it.copy(quantity = 178.0) else it
+                })
+            })
+        }
+        val onTarget = PlanRepair.normalize(AiPlanResponse(days = listOf(exact)), target)
+        assertTrue("Ezt a napot nem kellett skálázni", onTarget.adjusted.isEmpty())
+        val chicken = onTarget.plan.days[0].meals[0].ingredients.first { it.name == "csirkemell" }
+        assertEquals("A kerekítés skálázás nélkül is megtörténik", 180.0, chicken.quantity, 0.001)
     }
 
     @Test

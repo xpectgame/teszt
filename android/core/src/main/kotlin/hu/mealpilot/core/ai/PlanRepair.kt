@@ -41,12 +41,23 @@ object PlanRepair {
     fun normalize(plan: AiPlanResponse, target: DailyTarget): Result {
         val adjusted = mutableMapOf<Int, Double>()
         val days = plan.days.map { day ->
-            val factor = scaleFactor(day, target) ?: return@map day
-            adjusted[day.dayIndex] = factor
-            scaleDay(day, factor)
+            val factor = scaleFactor(day, target)
+            if (factor != null) adjusted[day.dayIndex] = factor
+            val scaled = if (factor != null) scaleDay(day, factor) else day
+            // A kerekítés a skálázástól FÜGGETLENÜL lefut. Ha a modell elsőre eltalálja
+            // a keretet, a nap nem skálázódik — de a „178 g csirkemell" akkor is
+            // kimérhetetlen marad.
+            humanizeDay(scaled)
         }
         return Result(plan.copy(days = days), adjusted)
     }
+
+    /** Emberi léptékűre kerekíti a nap összes hozzávalóját. */
+    fun humanizeDay(day: AiDay): AiDay = day.copy(
+        meals = day.meals.map { meal ->
+            meal.copy(ingredients = meal.ingredients.map(Quantities::humanize))
+        }
+    )
 
     /** A naphoz tartozó szorzó, vagy null, ha nem szabad vagy nem érdemes skálázni. */
     fun scaleFactor(day: AiDay, target: DailyTarget): Double? {
@@ -84,18 +95,14 @@ object PlanRepair {
     /**
      * A darabra mért hozzávalókat (tojás, gerezd fokhagyma) nem skálázzuk: „2,1 db tojás"
      * használhatatlan utasítás. A tömeg és térfogat viszont szabadon igazítható.
+     *
+     * A kerekítés nem itt történik: azt a [humanizeDay] végzi, minden napra.
      */
     private fun scaleIngredient(ingredient: AiIngredient, factor: Double): AiIngredient {
         if (ingredient.pantryStaple) return ingredient
         val unit = ingredient.unit.trim().lowercase()
         if (unit !in CONTINUOUS_UNITS) return ingredient
-        val scaled = ingredient.quantity * factor
-        val rounded = when {
-            unit == "g" || unit == "gramm" || unit == "ml" ->
-                if (scaled >= 50) (scaled / 5).roundToInt() * 5.0 else scaled.roundToInt().toDouble()
-            else -> round2(scaled)
-        }
-        return ingredient.copy(quantity = rounded.coerceAtLeast(if (unit == "g" || unit == "ml") 1.0 else 0.01))
+        return ingredient.copy(quantity = round2(ingredient.quantity * factor))
     }
 
     private fun round1(value: Double) = (value * 10).roundToInt() / 10.0

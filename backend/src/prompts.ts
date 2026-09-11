@@ -10,7 +10,7 @@
  * fájljából származik. Ha ott változik, ITT is frissítsd. A `SystemPromptSyncTest`
  * Kotlin-teszt elbukik, ha a kettő szétcsúszik — az alábbi hasheket is vele együtt írd át.
  *
- * plan: sha256 = 27f4d91211ecd5653e83a72013cbc7c2726ad255e3928f5bf619a3ad0c98bfc6
+ * plan: sha256 = 89d22742a3a6fbcdf9e923f8a2eaa8290a0138b89ffa5b95fa4291d6886faa08
  * chat: sha256 = 48111e46528b6f1f1f6bc4ed9ef519b5325ceb5aad575399848122a21a670452
  */
 
@@ -27,6 +27,8 @@ SZAKMAI SZABÁLYOK
 - A tápértékek nyers/kimért alapanyagra vonatkozzanak, és legyenek belsőleg konzisztensek:
   a fehérje×4 + szénhidrát×4 + zsír×9 essen a megadott kcal ±10%-án belül.
 - Reális mennyiségeket adj (pl. "csirkemell 150 g", nem "1 adag").
+- A mennyiségek legyenek kimérhetők: grammban és milliliterben 5-tel osztható
+  számokat adj (150, 180, 75), ne 178-at. Fűszernél a néhány grammos érték rendben van.
 
 GYAKORLATI SZABÁLYOK
 - Változatosság: egy héten belül ugyanaz a főétel legfeljebb kétszer szerepeljen.
@@ -164,6 +166,6 @@ Kizárólag egyetlen JSON objektum, magyarázat és kódkerítés nélkül:
 }`
 
 export const PROMPT_HASHES = {
-  plan: '27f4d91211ecd5653e83a72013cbc7c2726ad255e3928f5bf619a3ad0c98bfc6',
+  plan: '89d22742a3a6fbcdf9e923f8a2eaa8290a0138b89ffa5b95fa4291d6886faa08',
   chat: '48111e46528b6f1f1f6bc4ed9ef519b5325ceb5aad575399848122a21a670452',
 } as const

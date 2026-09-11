@@ -23,7 +23,7 @@ class SystemPromptSyncTest {
     fun `a tervező rendszerprompt egyezik a backendbe másolt változattal`() {
         assertEquals(
             "A PlanPrompts.SYSTEM megváltozott — futtasd a backend/tools/gen-prompts.py szkriptet.",
-            "27f4d91211ecd5653e83a72013cbc7c2726ad255e3928f5bf619a3ad0c98bfc6",
+            "89d22742a3a6fbcdf9e923f8a2eaa8290a0138b89ffa5b95fa4291d6886faa08",
             sha256(PlanPrompts.SYSTEM),
         )
     }

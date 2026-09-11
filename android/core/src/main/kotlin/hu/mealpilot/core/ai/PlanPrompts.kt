@@ -43,6 +43,8 @@ SZAKMAI SZABÁLYOK
 - A tápértékek nyers/kimért alapanyagra vonatkozzanak, és legyenek belsőleg konzisztensek:
   a fehérje×4 + szénhidrát×4 + zsír×9 essen a megadott kcal ±10%-án belül.
 - Reális mennyiségeket adj (pl. "csirkemell 150 g", nem "1 adag").
+- A mennyiségek legyenek kimérhetők: grammban és milliliterben 5-tel osztható
+  számokat adj (150, 180, 75), ne 178-at. Fűszernél a néhány grammos érték rendben van.
 
 GYAKORLATI SZABÁLYOK
 - Változatosság: egy héten belül ugyanaz a főétel legfeljebb kétszer szerepeljen.

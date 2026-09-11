@@ -245,7 +245,9 @@ abstract class StreamingMealAi : MealAi {
                 userText = PlanPrompts.refineDayPrompt(request, currentDayJson, instruction),
                 planDays = 1,
             )
-            Result.success(PlanParser.parseDay(raw).getOrThrow())
+            val parsed = PlanParser.parseDay(raw).getOrThrow()
+            // Ugyanaz a kerekítés, mint a tervezésnél — egy átírt nap se adjon 178 grammot.
+            Result.success(parsed.copy(day = PlanRepair.humanizeDay(parsed.day)))
         } catch (cancelled: CancellationException) {
             throw cancelled
         } catch (error: Throwable) {
