@@ -71,9 +71,11 @@ class OfflineMealAi : MealAi {
         )
 
         val result = AiPlanResponse(
-            planTitle = "Gyors étrend",
-            summary = "Sablonokból épített terv: a napi kalória és a makrók a célodhoz vannak " +
-                "méretezve. A szabad szöveges kéréseidet ez a változat nem veszi figyelembe.",
+            planTitle = "Heti étrend",
+            summary = "Ez a terv internetkapcsolat nélkül, beépített receptekből készült. " +
+                "A napi kalória és a makrók a te célodhoz vannak méretezve, de a szabad " +
+                "szöveges kéréseidet ez a változat nem veszi figyelembe — internettel " +
+                "újragenerálva személyre szabottabb tervet kapsz.",
             days = days,
             coachNotes = listOf(
                 "Igyál napi 2–3 liter folyadékot.",

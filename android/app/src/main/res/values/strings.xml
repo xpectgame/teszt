@@ -7,4 +7,6 @@
     <string name="channel_summary_desc">Esti visszajelzés a napról.</string>
     <string name="channel_achievements_name">Eredmények</string>
     <string name="channel_achievements_desc">Értesítés új achievement feloldásakor.</string>
+    <string name="channel_generation_name">Étrend készítése</string>
+    <string name="channel_generation_desc">Haladás, amíg a terved összeáll.</string>
 </resources>

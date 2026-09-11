@@ -267,6 +267,62 @@ class PlanRepository(
         )
     }
 
+    /**
+     * Étkezési időpontok átállítása a meglévő terven.
+     *
+     * Helyi művelet: nem hívunk modellt, nem írjuk át a fogásokat, csak az időpontokat és
+     * a hozzájuk tartozó emlékeztetőket. Egy ilyen kéréshez ("legyen a reggeli 9:45-kor")
+     * nem szabad újratervezni — az percekbe és pénzbe kerülne, és elvenné a fogásokat,
+     * amiket a felhasználó esetleg pont megtartani akart.
+     *
+     * @param dayIndexes ha üres, a terv minden napjára érvényes.
+     * @return hány étkezés időpontja változott.
+     */
+    suspend fun setMealTimes(
+        planId: Long,
+        slotTimes: Map<String, LocalTime>,
+        dayIndexes: List<Int> = emptyList(),
+    ): Int {
+        if (slotTimes.isEmpty()) return 0
+        var changed = 0
+        mealDao.allForPlan(planId).forEach { meal ->
+            if (dayIndexes.isNotEmpty() && meal.dayIndex !in dayIndexes) return@forEach
+            val newTime = slotTimes[meal.slot.trim().uppercase()] ?: return@forEach
+            if (meal.timeText == newTime.toString()) return@forEach
+            mealDao.update(meal.withTime(LocalDate.ofEpochDay(meal.epochDay), newTime))
+            changed++
+        }
+        return changed
+    }
+
+    /**
+     * Két nap étrendjének felcserélése. Szintén helyi művelet: az étkezések átkerülnek a
+     * másik napra, a saját időpontjukat megtartva.
+     */
+    suspend fun swapDays(planId: Long, indexA: Int, indexB: Int): Boolean {
+        if (indexA == indexB) return false
+        val plan = planDao.byId(planId) ?: return false
+        val start = LocalDate.ofEpochDay(plan.startEpochDay)
+        val all = mealDao.allForPlan(planId)
+        val fromA = all.filter { it.dayIndex == indexA }
+        val fromB = all.filter { it.dayIndex == indexB }
+        if (fromA.isEmpty() || fromB.isEmpty()) return false
+
+        // Mindkét listát kiolvassuk, mielőtt bármit írnánk, különben a második mozgatás
+        // már a megváltozott adatokat találná.
+        moveMeals(fromA, start.plusDays(indexB.toLong()), indexB)
+        moveMeals(fromB, start.plusDays(indexA.toLong()), indexA)
+        return true
+    }
+
+    private suspend fun moveMeals(meals: List<MealEntity>, toDate: LocalDate, toDayIndex: Int) {
+        meals.forEach { meal ->
+            mealDao.update(
+                meal.withTime(toDate, parseTime(meal.timeText)).copy(dayIndex = toDayIndex)
+            )
+        }
+    }
+
     /** Egy tartomány listáját csak akkor gyártjuk le, ha még nem létezik — a pipák így megmaradnak. */
     suspend fun rebuildShoppingListIfMissing(planId: Long, fromEpochDay: Long, toEpochDay: Long) {
         if (shoppingDao.countInRange(planId, fromEpochDay, toEpochDay) == 0) {
@@ -280,6 +336,13 @@ class PlanRepository(
 
     private fun parseTime(raw: String): LocalTime = runCatching { LocalTime.parse(raw.trim()) }
         .getOrElse { LocalTime.of(12, 0) }
+
+    /** Egy étkezés áthelyezése adott napra és időpontra, az emlékeztető idejével együtt. */
+    private fun MealEntity.withTime(date: LocalDate, time: LocalTime): MealEntity = copy(
+        epochDay = date.toEpochDay(),
+        timeText = time.toString(),
+        scheduledAtMillis = date.atTime(time).atZone(ZoneId.systemDefault()).toInstant().toEpochMilli(),
+    )
 
     private fun List<MealWithIngredients>.toAiDayJson(dayIndex: Int): String = buildString {
         append("""{"day_index": $dayIndex, "meals": [""")

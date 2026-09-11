@@ -11,9 +11,12 @@ import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.isImeVisible
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
@@ -56,10 +59,12 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import hu.mealpilot.app.AppContainer
 import hu.mealpilot.app.data.local.ChatMessageEntity
 import hu.mealpilot.app.notify.ReminderRefreshWorker
+import hu.mealpilot.app.work.GenerationCoordinator
 import hu.mealpilot.app.ui.containerFactory
 import hu.mealpilot.core.ai.AiChatAction
 import hu.mealpilot.core.ai.ChatActionType
 import hu.mealpilot.core.ai.ChatTurn
+import hu.mealpilot.core.ai.MealSlot
 import hu.mealpilot.core.ai.PlanParser
 import hu.mealpilot.core.energy.EnergyCalculator
 import hu.mealpilot.core.model.DietRestriction
@@ -70,13 +75,10 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.time.LocalDate
+import java.time.LocalTime
 
-/** Mit csinál éppen a beszélgetés. */
-sealed interface ChatBusy {
-    data object Idle : ChatBusy
-    data object Thinking : ChatBusy
-    data class Working(val label: String) : ChatBusy
-}
+/** A beszélgetés saját, rövid várakozása. A hosszú műveletek a koordinátoron futnak. */
+enum class ChatBusy { Idle, Thinking }
 
 class ChatViewModel(private val container: AppContainer) : ViewModel() {
 
@@ -86,10 +88,11 @@ class ChatViewModel(private val container: AppContainer) : ViewModel() {
     private val _busy = MutableStateFlow<ChatBusy>(ChatBusy.Idle)
     val busy: StateFlow<ChatBusy> = _busy.asStateFlow()
 
-    private val _toast = MutableStateFlow<String?>(null)
-    val toast: StateFlow<String?> = _toast.asStateFlow()
+    /** A hosszú műveletek a közös koordinátoron futnak, hogy mindenhol látszódjanak. */
+    val generation: StateFlow<GenerationCoordinator.Status> = container.generation.status
+    val actionResult: StateFlow<String?> = container.generation.actionResult
 
-    fun consumeToast() { _toast.value = null }
+    fun consumeActionResult() = container.generation.consumeActionResult()
 
     fun send(text: String) {
         if (_busy.value != ChatBusy.Idle) return
@@ -109,17 +112,15 @@ class ChatViewModel(private val container: AppContainer) : ViewModel() {
      * ne írjon át csendben egy egész hónapot.
      */
     fun confirm(message: ChatMessageEntity) {
-        if (_busy.value != ChatBusy.Idle) return
+        if (_busy.value != ChatBusy.Idle || container.generation.isBusy) return
         val action = runCatching {
             PlanParser.json.decodeFromString(AiChatAction.serializer(), message.actionJson)
         }.getOrNull() ?: return
 
-        container.backgroundScope.launch {
-            _busy.value = ChatBusy.Working(message.actionLabel.ifBlank { "Dolgozom rajta…" })
-            val result = runCatching { execute(action) }
+        container.generation.runAction(message.actionLabel.ifBlank { "Dolgozom rajta" }) {
+            val result = execute(action)
             container.chatRepository.dismissAction(message.id)
-            _busy.value = ChatBusy.Idle
-            _toast.value = result.getOrNull() ?: result.exceptionOrNull()?.message ?: "Nem sikerült."
+            result
         }
     }
 
@@ -176,6 +177,48 @@ class ChatViewModel(private val container: AppContainer) : ViewModel() {
                 "$done nap átírva."
             }
 
+            ChatActionType.SET_MEAL_TIMES -> {
+                val parsed = action.mealTimes.mapNotNull { entry ->
+                    val slot = MealSlot.fromRawOrNull(entry.slot) ?: return@mapNotNull null
+                    val time = runCatching { LocalTime.parse(entry.time.trim()) }.getOrNull()
+                        ?: return@mapNotNull null
+                    slot to time
+                }
+                if (parsed.isEmpty()) return "Nem értettem, melyik étkezést mikorra tegyem."
+
+                // A profil alapértelmezése is frissül, hogy a jövőbeli tervek is ezt használják.
+                val slots = MealSlot.forMealsPerDay(profile.mealsPerDay)
+                val times = MutableList(slots.size) { i ->
+                    profile.mealTimes.getOrNull(i) ?: slots[i].defaultTime
+                }
+                parsed.forEach { (slot, time) ->
+                    val index = slots.indexOf(slot)
+                    if (index >= 0) times[index] = time.toString()
+                }
+                container.settings.saveProfile(profile.copy(mealTimes = times))
+
+                val plan = container.planRepository.activePlan()
+                val changed = if (plan == null) 0 else container.planRepository.setMealTimes(
+                    planId = plan.id,
+                    slotTimes = parsed.associate { (slot, time) -> slot.name to time },
+                    dayIndexes = action.dayIndexes,
+                )
+                ReminderRefreshWorker.refreshNow(container.appContext)
+                val what = parsed.joinToString(", ") { (slot, time) -> "${slot.hu} $time" }
+                if (changed > 0) "Átállítva: $what. $changed étkezés időpontja és emlékeztetője frissült."
+                else "Átállítva: $what. A következő tervnél már ez lesz az alapértelmezés."
+            }
+
+            ChatActionType.SWAP_DAYS -> {
+                val plan = container.planRepository.activePlan()
+                    ?: return "Nincs aktív terv, amiben cserélni lehetne."
+                val indexes = action.dayIndexes.distinct().filter { it in 0 until plan.dayCount }
+                if (indexes.size != 2) return "Két napot kell megadni a cseréhez."
+                val swapped = container.planRepository.swapDays(plan.id, indexes[0], indexes[1])
+                ReminderRefreshWorker.refreshNow(container.appContext)
+                if (swapped) "A két nap felcserélve." else "Ezeken a napokon nincs mit cserélni."
+            }
+
             ChatActionType.ADD_RESTRICTIONS -> {
                 val added = action.restrictions.mapNotNull(DietRestriction::byName).toSet()
                 if (added.isEmpty()) return "Nem ismertem fel a kizárást."
@@ -224,21 +267,30 @@ fun ChatScreen(
     val viewModel: ChatViewModel = viewModel(factory = containerFactory(container) { ChatViewModel(it) })
     val messages by viewModel.messages.collectAsState()
     val busy by viewModel.busy.collectAsState()
-    val toast by viewModel.toast.collectAsState()
+    val generation by viewModel.generation.collectAsState()
+    val actionResult by viewModel.actionResult.collectAsState()
+    val locked = busy != ChatBusy.Idle || generation.running
     var draft by remember { mutableStateOf("") }
     val listState = rememberLazyListState()
 
-    LaunchedEffect(messages.size, busy) {
+    val imeVisible = WindowInsets.isImeVisible
+    LaunchedEffect(messages.size, busy, imeVisible, generation.running) {
         if (messages.isNotEmpty()) listState.animateScrollToItem(messages.lastIndex)
     }
-    LaunchedEffect(toast) {
-        toast?.let {
+    LaunchedEffect(actionResult) {
+        actionResult?.let {
             snackbarHostState.showSnackbar(it)
-            viewModel.consumeToast()
+            viewModel.consumeActionResult()
         }
     }
 
-    Column(Modifier.fillMaxSize()) {
+    // enableEdgeToEdge mellett az ablak nem méreteződik át magától a billentyűzethez,
+    // ezért az IME magasságát kézzel kell a tartalom alá tenni.
+    Column(
+        Modifier
+            .fillMaxSize()
+            .imePadding()
+    ) {
         LazyColumn(
             state = listState,
             modifier = Modifier.weight(1f),
@@ -286,32 +338,50 @@ fun ChatScreen(
             items(messages, key = { it.id }) { message ->
                 MessageBubble(
                     message = message,
-                    enabled = busy == ChatBusy.Idle,
+                    enabled = !locked,
                     onConfirm = { viewModel.confirm(message) },
                     onDismiss = { viewModel.dismiss(message) },
                 )
             }
 
-            if (busy != ChatBusy.Idle) {
+            if (locked) {
                 item {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp)
-                        Spacer(Modifier.size(10.dp))
-                        Text(
-                            when (val current = busy) {
-                                is ChatBusy.Working -> current.label
-                                else -> "Gondolkodom…"
-                            },
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
+                    Column {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp)
+                            Spacer(Modifier.size(10.dp))
+                            Text(
+                                if (generation.running) generation.headline else "Gondolkodom…",
+                                style = MaterialTheme.typography.bodyMedium,
+                            )
+                        }
+                        if (generation.running && generation.detail.isNotBlank()) {
+                            Spacer(Modifier.height(4.dp))
+                            Text(
+                                generation.detail,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(start = 26.dp),
+                            )
+                            Text(
+                                "Nyugodtan zárd be az appot — a háttérben tovább dolgozom.",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(start = 26.dp, top = 2.dp),
+                            )
+                        }
                     }
                 }
             }
         }
 
-        if (busy is ChatBusy.Working) {
-            LinearProgressIndicator(Modifier.fillMaxWidth())
+        if (generation.running) {
+            val fraction = generation.fraction
+            if (fraction != null) {
+                LinearProgressIndicator(progress = { fraction }, modifier = Modifier.fillMaxWidth())
+            } else {
+                LinearProgressIndicator(Modifier.fillMaxWidth())
+            }
         }
 
         Surface(tonalElevation = 3.dp) {
@@ -335,7 +405,7 @@ fun ChatScreen(
                         viewModel.send(draft)
                         draft = ""
                     },
-                    enabled = draft.isNotBlank() && busy == ChatBusy.Idle,
+                    enabled = draft.isNotBlank() && !locked,
                     modifier = Modifier.size(52.dp),
                 ) {
                     Icon(Icons.AutoMirrored.Filled.Send, contentDescription = "Küldés")

@@ -83,6 +83,9 @@ interface MealDao {
     @Query("SELECT * FROM meals WHERE id = :id")
     suspend fun byId(id: Long): MealEntity?
 
+    @Query("SELECT * FROM meals WHERE planId = :planId")
+    suspend fun allForPlan(planId: Long): List<MealEntity>
+
     @Query("SELECT name FROM meals WHERE planId = :planId")
     suspend fun namesInPlan(planId: Long): List<String>
 }

@@ -39,6 +39,15 @@ enum class ChatActionType {
     /** Adott napok újratervezése (`day_indexes`). */
     REGENERATE_DAYS,
 
+    /**
+     * Étkezési időpontok átállítása (`meal_times`). Helyi művelet: nem kell hozzá
+     * újratervezés, azonnal lefut, és nem kerül semmibe.
+     */
+    SET_MEAL_TIMES,
+
+    /** Két nap étrendjének felcserélése (`day_indexes` pontosan két elemmel). Helyi művelet. */
+    SWAP_DAYS,
+
     /** Új terv készítése `days` hosszan. */
     CREATE_PLAN,
 
@@ -60,6 +69,13 @@ enum class ChatActionType {
     }
 }
 
+/** Egy étkezési slot új időpontja, "HH:mm" alakban. */
+@Serializable
+data class AiMealTime(
+    val slot: String = "",
+    val time: String = "",
+)
+
 @Serializable
 data class AiChatAction(
     val type: String = "NONE",
@@ -67,6 +83,7 @@ data class AiChatAction(
     /** Amit a tervezőnek át kell adni — magyarul, konkrétan. */
     val instruction: String = "",
     val days: Int = 0,
+    @SerialName("meal_times") val mealTimes: List<AiMealTime> = emptyList(),
     val restrictions: List<String> = emptyList(),
     val preferences: String = "",
     @SerialName("rate_kg_per_week") val rateKgPerWeek: Double = 0.0,

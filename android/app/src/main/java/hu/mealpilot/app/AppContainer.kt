@@ -10,6 +10,7 @@ import hu.mealpilot.app.data.repo.ChatRepository
 import hu.mealpilot.app.data.repo.PlanRepository
 import hu.mealpilot.app.data.repo.StatsRepository
 import hu.mealpilot.app.data.repo.TrackingRepository
+import hu.mealpilot.app.work.GenerationCoordinator
 import hu.mealpilot.core.ai.MealAi
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -58,6 +59,9 @@ class AppContainer(context: Context) {
      * szabad emiatt megszakítani.
      */
     val backgroundScope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+
+    /** A hosszan futó tervezés egyetlen gazdája — minden képernyő ezt figyeli. */
+    val generation: GenerationCoordinator by lazy { GenerationCoordinator(this) }
 
     val statsRepository: StatsRepository by lazy {
         StatsRepository(

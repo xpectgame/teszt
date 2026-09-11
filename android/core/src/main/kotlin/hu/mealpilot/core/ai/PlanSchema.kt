@@ -14,8 +14,15 @@ enum class MealSlot(val hu: String, val defaultTime: String) {
     EVENING_SNACK("Esti falat", "21:30");
 
     companion object {
-        fun fromRaw(raw: String?): MealSlot =
-            entries.firstOrNull { it.name.equals(raw?.trim(), ignoreCase = true) } ?: AFTERNOON_SNACK
+        fun fromRaw(raw: String?): MealSlot = fromRawOrNull(raw) ?: AFTERNOON_SNACK
+
+        /**
+         * Szigorú változat: null, ha nem ismerjük fel a slotot. Ott kell, ahol a téves
+         * találat kárt okozna — például időpont-átállításnál nem szabad a fel nem ismert
+         * "reggeli" helyett csendben az uzsonnát átírni.
+         */
+        fun fromRawOrNull(raw: String?): MealSlot? =
+            entries.firstOrNull { it.name.equals(raw?.trim(), ignoreCase = true) }
 
         /** Az adott napi étkezésszámhoz illő slot-sorrend. */
         fun forMealsPerDay(count: Int): List<MealSlot> = when (count.coerceIn(2, 6)) {

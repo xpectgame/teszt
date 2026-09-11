@@ -49,6 +49,7 @@ import hu.mealpilot.app.AppContainer
 import hu.mealpilot.app.data.local.MealWithIngredients
 import hu.mealpilot.app.data.local.PlanEntity
 import hu.mealpilot.app.data.repo.PlanGenerationOutcome
+import hu.mealpilot.app.work.GenerationCoordinator
 import hu.mealpilot.app.data.repo.PlanRepository
 import hu.mealpilot.app.notify.ReminderRefreshWorker
 import hu.mealpilot.app.ui.components.EmptyState
@@ -82,13 +83,6 @@ data class PlanUiState(
         get() = meals.groupBy { it.meal.dayIndex }.toSortedMap()
 }
 
-sealed interface GenerationState {
-    data object Idle : GenerationState
-    data class Running(val progress: GenerationProgress) : GenerationState
-    data class Failed(val message: String) : GenerationState
-    data class Done(val outcome: PlanGenerationOutcome) : GenerationState
-}
-
 class PlanViewModel(private val container: AppContainer) : ViewModel() {
 
     @OptIn(ExperimentalCoroutinesApi::class)
@@ -101,69 +95,33 @@ class PlanViewModel(private val container: AppContainer) : ViewModel() {
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), PlanUiState())
 
-    private val _generation = MutableStateFlow<GenerationState>(GenerationState.Idle)
-    val generation: StateFlow<GenerationState> = _generation.asStateFlow()
+    /** A tervezés állapota — ugyanaz a forrás, amit az alkalmazás összes képernyője figyel. */
+    val status: StateFlow<GenerationCoordinator.Status> = container.generation.status
+    val outcome: StateFlow<Result<PlanGenerationOutcome>?> = container.generation.lastOutcome
 
-    private var generationJob: Job? = null
+    fun generate(days: Int, startTomorrow: Boolean, freeText: String) =
+        container.generation.generatePlan(days, startTomorrow, freeText)
 
-    fun generate(days: Int, startTomorrow: Boolean, freeText: String) {
-        if (generationJob?.isActive == true) return
-        // Alkalmazás-élettartamú scope: a háttérben készülő napok akkor is elkészülnek,
-        // ha a felhasználó közben átvált egy másik fülre.
-        generationJob = container.backgroundScope.launch {
-            _generation.value = GenerationState.Running(
-                GenerationProgress(GenerationProgress.Stage.PREPARING, message = "Indulás…")
-            )
+    fun cancelGeneration() = container.generation.cancel()
+
+    fun consumeOutcome() = container.generation.consumeOutcome()
+
+    fun refineDay(dayIndex: Int, instruction: String, onResult: suspend (String) -> Unit) =
+        viewModelScope.launch {
+            val plan = container.planRepository.activePlan() ?: return@launch
             val profile = container.settings.currentProfile()
             val budget = EnergyCalculator.budget(profile)
-            val start = if (startTomorrow) LocalDate.now().plusDays(1) else LocalDate.now()
-
-            val result = container.planRepository.generateAndSave(
+            val result = container.planRepository.refineDay(
                 ai = container.mealAi(),
                 profile = profile,
                 budget = budget,
-                startDate = start,
-                days = days,
-                freeText = freeText,
-            ) { progress ->
-                _generation.value = GenerationState.Running(progress)
-            }
-
-            _generation.value = result.fold(
-                onSuccess = { outcome ->
-                    ReminderRefreshWorker.refreshNow(container.appContext)
-                    GenerationState.Done(outcome)
-                },
-                onFailure = { GenerationState.Failed(it.message ?: "Ismeretlen hiba.") },
+                planId = plan.id,
+                dayIndex = dayIndex,
+                instruction = instruction,
             )
+            onResult(result.getOrElse { it.message ?: "Nem sikerült módosítani." })
+            ReminderRefreshWorker.refreshNow(container.appContext)
         }
-    }
-
-    fun cancelGeneration() {
-        generationJob?.cancel()
-        generationJob = null
-        _generation.value = GenerationState.Idle
-    }
-
-    fun dismissGenerationResult() {
-        _generation.value = GenerationState.Idle
-    }
-
-    fun refineDay(dayIndex: Int, instruction: String, onResult: suspend (String) -> Unit) = viewModelScope.launch {
-        val plan = container.planRepository.activePlan() ?: return@launch
-        val profile = container.settings.currentProfile()
-        val budget = EnergyCalculator.budget(profile)
-        val result = container.planRepository.refineDay(
-            ai = container.mealAi(),
-            profile = profile,
-            budget = budget,
-            planId = plan.id,
-            dayIndex = dayIndex,
-            instruction = instruction,
-        )
-        onResult(result.getOrElse { it.message ?: "Nem sikerült módosítani." })
-        ReminderRefreshWorker.refreshNow(container.appContext)
-    }
 
     fun coachNotes(plan: PlanEntity): List<String> = PlanRepository.decodeStrings(plan.coachNotesJson)
 }
@@ -177,39 +135,34 @@ fun PlanScreen(
 ) {
     val viewModel: PlanViewModel = viewModel(factory = containerFactory(container) { PlanViewModel(it) })
     val state by viewModel.state.collectAsState()
-    val generation by viewModel.generation.collectAsState()
+    val status by viewModel.status.collectAsState()
+    val outcome by viewModel.outcome.collectAsState()
     var showGenerator by remember { mutableStateOf(false) }
     var refineDayIndex by remember { mutableStateOf<Int?>(null) }
     var expandedDay by remember { mutableStateOf<Int?>(0) }
 
-    LaunchedEffect(generation) {
-        when (val current = generation) {
-            is GenerationState.Running -> {
-                // Amint az első napok megvannak, elengedjük a párbeszédet: a terv már
-                // használható, a többi nap a háttérben töltődik tovább.
-                if (current.progress.daysReady > 0 && showGenerator) {
-                    showGenerator = false
-                    snackbarHostState.showSnackbar(
-                        "${current.progress.daysReady} nap kész — a többi közben töltődik."
-                    )
-                }
-            }
-            is GenerationState.Done -> {
-                val outcome = current.outcome
-                viewModel.dismissGenerationResult()
-                showGenerator = false
-                snackbarHostState.showSnackbar(
-                    if (outcome.isComplete) "Kész az étrended!"
-                    else "${outcome.daysSaved} nap készült el a(z) ${outcome.requestedDays}-ból. " +
-                        "A többit újra megpróbálhatod."
-                )
-            }
-            is GenerationState.Failed -> {
-                snackbarHostState.showSnackbar(current.message)
-                viewModel.dismissGenerationResult()
-            }
-            else -> Unit
+    // Amint az első napok megvannak, elengedjük a párbeszédet: a terv már használható,
+    // a többi a háttérben töltődik tovább, és a felső sávon végig látszik a haladás.
+    LaunchedEffect(status.hasUsableDays, status.running) {
+        if (status.running && status.hasUsableDays && showGenerator) {
+            showGenerator = false
+            snackbarHostState.showSnackbar("${status.daysReady} nap kész — a többi közben töltődik.")
         }
+    }
+
+    LaunchedEffect(outcome) {
+        val current = outcome ?: return@LaunchedEffect
+        showGenerator = false
+        viewModel.consumeOutcome()
+        snackbarHostState.showSnackbar(
+            current.fold(
+                onSuccess = {
+                    if (it.isComplete) "Kész az étrended!"
+                    else "${it.daysSaved} nap készült el a(z) ${it.requestedDays}-ból."
+                },
+                onFailure = { it.message ?: "Nem sikerült elkészíteni a tervet." },
+            )
+        )
     }
 
     LazyColumn(
@@ -284,9 +237,9 @@ fun PlanScreen(
 
     if (showGenerator) {
         GeneratorDialog(
-            generation = generation,
+            status = status,
             onDismiss = {
-                if (generation is GenerationState.Running) viewModel.cancelGeneration()
+                if (status.running) viewModel.cancelGeneration()
                 showGenerator = false
             },
             onGenerate = { days, tomorrow, text -> viewModel.generate(days, tomorrow, text) },
@@ -382,14 +335,14 @@ private fun DayCard(
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun GeneratorDialog(
-    generation: GenerationState,
+    status: GenerationCoordinator.Status,
     onDismiss: () -> Unit,
     onGenerate: (days: Int, startTomorrow: Boolean, freeText: String) -> Unit,
 ) {
     var days by remember { mutableStateOf(7) }
     var startTomorrow by remember { mutableStateOf(false) }
     var freeText by remember { mutableStateOf("") }
-    val running = generation is GenerationState.Running
+    val running = status.running
 
     AlertDialog(
         onDismissRequest = { if (!running) onDismiss() },
@@ -397,30 +350,23 @@ private fun GeneratorDialog(
         text = {
             Column {
                 if (running) {
-                    val progress = (generation as GenerationState.Running).progress
-                    Text(progress.message, style = MaterialTheme.typography.bodyMedium)
+                    Text(status.detail, style = MaterialTheme.typography.bodyMedium)
                     Spacer(Modifier.height(12.dp))
-                    if (progress.totalChunks > 1) {
+                    val fraction = status.fraction
+                    if (fraction != null) {
                         LinearProgressIndicator(
-                            progress = { progress.fraction },
+                            progress = { fraction },
                             modifier = Modifier.fillMaxWidth(),
-                        )
-                        Spacer(Modifier.height(8.dp))
-                        Text(
-                            "${progress.currentChunk + 1}. / ${progress.totalChunks} szakasz",
-                            style = MaterialTheme.typography.labelSmall,
                         )
                     } else {
                         LinearProgressIndicator(Modifier.fillMaxWidth())
                     }
-                    if (progress.receivedChars > 0) {
-                        Spacer(Modifier.height(8.dp))
-                        Text(
-                            "${progress.receivedChars} karakter érkezett",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
+                    Spacer(Modifier.height(10.dp))
+                    Text(
+                        "Nyugodtan zárd be — a háttérben tovább készül, és szólok, ha megvan.",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
                 } else {
                     Text("Meddig tervezzek?", style = MaterialTheme.typography.labelLarge)
                     Spacer(Modifier.height(8.dp))
@@ -471,7 +417,7 @@ private fun GeneratorDialog(
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text(if (running) "Megszakítás" else "Mégse") }
+            TextButton(onClick = onDismiss) { Text(if (running) "Háttérbe" else "Mégse") }
         },
     )
 }
