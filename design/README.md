@@ -9,25 +9,34 @@ publikált oldal ezekből készül újra.
 
 | Oldal | Artboardok |
 |---|---|
-| Képernyők | Ma, Terv, Bevásárlás, Beszéljünk, Étkezés részletei, Én |
-| Belépés, csomag, értesítés | Onboarding (allergia-felmérés), Csomag, Értesítések |
-| Alapok és sötét | Alapok (színek, tipográfia, komponensek), Ma sötétben |
-| Irányok | B — Műszerfal, C — Tányér |
+| Képernyők | Ma, Étrend, Bevásárlás, Beszéljünk, Étkezés részletei, Én |
+| Belépés, csomag, értesítés | Nyelvválasztás, Kizárások, Csomag, Értesítések |
+| Alapok, sötét, angol | Alapok (színek, tipográfia, forma, komponensek), Ma sötétben, Ma angolul |
 
 A `Main.dc.html` a belépési artboard (a „Ma" képernyő) — ez a vászon fókuszált nézete.
 
 ## Az irány
 
-**A — „Konyhai napló".** Meleg papírszín, mély erdőzöld és agyag akcent, Newsreader
-(címek és nagy számok) + Archivo (felület). A kalóriagyűrű a jelkép: nyitott gyűrű,
-alul réssel, a kerethez képest váltó színnel.
+**C — „Tányér".** Krémszín alap, mély zöld hős doboz, narancs-agyag akcent, nagy
+lekerekítések (30 / 26 / 19 / 16). Az étkezéseket szín különbözteti meg: reggeli narancs,
+tízórai borostyán, ebéd zöld, uzsonna tégla, vacsora szilva.
+
+A tipográfia szándékosan felnőtt — Newsreader címek, Archivo felület: a lágy formák így
+nem csúsznak át gyerekesbe.
 
 A `docs/DESIGN-BRIEF.md` három dolgot nevezett meg problémának, ezekre válaszol:
 rögzített paletta a Material 3 dinamikus szín helyett (ami minden telefonon máshogy néz
 ki), valódi hierarchia a „minden blokk ugyanolyan kártya" helyett, és ikonok emoji helyett.
 
-A **B** és **C** artboard két alternatíva, vázlat szinten — mindkettőnél ott az indok és
-az ára. Ha valamelyik jobban tetszik, abból lesz a `Main.dc.html`.
+### Az irány két ára, és mit tettem ellene
+
+1. **Kevesebb fér a képernyőre.** A nagy lapkák miatt 3–4 étkezés látszik egyszerre, nem 6.
+   Ezért került a három makró a zöld hős dobozba: aki számol, ne kelljen görgetnie érte.
+2. **Könnyen átcsúszik gyerekesbe.** Ellenszer: serif címek, visszafogott árnyék, semmi
+   emoji. A játékosságot az étkezésszínek adják, nem a betűk.
+
+A korábbi A és B irányvázlat kikerült a vászonról — a döntés megszületett. A git
+történetében megmaradtak.
 
 ## Mi minta és mi valódi
 

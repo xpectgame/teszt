@@ -1,0 +1,32 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600&family=Archivo:wght@400;500;600;700&display=swap">
+  <style>
+    :root {
+  --paper:#FFF6EE; --card:#FFFFFF; --ink:#2A1E16; --ink2:#8A7566; --line:#F0E0D2;
+  --green:#2F7D5E; --green-soft:#E2F1E9; --clay:#E4733F; --clay-soft:#FDE7DA;
+  --amber:#E0A63C; --brick:#C4553C; --on-green:#FFFFFF;
+  --shadow:0 2px 4px rgba(120,70,40,.05), 0 14px 30px -18px rgba(120,70,40,.35);
+}
+    * { box-sizing: border-box; }
+    body { margin:0; background:var(--paper); color:var(--ink);
+           font-family:"Archivo","Helvetica Neue",Arial,sans-serif;
+           -webkit-font-smoothing:antialiased; }
+    a { color:var(--clay); text-decoration:none; }
+    a:hover { color:var(--green); }
+    .d { font-family:"Newsreader",Georgia,serif; font-weight:500; }
+    .num { font-variant-numeric:tabular-nums; }
+  </style>
+</helmet>
+<div style="position:relative; width:390px; height:844px; background:var(--paper); overflow:hidden;"><div style="padding:44px 18px 0;"><div style="height:46px;"></div><div style="width:66px; height:66px; border-radius:22px; background:var(--green); display:flex; align-items:center; justify-content:center; margin-bottom:22px;"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="1.5" stroke-linecap="round"><circle cx="12" cy="12" r="8.2"/><circle cx="12" cy="12" r="3.4"/></svg></div><div class="d" style="font-size:32px; line-height:1.1;">Milyen nyelven<br>beszéljünk?</div><div style="font-size:14px; line-height:1.5; color:var(--ink2); margin-top:10px;">Ez az étrendek nyelvét is meghatározza: a fogásnevek, a hozzávalók és a bevásárlólista is ezen a nyelven készül. Később a Beállításokban bármikor átváltható.</div><div style="height:26px;"></div><div style="background:var(--card); border-radius:26px; padding:17px; box-shadow:var(--shadow); "><div style="display:flex; align-items:center; gap:14px; min-height:64px;"><span style="flex:0 0 auto; width:44px; height:44px; border-radius:16px; background:var(--paper); display:flex; align-items:center; justify-content:center; font-size:17px; font-weight:700; color:var(--ink2);">HU</span><div style="flex:1 1 auto;"><div style="font-size:15.5px; font-weight:600;">Magyar</div><div style="font-size:12px; color:var(--ink2); margin-top:1px;">Hazai alapanyagokkal, magyar fogásnevekkel</div></div><span style="flex:0 0 auto; width:26px; height:26px; border-radius:999px; background:var(--green); color:#FFFFFF; display:inline-flex; align-items:center; justify-content:center;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="m5 13 4.5 4.5L19 7"/></svg></span></div><div style="height:1px; background:var(--line);"></div><div style="display:flex; align-items:center; gap:14px; min-height:64px;"><span style="flex:0 0 auto; width:44px; height:44px; border-radius:16px; background:var(--paper); display:flex; align-items:center; justify-content:center; font-size:17px; font-weight:700; color:var(--ink2);">EN</span><div style="flex:1 1 auto;"><div style="font-size:15.5px; font-weight:600;">English</div><div style="font-size:12px; color:var(--ink2); margin-top:1px;">Recipes and shopping list in English</div></div><span style="flex:0 0 auto; width:26px; height:26px; border-radius:999px; border:2px solid var(--line); display:block;"></span></div></div></div><div style="position:absolute; left:0; right:0; bottom:0; padding:14px 18px 24px;"><button style="all:unset; cursor:pointer; min-height:48px; display:inline-flex; align-items:center; padding:0 22px; border-radius:16px; font-size:14.5px; font-weight:600; background:var(--green); color:var(--on-green); flex:1 1 0; justify-content:center;">Kezdjük</button></div></div></x-dc>
+</body>
+</html>
