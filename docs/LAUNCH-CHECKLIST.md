@@ -16,7 +16,7 @@ Amit a kód már tud, és amit neked kell elintézned ahhoz, hogy eladható legy
 | Bolt nélkül | `NoBillingGateway` — az app ilyenkor is fut, csak nem lehet előfizetni |
 | Teszt kapcsoló | fejlesztői részben bekapcsolható a teljes csomag vásárlás nélkül |
 | Jogi felületek | feltételek, adatkezelés, kapcsolat, „minden adat törlése" |
-| Jogi oldalak | `privacy.html`, `terms.html` a repó gyökerében (GitHub Pages szolgálja ki) |
+| Jogi oldalak | `privacy.html`, `terms.html` a repó gyökerében — a domain még beállítandó |
 
 **Termékazonosító a kódban:** `mealpilot_premium_monthly`
 (`app/src/main/java/hu/mealpilot/app/billing/BillingGateway.kt`)
@@ -86,7 +86,12 @@ kotlinx.serialization) elronthatja. A keep szabályok készen vannak, de ezt meg
 - [ ] Nyelv: magyar (elsődleges)
 
 ### 3.4 Kötelező nyilatkozatok
-- [ ] **Adatvédelmi tájékoztató URL:** `https://xpectgame.github.io/teszt/privacy.html`
+- [ ] **Adatvédelmi tájékoztató URL.** A `privacy.html` és a `terms.html` a repó gyökerében
+      van, de **csak a `main` ágra merge után kerül ki**, mert a GitHub Pages onnan épül.
+      A repó Pages-oldala jelenleg a `hernadicsaba.hu` domainen szolgál ki, ami egy másik
+      projekthez tartozik — **kiadás előtt olyan domain kell, amit a MealPilot néven
+      birtokolsz**, és a `LegalLinks.SITE` konstanst is át kell írni
+      (`PaywallScreen.kt`).
 - [ ] **Adatbiztonság (Data safety) űrlap.** A jelenlegi működés szerinti válaszok:
   - Gyűjtünk adatot? **Igen** — „Egészség és fitnesz" kategória (testadatok, étkezés, mozgás)
   - Megosztjuk harmadik féllel? **Igen** — a tervezőszolgáltatóval (Anthropic), a szolgáltatás

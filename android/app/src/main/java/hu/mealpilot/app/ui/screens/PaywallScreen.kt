@@ -42,10 +42,18 @@ import hu.mealpilot.app.billing.PREMIUM_SUBSCRIPTION_ID
 import hu.mealpilot.core.billing.BillingPeriod
 import hu.mealpilot.core.billing.Tiers
 
-/** Az app jogi és bolti hivatkozásai. A Play a nyilvános URL-eket kötelezően kéri. */
+/**
+ * Az app jogi és bolti hivatkozásai. A Play a nyilvános adatvédelmi URL-t kötelezően kéri.
+ *
+ * FIGYELEM kiadás előtt: a [SITE] jelenleg arra a domainre mutat, amit a repó GitHub Pages
+ * oldala kiszolgál — az viszont egy másik projekthez tartozik. Éles kiadáshoz olyan domain
+ * kell, amit a MealPilot néven te birtokolsz, és a privacy.html / terms.html oda kerüljön.
+ * A fájlok csak a main ágra merge után kerülnek ki, mert a Pages onnan épül.
+ */
 object LegalLinks {
-    const val PRIVACY = "https://xpectgame.github.io/teszt/privacy.html"
-    const val TERMS = "https://xpectgame.github.io/teszt/terms.html"
+    const val SITE = "https://hernadicsaba.hu"
+    const val PRIVACY = "$SITE/privacy.html"
+    const val TERMS = "$SITE/terms.html"
     const val SUPPORT_EMAIL = "mate.teke@gmail.com"
 
     fun manageSubscription(packageName: String) =
