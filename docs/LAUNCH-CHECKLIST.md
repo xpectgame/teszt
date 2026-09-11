@@ -202,13 +202,13 @@ A jogosultság megadása után a Play oldalán **akár 24 óra**, amíg élesedi
 - [ ] Nyelv: magyar (elsődleges)
 
 ### 4.5 Kötelező nyilatkozatok
-- [ ] **Adatvédelmi tájékoztató URL:** `<domain>/privacy.html`
-- [ ] **Adattörlési URL:** `<domain>/delete-data.html`
-- [ ] **Támogatási webhely:** `<domain>/support.html`
+- [ ] **Adatvédelmi tájékoztató URL:** `https://<worker>/privacy`
+- [ ] **Adattörlési URL:** `https://<worker>/delete-data`
+- [ ] **Támogatási webhely:** `https://<worker>/support`
 
-      Az oldalak a `mealpilot/` könyvtárban készen vannak, de **csak a `main` ágra merge
-      után élnek**, mert a GitHub Pages onnan épül. A cím az appban fordításkor állítható
-      (`MEALPILOT_SITE_URL`), tehát domainváltáshoz nem kell kódot írni. A lépések:
+      Ezeket a backend szolgálja ki, tehát a deploy után azonnal élnek — nem kell hozzá
+      se weboldal, se domain. Az app magától ezt a címet használja, ha a
+      `MEALPILOT_BACKEND_URL` be van állítva. Részletek és a domainváltás:
       [`DOMAIN.md`](DOMAIN.md).
 - [ ] **Adatbiztonság (Data safety) űrlap.** A jelenlegi működés szerinti válaszok:
   - Gyűjtünk adatot? **Igen** — „Egészség és fitnesz" (testadatok, étkezés, mozgás)
@@ -278,7 +278,8 @@ cd backend && npx wrangler d1 execute mealpilot --remote --command \
 
 1. Backend deploy + szolgáltatásfiók + RTDN (2. és 4.3 pont)
 2. Release keystore, aláírt release build kipróbálása valódi eszközön (3. pont)
-3. Saját domain a jogi oldalaknak (lásd [`DOMAIN.md`](DOMAIN.md)), merge a `main` ágra
+3. A jogi szövegekben a `[…]` helyőrzők kitöltése (adatkezelő, szolgáltató), majd
+   `cd backend && npm run pages`
 4. Play Console: termék létrehozása, licenctesztelők, teljes vásárlás végigpróbálása
 5. Jogi szövegek felülvizsgálata és az adatkezelő adatainak kitöltése
 6. Hiányzó funkciók (6. pont)

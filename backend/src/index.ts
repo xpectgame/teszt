@@ -7,6 +7,7 @@ import type { Env } from './env.js'
 import { checkQuota, periodKey, usageDelta, type Task } from './limits.js'
 import { CHAT_SYSTEM_PROMPT, PLAN_SYSTEM_PROMPT } from './prompts.js'
 import { verifySubscription } from './play.js'
+import { PAGES } from './pages.js'
 
 /** Feladatonkénti keret. A kliens ezeket nem állíthatja — ez a költség felső korlátja. */
 const TASK_CONFIG: Record<Task, { maxTokens: number; maxPromptChars: number; system: string }> = {
@@ -31,6 +32,39 @@ const app = new Hono<{ Bindings: Env }>()
 app.use('/v1/*', cors({ origin: '*', allowHeaders: ['authorization', 'content-type', 'x-play-purchase-token', 'x-app-version'] }))
 
 app.get('/healthz', (c) => c.json({ ok: true }))
+
+/**
+ * A nyilvános oldalak (adatkezelés, feltételek, támogatás, adattörlés).
+ *
+ * Azért itt, és nem külön tárhelyen: a Play kötelezően kér egy nyilvánosan elérhető
+ * adatvédelmi címet, és ellenőrzi, hogy betölt-e. Ha ezt a szolgáltatás szolgálja ki,
+ * nem kell hozzá se domain, se külön hoszting, és a szöveg ugyanazzal a deployjal
+ * frissül, mint a kód — nem tud szétcsúszni a kettő.
+ *
+ * A `/v1/*` és a `/healthz` előbb van bejegyezve, tehát azokat ez nem takarja el.
+ */
+app.get('/*', (c) => {
+  const requested = decodeURIComponent(new URL(c.req.url).pathname).replace(/^\/+/, '')
+
+  // Kiterjesztés nélkül is működjön: /privacy ugyanaz, mint /privacy.html.
+  const candidates = requested === ''
+    ? ['index.html']
+    : [requested, `${requested}.html`, `${requested}/index.html`]
+
+  for (const candidate of candidates) {
+    const page = PAGES[candidate]
+    if (!page) continue
+    return c.body(page.body, 200, {
+      'content-type': page.contentType,
+      // Rövid gyorsítótár: a jogi szöveg ritkán változik, de ha módosul, ne ragadjon
+      // kint egy elavult verzió napokra.
+      'cache-control': 'public, max-age=600',
+      'x-content-type-options': 'nosniff',
+    })
+  }
+
+  return c.text('Nincs ilyen oldal.', 404)
+})
 
 function entitlementPayload(caller: Caller, usage: { plans: number; messages: number; outputTokens: number }) {
   const limits = caller.limits

@@ -1,11 +1,12 @@
 import java.util.Properties
 
 /**
- * A jogi oldalak alapértelmezett címe. Ez ma egy másik projekt domainjének alkönyvtára —
- * működik, de kiadás előtt saját, MealPilot néven birtokolt domain kell helyette
- * (lásd docs/DOMAIN.md). A cserét a MEALPILOT_SITE_URL környezeti változó végzi.
+ * A jogi oldalak címe, ha sem a backend, sem a MEALPILOT_SITE_URL nincs megadva.
+ *
+ * Rendes esetben nem ez fut: a backend maga is kiszolgálja a jogi oldalakat, tehát a
+ * MEALPILOT_BACKEND_URL egyben a weboldal címe is. Lásd docs/DOMAIN.md.
  */
-val DEFAULT_SITE_URL = "https://hernadicsaba.hu/mealpilot"
+val FALLBACK_SITE_URL = "https://hernadicsaba.hu/mealpilot"
 
 plugins {
     id("com.android.application")
@@ -38,21 +39,19 @@ android {
         // Bolti kiadáshoz KÖTELEZŐ beállítani, mert egy fizető felhasználó nem szerez
         // Anthropic-kulcsot, és a kvótát sem dönthetné el a telefon.
         //   MEALPILOT_BACKEND_URL=https://... ./gradlew :app:assembleRelease
-        buildConfigField(
-            "String",
-            "BACKEND_URL",
-            "\"${System.getenv("MEALPILOT_BACKEND_URL")?.trim()?.trimEnd('/') ?: ""}\"",
-        )
+        val backendUrl = System.getenv("MEALPILOT_BACKEND_URL")?.trim()?.trimEnd('/').orEmpty()
+        buildConfigField("String", "BACKEND_URL", "\"$backendUrl\"")
 
-        // A jogi oldalak és a támogatás címe. Amíg nincs saját MealPilot-domain, a
-        // meglévő Pages-oldal alkönyvtára szolgálja ki — a tartalom ugyanaz, csak a cím
-        // változik. Saját domain bekötése után elég ezt az egy változót átírni:
+        // A jogi oldalak és a támogatás címe.
+        //
+        // Alapból ugyanaz, mint a backendé: a Worker a jogi oldalakat is kiszolgálja,
+        // tehát nem kell hozzá se külön tárhely, se domain, és a szöveg ugyanazzal a
+        // deployjal frissül, mint a kód. Saját domainnel felülírható:
         //   MEALPILOT_SITE_URL=https://mealpilot.hu ./gradlew :app:bundleRelease
-        buildConfigField(
-            "String",
-            "SITE_URL",
-            "\"${System.getenv("MEALPILOT_SITE_URL")?.trim()?.trimEnd('/') ?: DEFAULT_SITE_URL}\"",
-        )
+        val siteUrl = System.getenv("MEALPILOT_SITE_URL")?.trim()?.trimEnd('/')
+            ?.takeIf { it.isNotBlank() }
+            ?: backendUrl.ifBlank { FALLBACK_SITE_URL }
+        buildConfigField("String", "SITE_URL", "\"$siteUrl\"")
     }
 
     // A kiadási aláíráshoz szükséges adatok. SOHA nem kerülnek a repóba: vagy a

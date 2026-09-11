@@ -15,6 +15,7 @@ Amit megold:
 | Könyvelés | minden hívás tokenje és becsült költsége naplózva |
 | Lemondás | Play valós idejű értesítések (RTDN), azonnali érvényesüléssel |
 | Jelentés | „jelentsd ezt a tervet" bejelentések gyűjtése |
+| Jogi oldalak | az adatvédelmi tájékoztatót és társait is ez adja ki — nem kell külön tárhely |
 | Összeomlás | az appból érkező hibajelentések, ujjlenyomat szerint csoportosíthatóan |
 | Statisztika | névtelen napi eseményszámlálók |
 | Tulajdonosi kulcs | a fejlesztő saját buildje kvóta nélkül dolgozik |
@@ -93,6 +94,7 @@ derül ki. Ez nem katasztrófa, de a visszatérített vásárlás addig kiszolg�
 | `POST /v1/telemetry` | összeomlások és napi számlálók |
 | `POST /v1/play/rtdn` | Play értesítések (Pub/Sub push) |
 | `GET /healthz` | életjel |
+| `GET /`, `/privacy`, `/terms`, `/support`, `/delete-data` | a nyilvános oldalak |
 
 Minden `/v1` hívás fejlécei:
 
@@ -132,6 +134,24 @@ válasz **nem** stream, hanem HTTP 402 és egy JSON, amiben a `code` a `PLAN_QUO
 A túl hosszú tervet a szerver **elutasítja**, nem vágja le csendben: a promptot a
 kliens írja, tehát a rövidítést nem tudná kikényszeríteni — csak azt hinné, hogy
 megtette. Az app ebből paywallt nyit, nem hibaüzenetet mutat.
+
+---
+
+## A nyilvános oldalak
+
+A Play kötelezően kér egy nyilvánosan elérhető adatvédelmi címet. Ezeket az oldalakat ez
+a Worker szolgálja ki, tehát nem kell hozzájuk külön tárhely vagy domain, és a szöveg
+ugyanazzal a deployjal frissül, mint a kód.
+
+A forrás a repó `mealpilot/` könyvtára. A `npm run deploy` a kiküldés előtt magától
+újragenerálja a beágyazott másolatot; kézzel:
+
+```bash
+npm run pages
+```
+
+Ha a `mealpilot/` alatt módosítasz, de elfelejted a generálást, a `pages.test.ts`
+elbukik — elavult jogi szöveg nem tud kimenni.
 
 ---
 

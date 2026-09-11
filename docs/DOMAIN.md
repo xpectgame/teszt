@@ -1,142 +1,104 @@
-# Domain és a nyilvános oldalak
+# Hol lakjanak a jogi oldalak
 
-A Play kötelezően kér egy **nyilvánosan elérhető adatvédelmi URL-t**, és a generatív AI
-nyilatkozathoz meg a támogatáshoz is jól jön egy rendes oldal. Ez a dokumentum leírja,
-mi van most, és hogyan kerül saját domainre.
+A Play **kötelezően kér egy nyilvánosan elérhető adatvédelmi URL-t**, és a felülvizsgálat
+során meg is nyitja. Tehát URL muszáj — de **saját weboldal és domain nem kell**.
 
 ---
 
-## Ami kész van
+## A rövid válasz: a backend szolgálja ki őket
 
-A teljes oldal a `mealpilot/` könyvtárban van, önállóan:
+A Worker, amit úgyis deployolsz, a jogi oldalakat is kiadja:
 
 ```
-mealpilot/
-├── index.html          mit tud az app, mi ingyenes, AI-jelzés, egészségügyi figyelmeztetés
-├── privacy.html        adatkezelési tájékoztató
-├── terms.html          felhasználási feltételek
-├── support.html        támogatás és gyakori kérdések
-├── delete-data.html    adattörlés — a Play „Data deletion" URL-je
-└── assets/site.css     egyetlen stíluslap, külső betűtípus és szkript nélkül
+https://mealpilot-backend.<felhasználó>.workers.dev/privacy
+https://mealpilot-backend.<felhasználó>.workers.dev/terms
+https://mealpilot-backend.<felhasználó>.workers.dev/support
+https://mealpilot-backend.<felhasználó>.workers.dev/delete-data
 ```
 
-Nincs benne külső hivatkozás: se CDN, se webfont, se analitika. Ezek az oldalak akkor is
-betöltenek, ha valami más éppen nem érhető el — egy adatvédelmi tájékoztatónál ez nem
-apróság, mert a Play ellenőrzi, hogy a cím valóban él-e.
+Ezt kapod vele:
 
-Az app a címet **fordításkor** kapja meg, tehát a domainváltáshoz nem kell kódot írni:
+- **Nincs külön tárhely és nincs domain.** Egy deploy, egy hely.
+- **Nem tud szétcsúszni.** A szöveg ugyanazzal a paranccsal frissül, mint a kód.
+- **Az app magától tudja a címet.** Ha megadod a `MEALPILOT_BACKEND_URL`-t, a jogi
+  linkek is oda mutatnak — nem kell külön beállítani semmit.
+- **A `hernadicsaba.hu` nem kell hozzá.** A GitHub Pages akár ki is kapcsolható.
+
+### Hogyan működik
+
+A `mealpilot/` könyvtár a forrás. A `npm run pages` beépíti a Workerbe
+(`backend/src/pages.ts`), és a `npm run deploy` ezt magától megteszi, mielőtt kiküldi.
+Ha a `mealpilot/` alatt módosítasz, de elfelejted a generálást, a
+`backend/test/pages.test.ts` elbukik — tehát elavult jogi szöveg nem tud kimenni.
+
+Az oldalak méretben elhanyagolhatók (~27 kB), és nincs bennük egyetlen külső hivatkozás
+sem: se CDN, se webfont, se analitika. Egy adatvédelmi tájékoztatónál ez nem szépészeti
+kérdés, mert a Play ellenőrzi, hogy a cím tényleg betölt-e.
+
+### Play Console
+
+- Adatvédelmi tájékoztató URL: `https://<worker>/privacy`
+- Adattörlési URL: `https://<worker>/delete-data`
+- Támogatási webhely: `https://<worker>/support`
+
+---
+
+## Mi szól mégis a saját domain mellett
+
+Semmi kötelező. Két dolog miatt lehet később mégis érdemes:
+
+1. **Kinézet.** A `valami.workers.dev` cím a bolti adatlapon látszik, és nem túl bizalmat
+   keltő egy fizetős egészségügyi appnál.
+2. **Hordozhatóság.** Ha egyszer elköltöznél a Cloudflare-ről, saját domainnel a régi
+   linkek nem halnak meg.
+
+Ha megveszed (`.hu` ~3–5 000 Ft/év, `.com` ~10–15 USD/év), a Cloudflare-en egy
+**Custom Domain** hozzárendelés a Workerhez, és kész — nem kell se külön repó, se DNS
+bütykölés, ha a domain amúgy is a Cloudflare-nél van:
+
+```
+Workers & Pages → mealpilot-backend → Settings → Domains & Routes → Add → Custom domain
+```
+
+Utána az appban:
 
 ```bash
-MEALPILOT_SITE_URL=https://<a te domained> ./gradlew :app:bundleRelease
+MEALPILOT_SITE_URL=https://mealpilot.hu \
+MEALPILOT_BACKEND_URL=https://mealpilot.hu \
+  ./gradlew :app:bundleRelease
 ```
-
-Ha nem adod meg, az alapértelmezés a lenti 1. változat.
-
----
-
-## 1. változat: most rögtön, ingyen (ez az alapértelmezés)
-
-A repó GitHub Pages-oldala a `CNAME` szerint a `hernadicsaba.hu` domainen szolgál ki. Az
-új könyvtár ezen belül azonnal elérhető lesz:
-
-```
-https://hernadicsaba.hu/mealpilot/privacy.html
-https://hernadicsaba.hu/mealpilot/terms.html
-https://hernadicsaba.hu/mealpilot/delete-data.html
-https://hernadicsaba.hu/mealpilot/support.html
-```
-
-**Feltétel:** a Pages a `main` ágról épül, tehát ez csak **a `main`-be merge után** él.
-Amíg a munka a `claude/...` ágon van, a címek 404-et adnak.
-
-Ez működik, és a Play elfogadja. Két hátránya van: a domain egy másik projekt nevét
-viseli, és a két oldal sorsa össze van kötve.
-
----
-
-## 2. változat: saját domain
-
-### a) Domain vásárlása
-
-Ezt neked kell megtenned — fizetés és regisztrátori fiók kell hozzá. Magyar `.hu` domain
-nagyjából 3–5 000 Ft/év, `.com` 10–15 USD/év. Bármelyik regisztrátor jó (pl. Rackhost,
-Nethely, Cloudflare Registrar, Namecheap).
 
 Névválasztásnál nézd meg, hogy a Play Áruházban nincs-e már hasonló nevű app, és hogy a
 név nem ütközik-e védjegybe — egy névütközés miatti elutasítás sokkal drágább, mint egy
 keresés.
 
-### b) Külön repó a weboldalnak
+---
 
-**Egy GitHub Pages-oldalhoz egy egyéni domain tartozhat.** Mivel ez a repó már a
-`hernadicsaba.hu`-t szolgálja ki, a MealPilot domainje **nem tehető ugyanide** — az
-felülírná a másik oldalt.
+## Tartalék: GitHub Pages
 
-Tehát:
+Ha valamiért mégsem a Worker szolgálná ki őket, a `mealpilot/` könyvtár önmagában is egy
+kész statikus oldal. A `main` ágon a repó Pages-oldala kiadja:
 
-1. Hozz létre egy új, nyilvános repót, pl. `mealpilot-site`.
-2. Másold bele a `mealpilot/` könyvtár **tartalmát** a repó gyökerébe (az `index.html`
-   legyen a gyökérben, ne alkönyvtárban).
-3. A repó gyökerébe tegyél egy `CNAME` fájlt, amiben egyetlen sor a domained:
-   ```
-   mealpilot.hu
-   ```
-4. Settings → Pages → Source: `main` ág, `/ (root)`.
-5. Settings → Pages → Custom domain: írd be a domaint, majd pipáld ki az
-   **Enforce HTTPS** kapcsolót (a tanúsítvány kiállítása pár perc).
-
-### c) DNS rekordok
-
-Csúcsdomainhez (`mealpilot.hu`) **négy A rekord** kell — a GitHub Pages ezeket a címeket
-használja:
-
-| Típus | Név | Érték |
-|---|---|---|
-| A | `@` | `185.199.108.153` |
-| A | `@` | `185.199.109.153` |
-| A | `@` | `185.199.110.153` |
-| A | `@` | `185.199.111.153` |
-
-És a `www` alnévhez egy CNAME:
-
-| Típus | Név | Érték |
-|---|---|---|
-| CNAME | `www` | `<felhasználóneved>.github.io.` |
-
-IPv6-ot is támogató regisztrátornál érdemes a négy AAAA rekordot is felvenni
-(`2606:50c0:8000::153`, `…8001::153`, `…8002::153`, `…8003::153`).
-
-A DNS terjedése pár perctől pár óráig tart. Amíg nem áll össze, a GitHub Pages a
-beállításnál hibát jelez — ez normális, nem kell újra elmenteni.
-
-### d) Az app átállítása
-
-```bash
-MEALPILOT_SITE_URL=https://mealpilot.hu \
-MEALPILOT_BACKEND_URL=https://... \
-  ./gradlew :app:bundleRelease
+```
+https://hernadicsaba.hu/mealpilot/privacy.html
 ```
 
-Ellenőrizd az appban: Beállítások → Jogi tudnivalók és adatok, és nyisd meg mind a négy
-linket. Ha valamelyik 404, azt a Play is meg fogja találni.
-
-### e) Play Console
-
-- Adatvédelmi tájékoztató URL: `https://<domain>/privacy.html`
-- Adattörlési URL: `https://<domain>/delete-data.html`
-- Támogatási webhely: `https://<domain>/support.html`
+Ez az app **tartalék** címe is, ha se `MEALPILOT_SITE_URL`, se `MEALPILOT_BACKEND_URL`
+nincs megadva. Működik, de a domain egy másik projekthez tartozik, és egy GitHub
+Pages-oldalhoz egy egyéni domain tartozhat — tehát saját domaint ide nem lehet kötni a
+másik oldal felülírása nélkül. A Worker ezt a gondot megkerüli.
 
 ---
 
 ## Amit még ki kell tölteni a szövegekben
 
 Mindkét jogi szövegben van egy `[…]` helyőrző, és mindkettő tetején ott a
-**„Tervezet"** doboz. Ezeket kiadás előtt el kell intézni:
+**„Tervezet"** doboz:
 
-- **`privacy.html`, 1. pont:** az adatkezelő neve, székhelye, nyilvántartási száma.
-  Magánszemélyként is kötelező név és elérhetőség; egyéni vállalkozóként vagy cégként a
-  nyilvántartási/cégjegyzékszám is.
-- **`terms.html`, 1. pont:** a szolgáltató neve, székhelye, adószáma.
+- **`mealpilot/privacy.html`, 1. pont:** az adatkezelő neve, székhelye, nyilvántartási
+  száma. Magánszemélyként is kötelező név és elérhetőség; egyéni vállalkozóként vagy
+  cégként a nyilvántartási/cégjegyzékszám is.
+- **`mealpilot/terms.html`, 1. pont:** a szolgáltató neve, székhelye, adószáma.
 - A „Tervezet" dobozt akkor vedd ki mindkettőből, ha egy hozzáértő átnézte.
 
 A szövegek a **valós működést** írják le — nem sablonból másoltam őket —, de
@@ -144,3 +106,5 @@ egészségügyi témában és előfizetéses modellnél a jogi átnézés nem fo
 miatt különösen: az egészségügyi adat a GDPR 9. cikke szerint különleges kategória, és a
 fogyasztói elállás/visszatérítés szabályai mást mondanak, mint amit a Google Play alapból
 biztosít.
+
+Szerkesztés után **ne felejtsd el**: `cd backend && npm run pages`.
