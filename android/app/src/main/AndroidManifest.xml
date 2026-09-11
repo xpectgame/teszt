@@ -15,6 +15,19 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
 
+    <!-- Android 11 óta az app csak azokat a külső alkalmazásokat látja, amiket felsorol.
+         A jogi oldalakhoz böngésző, a bejelentéshez levelező alkalmazás kell. -->
+    <queries>
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="https" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.SENDTO" />
+            <data android:scheme="mailto" />
+        </intent>
+    </queries>
+
     <application
         android:name=".MealPilotApp"
         android:allowBackup="true"

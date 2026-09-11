@@ -20,12 +20,14 @@ class BackendMealAi(private val backend: BackendClient) : StreamingMealAi() {
         userText: String,
         planDays: Int,
         chunkIndex: Int,
+        isRetry: Boolean,
         onChars: (Int) -> Unit,
     ): String = backend.generate(
         task = task.name,
         prompt = userText,
         days = planDays,
         chunkIndex = chunkIndex,
+        isRetry = isRetry,
         onChars = onChars,
     )
 

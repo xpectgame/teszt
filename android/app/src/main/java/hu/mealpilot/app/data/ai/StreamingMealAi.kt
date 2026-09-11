@@ -48,8 +48,10 @@ abstract class StreamingMealAi : MealAi {
     /**
      * Egy hívás a modellhez.
      *
-     * @param planDays hány napot kér ez a hívás — a backend ebből számol kvótát.
+     * @param planDays a TELJES terv hossza napokban — a backend ebből ellenőrzi, hogy
+     *   a csomag engedi-e. Nem a mostani szakasz hossza.
      * @param chunkIndex a tervszakasz sorszáma; csak a 0. számít új tervnek.
+     * @param isRetry javító kör: ugyanazt a szakaszt kéri újra, tehát nem új terv.
      * @param onChars minden beérkezett szakasz után az eddigi karakterszámmal hívódik.
      */
     protected abstract suspend fun call(
@@ -57,6 +59,7 @@ abstract class StreamingMealAi : MealAi {
         userText: String,
         planDays: Int = 0,
         chunkIndex: Int = 0,
+        isRetry: Boolean = false,
         onChars: (Int) -> Unit = {},
     ): String
 
@@ -184,9 +187,9 @@ abstract class StreamingMealAi : MealAi {
                 task = AiTask.PLAN,
                 userText = prompt,
                 planDays = chunkRequest.totalDays,
-                // A javító kör nem új terv, ezért a kvótának sem az: a szakasz sorszámát
-                // ilyenkor sem nullázzuk le.
-                chunkIndex = if (attempt == 0) chunk.index else maxOf(chunk.index, 1),
+                chunkIndex = chunk.index,
+                // A javító kör ugyanazt a szakaszt kéri újra — a kvótának nem új terv.
+                isRetry = attempt > 0,
             ) { chars -> report(chars) }
 
             onProgress(

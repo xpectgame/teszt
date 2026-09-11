@@ -1,4 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Se a titkosított API kulcs, se a telepítési azonosító nem mehet át másik készülékre:
+     az előbbi visszaállítva úgysem olvasható, az utóbbiból pedig két eszköz osztozna
+     egyetlen havi kereten. -->
 <data-extraction-rules>
     <cloud-backup>
         <exclude domain="sharedpref" path="mealpilot_secure_prefs.xml" />

@@ -30,6 +30,9 @@ data class TierLimits(
 
 object Tiers {
 
+    // FONTOS: ezek a számok a backend `src/limits.ts` fájljában is megvannak, és ott a
+    // döntés, itt csak a kiírás. Egy módosított app a saját számlálóját átírhatja, a
+    // szerverét nem — ha a kettő szétcsúszik, a felhasználó mást lát, mint amit kap.
     val FREE = TierLimits(
         aiPlansPerMonth = 1,
         chatMessagesPerMonth = 10,

@@ -54,11 +54,18 @@ class BackendClient(
         prompt: String,
         days: Int,
         chunkIndex: Int,
+        isRetry: Boolean,
         onChars: (Int) -> Unit,
     ): String {
         val body = json.encodeToString(
             GenerateRequest.serializer(),
-            GenerateRequest(task = task, prompt = prompt, days = days, chunkIndex = chunkIndex),
+            GenerateRequest(
+                task = task,
+                prompt = prompt,
+                days = days,
+                chunkIndex = chunkIndex,
+                isRetry = isRetry,
+            ),
         )
 
         execute(post("v1/generate", body)).use { response ->
@@ -177,6 +184,7 @@ private data class GenerateRequest(
     val prompt: String,
     val days: Int,
     @SerialName("chunk_index") val chunkIndex: Int,
+    @SerialName("is_retry") val isRetry: Boolean,
 )
 
 @Serializable

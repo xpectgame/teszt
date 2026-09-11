@@ -54,6 +54,7 @@ class AnthropicMealAi(
         userText: String,
         planDays: Int,
         chunkIndex: Int,
+        isRetry: Boolean,
         onChars: (Int) -> Unit,
     ): String {
         val apiKey = keyStore.apiKey() ?: throw MissingApiKeyException()

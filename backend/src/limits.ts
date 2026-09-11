@@ -63,7 +63,7 @@ export interface Decision {
   allowed: boolean
   code?: DenyCode
   message?: string
-  /** Hány napot enged ebből a kérésből — a kliens ennél többet nem kap. */
+  /** Tájékoztatás a kliensnek a `start` eseményben; a korlátot az elutasítás tartja be. */
   allowedDays?: number
 }
 
@@ -74,10 +74,12 @@ export interface CheckInput {
   limits: TierLimits
   usage: UsageRow
   task: Task
-  /** Hány napot kér ez a hívás (csak PLAN-nél számít). */
+  /** A TELJES terv hossza napokban (csak PLAN-nél számít), nem a mostani szakaszé. */
   requestedDays: number
   /** A tervdarabolás miatt csak az első darab számít új tervnek. */
   chunkIndex: number
+  /** Javító kör: ugyanazt a szakaszt kéri újra, tehát nem új terv. */
+  isRetry: boolean
 }
 
 /**
@@ -120,7 +122,16 @@ export function checkQuota(input: CheckInput): Decision {
   }
 
   if (task === 'PLAN') {
-    const isNewPlan = chunkIndex <= 0
+    // A hosszt ELUTASÍTJUK, nem csendben levágjuk: a promptot a kliens írja, tehát a
+    // rövidítést nem tudnánk kikényszeríteni — csak azt hinnénk, hogy megtettük.
+    if (requestedDays > limits.maxPlanDays) {
+      return {
+        allowed: false,
+        code: 'PLAN_TOO_LONG',
+        message: `Az ingyenes csomagban legfeljebb ${limits.maxPlanDays} napos terv kérhető.`,
+      }
+    }
+    const isNewPlan = chunkIndex <= 0 && !input.isRetry
     if (isNewPlan && limits.aiPlansPerMonth >= 0 && usage.plans >= limits.aiPlansPerMonth) {
       return {
         allowed: false,
@@ -128,16 +139,24 @@ export function checkQuota(input: CheckInput): Decision {
         message: `Ebben a hónapban elhasználtad az ingyenes tervet (${limits.aiPlansPerMonth} db). Az előfizetéssel korlátlanul tervezhetsz.`,
       }
     }
-    const allowedDays = Math.min(Math.max(requestedDays, 1), limits.maxPlanDays)
-    return { allowed: true, allowedDays }
+    return { allowed: true, allowedDays: Math.max(requestedDays, 1) }
   }
 
   return ALLOW
 }
 
-/** A hívás után mit kell növelni a számlálókon. */
-export function usageDelta(task: Task, chunkIndex: number): { plans: number; messages: number } {
-  if (task === 'PLAN' && chunkIndex <= 0) return { plans: 1, messages: 0 }
+/**
+ * A hívás után mit kell növelni a számlálókon.
+ *
+ * A javító kör és a folytatólagos szakaszok ugyanahhoz a tervhez tartoznak, ezért nem
+ * számítanak újnak — különben egy háromhetes terv három tervet fogyasztana.
+ */
+export function usageDelta(
+  task: Task,
+  chunkIndex: number,
+  isRetry: boolean,
+): { plans: number; messages: number } {
+  if (task === 'PLAN' && chunkIndex <= 0 && !isRetry) return { plans: 1, messages: 0 }
   if (task === 'CHAT') return { plans: 0, messages: 1 }
   return { plans: 0, messages: 0 }
 }

@@ -13,8 +13,9 @@ function check(overrides: Partial<Parameters<typeof checkQuota>[0]>) {
     limits: free,
     usage: { ...EMPTY_USAGE },
     task: 'PLAN',
-    requestedDays: 7,
+    requestedDays: 3,
     chunkIndex: 0,
+    isRetry: false,
     ...overrides,
   })
 }
@@ -30,14 +31,25 @@ describe('kvóta', () => {
     expect(decision.code).toBe('PLAN_QUOTA')
   })
 
-  it('a terv hosszát a csomag maximumára vágja', () => {
-    expect(check({ requestedDays: 30 }).allowedDays).toBe(free.maxPlanDays)
-    expect(check({ tier: 'PREMIUM', limits: premium, requestedDays: 30 }).allowedDays).toBe(30)
+  it('a csomagnál hosszabb tervet elutasítja, nem vágja csendben', () => {
+    // Levágni nem lehetne: a promptot a kliens írja, tehát a rövidítést nem tudnánk
+    // kikényszeríteni — csak azt hinnénk, hogy megtettük.
+    const denied = check({ requestedDays: 30 })
+    expect(denied.allowed).toBe(false)
+    expect(denied.code).toBe('PLAN_TOO_LONG')
+    expect(check({ tier: 'PREMIUM', limits: premium, requestedDays: 30 }).allowed).toBe(true)
+    expect(check({ tier: 'PREMIUM', limits: premium, requestedDays: 31 }).code).toBe('PLAN_TOO_LONG')
   })
 
   it('a folytatólagos szakaszok nem számítanak új tervnek', () => {
-    const decision = check({ usage: { ...EMPTY_USAGE, plans: 1 }, chunkIndex: 1 })
-    expect(decision.allowed).toBe(true)
+    const usage = { ...EMPTY_USAGE, plans: 1 }
+    expect(check({ tier: 'PREMIUM', limits: premium, usage, chunkIndex: 1 }).allowed).toBe(true)
+  })
+
+  it('a javító kör sem számít új tervnek', () => {
+    const usage = { ...EMPTY_USAGE, plans: 1 }
+    expect(check({ usage, chunkIndex: 0, isRetry: true }).allowed).toBe(true)
+    expect(check({ usage, chunkIndex: 0, isRetry: false }).code).toBe('PLAN_QUOTA')
   })
 
   it('az üzenetkeret elfogyása elutasítás', () => {
@@ -64,10 +76,11 @@ describe('kvóta', () => {
   })
 
   it('a számlálót csak az első szakasz és a beszélgetés növeli', () => {
-    expect(usageDelta('PLAN', 0)).toEqual({ plans: 1, messages: 0 })
-    expect(usageDelta('PLAN', 2)).toEqual({ plans: 0, messages: 0 })
-    expect(usageDelta('CHAT', 0)).toEqual({ plans: 0, messages: 1 })
-    expect(usageDelta('DAY', 0)).toEqual({ plans: 0, messages: 0 })
+    expect(usageDelta('PLAN', 0, false)).toEqual({ plans: 1, messages: 0 })
+    expect(usageDelta('PLAN', 2, false)).toEqual({ plans: 0, messages: 0 })
+    expect(usageDelta('PLAN', 0, true)).toEqual({ plans: 0, messages: 0 })
+    expect(usageDelta('CHAT', 0, false)).toEqual({ plans: 0, messages: 1 })
+    expect(usageDelta('DAY', 0, false)).toEqual({ plans: 0, messages: 0 })
   })
 })
 

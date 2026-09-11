@@ -1,5 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <full-backup-content>
-    <!-- Az API kulcs a felhasználó eszközéhez kötött kulccsal titkosított, ne kerüljön mentésbe. -->
+    <!-- Ebben a fájlban két dolog van, és egyik sem mehet mentésbe:
+         az API kulcs a készülékhez kötött kulccsal titkosított (visszaállítva úgysem
+         olvasható), a telepítési azonosítót pedig szándékosan nem visszük át másik
+         készülékre — különben egy visszaállításból két eszköz osztozna egy havi kereten. -->
     <exclude domain="sharedpref" path="mealpilot_secure_prefs.xml" />
 </full-backup-content>

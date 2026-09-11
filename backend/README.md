@@ -100,10 +100,15 @@ X-App-Version: 0.1.0 (build 42)
 ### `POST /v1/generate`
 
 ```json
-{ "task": "PLAN", "prompt": "…", "days": 7, "chunk_index": 0 }
+{ "task": "PLAN", "prompt": "…", "days": 7, "chunk_index": 0, "is_retry": false }
 ```
 
-`task`: `PLAN` | `DAY` | `CHAT`. A válasz soronként egy JSON objektum:
+`task`: `PLAN` | `DAY` | `CHAT`. A `days` a **teljes** terv hossza, nem a mostani
+szakaszé — ebből ellenőrzi a szerver, hogy a csomag engedi-e. A `chunk_index` a
+tervszakasz sorszáma, az `is_retry` pedig a javító kör jelzése: csak a
+`chunk_index: 0` + `is_retry: false` hívás számít új tervnek a kvótában.
+
+A válasz soronként egy JSON objektum:
 
 ```
 {"type":"start","request_id":"…","allowed_days":3}
@@ -113,7 +118,10 @@ X-App-Version: 0.1.0 (build 42)
 
 Hiba esetén `{"type":"error","code":"UPSTREAM","message":"…"}`. Kvótaelutasításnál a
 válasz **nem** stream, hanem HTTP 402 és egy JSON, amiben a `code` a `PLAN_QUOTA`,
-`MESSAGE_QUOTA`, `TOKEN_CAP` vagy `PREMIUM_ONLY` valamelyike.
+`MESSAGE_QUOTA`, `TOKEN_CAP`, `PREMIUM_ONLY` vagy `PLAN_TOO_LONG` valamelyike.
+A túl hosszú tervet a szerver **elutasítja**, nem vágja le csendben: a promptot a
+kliens írja, tehát a rövidítést nem tudná kikényszeríteni — csak azt hinné, hogy
+megtette. Az app ebből paywallt nyit, nem hibaüzenetet mutat.
 
 ---
 

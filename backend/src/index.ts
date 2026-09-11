@@ -73,6 +73,7 @@ app.post('/v1/generate', async (c) => {
     prompt?: string
     days?: number
     chunk_index?: number
+    is_retry?: boolean
   } | null
 
   if (!body) return c.json({ error: 'BAD_REQUEST', message: 'Hibás kérés.' }, 400)
@@ -93,6 +94,7 @@ app.post('/v1/generate', async (c) => {
   const usage = await readUsage(c.env, caller.subject, period)
   const requestedDays = Number.isFinite(body.days) ? Number(body.days) : 1
   const chunkIndex = Number.isFinite(body.chunk_index) ? Number(body.chunk_index) : 0
+  const isRetry = body.is_retry === true
 
   const decision = checkQuota({
     tier: caller.tier,
@@ -101,6 +103,7 @@ app.post('/v1/generate', async (c) => {
     task,
     requestedDays,
     chunkIndex,
+    isRetry,
   })
 
   if (!decision.allowed) {
@@ -116,6 +119,20 @@ app.post('/v1/generate', async (c) => {
   const requestId = crypto.randomUUID()
 
   const encoder = new TextEncoder()
+  // A könyvelést a válasz lezárása után futtatjuk, de a futtatókörnyezetet még itt
+  // kérjük el: a stream belsejéből már nem biztos, hogy elérhető.
+  const execCtx = (() => {
+    try {
+      return c.executionCtx
+    } catch {
+      return null
+    }
+  })()
+  const defer = (work: Promise<unknown>) => {
+    if (execCtx) execCtx.waitUntil(work)
+    else void work
+  }
+
   const stream = new ReadableStream<Uint8Array>({
     async start(controller) {
       const send = (value: unknown) => controller.enqueue(encoder.encode(`${JSON.stringify(value)}\n`))
@@ -157,7 +174,7 @@ app.post('/v1/generate', async (c) => {
       }
 
       // A könyvelés a válasz lezárása UTÁN fut, hogy ne lassítsa a felhasználót.
-      const delta = usageDelta(task, chunkIndex)
+      const delta = usageDelta(task, chunkIndex, isRetry)
       const tokens = result ?? { inputTokens: 0, outputTokens: 0, cacheReadTokens: 0, cacheWriteTokens: 0 }
       const cost = result ? costMicros(model, result) : 0
       const bookkeeping = Promise.all([
@@ -184,7 +201,7 @@ app.post('/v1/generate', async (c) => {
           error: failure,
         }),
       ])
-      c.executionCtx.waitUntil(bookkeeping)
+      defer(bookkeeping)
     },
   })
 
