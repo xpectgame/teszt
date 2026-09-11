@@ -100,21 +100,41 @@ class PlanParserTest {
     }
 
     @Test
-    fun `chunker splits a month into weeks and keeps the remainder`() {
+    fun `the first chunk is short so usable days appear quickly`() {
         val chunks = PlanChunker.chunks(30)
-        assertEquals(5, chunks.size)
+        assertEquals(PlanChunker.FIRST_CHUNK_DAYS, chunks.first().days)
         assertEquals(0, chunks.first().startDayIndex)
-        assertEquals(7, chunks.first().days)
-        assertEquals(28, chunks.last().startDayIndex)
-        assertEquals(2, chunks.last().days)
-        assertEquals(30, chunks.sumOf { it.days })
-        assertTrue(chunks.all { it.total == 5 })
+        assertTrue("A későbbi szakaszok hosszabbak", chunks[1].days > chunks[0].days)
     }
 
     @Test
-    fun `chunker handles a single week`() {
-        val chunks = PlanChunker.chunks(7)
+    fun `chunks cover every day exactly once`() {
+        listOf(1, 3, 4, 7, 14, 30).forEach { total ->
+            val chunks = PlanChunker.chunks(total)
+            assertEquals("$total nap", total, chunks.sumOf { it.days })
+            assertTrue(chunks.all { it.total == chunks.size })
+            // A szakaszok hézag és átfedés nélkül követik egymást.
+            var expectedStart = 0
+            chunks.forEach { chunk ->
+                assertEquals(expectedStart, chunk.startDayIndex)
+                expectedStart += chunk.days
+            }
+        }
+    }
+
+    @Test
+    fun `a plan shorter than the first chunk stays a single call`() {
+        val chunks = PlanChunker.chunks(2)
         assertEquals(1, chunks.size)
-        assertEquals(7, chunks[0].days)
+        assertEquals(2, chunks[0].days)
+    }
+
+    @Test
+    fun `a week becomes a quick first chunk plus the rest`() {
+        val chunks = PlanChunker.chunks(7)
+        assertEquals(2, chunks.size)
+        assertEquals(3, chunks[0].days)
+        assertEquals(4, chunks[1].days)
+        assertEquals(3, chunks[1].startDayIndex)
     }
 }

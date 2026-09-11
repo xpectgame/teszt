@@ -15,7 +15,21 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CalendarMonth
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.DirectionsRun
+import androidx.compose.material.icons.filled.Egg
+import androidx.compose.material.icons.filled.EmojiEvents
+import androidx.compose.material.icons.filled.LocalFireDepartment
+import androidx.compose.material.icons.filled.MonitorWeight
+import androidx.compose.material.icons.filled.Restaurant
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.ShoppingCart
+import androidx.compose.material.icons.filled.TrackChanges
+import androidx.compose.material.icons.filled.TrendingDown
 import androidx.compose.material3.Button
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Card
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
@@ -33,6 +47,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModel
@@ -44,6 +60,7 @@ import hu.mealpilot.app.ui.components.SectionCard
 import hu.mealpilot.app.ui.components.StatChip
 import hu.mealpilot.app.ui.containerFactory
 import hu.mealpilot.core.achievements.AchievementState
+import hu.mealpilot.core.achievements.AchievementTier
 import hu.mealpilot.core.energy.EnergyBudget
 import hu.mealpilot.core.energy.EnergyCalculator
 import hu.mealpilot.core.model.UserProfile
@@ -108,6 +125,7 @@ fun ProfileScreen(
     container: AppContainer,
     snackbarHostState: SnackbarHostState,
     onOpenSettings: () -> Unit,
+    onOpenActivity: () -> Unit,
 ) {
     val viewModel: ProfileViewModel = viewModel(factory = containerFactory(container) { ProfileViewModel(it) })
     val state by viewModel.state.collectAsState()
@@ -127,7 +145,18 @@ fun ProfileScreen(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text("Én", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
-                OutlinedButton(onClick = onOpenSettings) { Text("Beállítások") }
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedButton(onClick = onOpenActivity) {
+                        Icon(Icons.Filled.DirectionsRun, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(Modifier.size(6.dp))
+                        Text("Mozgás")
+                    }
+                    OutlinedButton(onClick = onOpenSettings) {
+                        Icon(Icons.Filled.Settings, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(Modifier.size(6.dp))
+                        Text("Beállítások")
+                    }
+                }
             }
         }
 
@@ -232,7 +261,13 @@ private fun AchievementRow(state: AchievementState) {
                 .alpha(if (state.unlocked) 1f else 0.6f),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text(state.achievement.emoji, style = MaterialTheme.typography.headlineSmall)
+            Icon(
+                achievementIcon(state.achievement.key),
+                contentDescription = null,
+                tint = if (state.unlocked) tierColor(state.achievement.tier)
+                else MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(24.dp),
+            )
             Spacer(Modifier.size(12.dp))
             Column(Modifier.weight(1f)) {
                 Text(
@@ -256,12 +291,46 @@ private fun AchievementRow(state: AchievementState) {
                     )
                 }
             }
-            Text(
-                if (state.unlocked) "✓" else "${state.progress}/${state.achievement.goal}",
-                style = MaterialTheme.typography.labelMedium,
-            )
+            if (state.unlocked) {
+                Icon(
+                    Icons.Filled.CheckCircle,
+                    contentDescription = "Megvan",
+                    tint = tierColor(state.achievement.tier),
+                    modifier = Modifier.size(20.dp),
+                )
+            } else {
+                Text(
+                    "${state.progress}/${state.achievement.goal}",
+                    style = MaterialTheme.typography.labelMedium,
+                )
+            }
         }
     }
+}
+
+/**
+ * Az achievementekhez ikon, nem emoji: az emoji platformonként máshogy néz ki, és
+ * felületen elszórva olcsóvá teszi a megjelenést. Az értesítésben marad emoji, ott
+ * viszont pont hasznos, mert onnan hiányzik a színes ikonkészlet.
+ */
+private fun achievementIcon(key: String): ImageVector = when {
+    key.startsWith("streak") -> Icons.Filled.LocalFireDepartment
+    key.startsWith("target") -> Icons.Filled.TrackChanges
+    key.startsWith("protein") -> Icons.Filled.Egg
+    key.startsWith("workout") || key.startsWith("minutes") || key == "first_workout" ->
+        Icons.Filled.DirectionsRun
+    key.startsWith("lost") -> Icons.Filled.TrendingDown
+    key.startsWith("weigh") -> Icons.Filled.MonitorWeight
+    key.startsWith("shopping") -> Icons.Filled.ShoppingCart
+    key.startsWith("recipes") -> Icons.Filled.Restaurant
+    key.startsWith("plan") || key == "first_plan" -> Icons.Filled.CalendarMonth
+    else -> Icons.Filled.EmojiEvents
+}
+
+private fun tierColor(tier: AchievementTier): Color = when (tier) {
+    AchievementTier.BRONZE -> Color(0xFFB06B3A)
+    AchievementTier.SILVER -> Color(0xFF9AA0A6)
+    AchievementTier.GOLD -> Color(0xFFD4A017)
 }
 
 /** Egyszerű oszlopdiagram a súlymérésekből — nem kell hozzá külön grafikonkönyvtár. */

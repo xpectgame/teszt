@@ -215,3 +215,25 @@ interface AchievementDao {
     @Query("UPDATE achievements SET notified = 1 WHERE key = :key")
     suspend fun markNotified(key: String)
 }
+
+@Dao
+interface ChatDao {
+
+    @Insert
+    suspend fun insert(message: ChatMessageEntity): Long
+
+    @Query("SELECT * FROM chat_messages ORDER BY sentAtMillis, id")
+    fun observeAll(): Flow<List<ChatMessageEntity>>
+
+    @Query("SELECT * FROM chat_messages ORDER BY sentAtMillis, id")
+    suspend fun all(): List<ChatMessageEntity>
+
+    @Query("UPDATE chat_messages SET pendingAction = 0 WHERE id = :id")
+    suspend fun clearPending(id: Long)
+
+    @Query("UPDATE chat_messages SET pendingAction = 0")
+    suspend fun clearAllPending()
+
+    @Query("DELETE FROM chat_messages")
+    suspend fun clear()
+}

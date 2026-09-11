@@ -2,8 +2,8 @@ package hu.mealpilot.app.ui
 
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Chat
 import androidx.compose.material.icons.filled.CalendarMonth
-import androidx.compose.material.icons.filled.DirectionsRun
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.RestaurantMenu
 import androidx.compose.material.icons.filled.ShoppingCart
@@ -30,6 +30,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import hu.mealpilot.app.AppContainer
 import hu.mealpilot.app.ui.screens.ActivityScreen
+import hu.mealpilot.app.ui.screens.ChatScreen
 import hu.mealpilot.app.ui.screens.MealDetailScreen
 import hu.mealpilot.app.ui.screens.OnboardingScreen
 import hu.mealpilot.app.ui.screens.PlanScreen
@@ -44,6 +45,7 @@ object Routes {
     const val PLAN = "plan"
     const val SHOPPING = "shopping"
     const val ACTIVITY = "activity"
+    const val CHAT = "chat"
     const val PROFILE = "profile"
     const val SETTINGS = "settings"
     const val MEAL = "meal/{mealId}"
@@ -53,11 +55,13 @@ object Routes {
 
 private data class Tab(val route: String, val label: String, val icon: ImageVector)
 
+// A mozgásnaplózás kikerült az alsó sávból: a napi kalóriakeret mellett a helye, a Ma
+// képernyőről nyílik. A felszabadult hely a beszélgetésé, ami sokkal gyakrabban kell.
 private val tabs = listOf(
     Tab(Routes.TODAY, "Ma", Icons.Filled.RestaurantMenu),
     Tab(Routes.PLAN, "Terv", Icons.Filled.CalendarMonth),
     Tab(Routes.SHOPPING, "Bevásárlás", Icons.Filled.ShoppingCart),
-    Tab(Routes.ACTIVITY, "Mozgás", Icons.Filled.DirectionsRun),
+    Tab(Routes.CHAT, "Beszéljünk", Icons.AutoMirrored.Filled.Chat),
     Tab(Routes.PROFILE, "Én", Icons.Filled.Person),
 )
 
@@ -106,7 +110,11 @@ fun AppRoot(
                         snackbarHostState = snackbarHostState,
                         onOpenMeal = { navController.navigate(Routes.meal(it)) },
                         onCreatePlan = { navController.navigate(Routes.PLAN) },
+                        onOpenActivity = { navController.navigate(Routes.ACTIVITY) },
                     )
+                }
+                composable(Routes.CHAT) {
+                    ChatScreen(container = container, snackbarHostState = snackbarHostState)
                 }
                 composable(Routes.PLAN) {
                     PlanScreen(
@@ -119,13 +127,18 @@ fun AppRoot(
                     ShoppingScreen(container = container, snackbarHostState = snackbarHostState)
                 }
                 composable(Routes.ACTIVITY) {
-                    ActivityScreen(container = container, snackbarHostState = snackbarHostState)
+                    ActivityScreen(
+                        container = container,
+                        snackbarHostState = snackbarHostState,
+                        onBack = { navController.popBackStack() },
+                    )
                 }
                 composable(Routes.PROFILE) {
                     ProfileScreen(
                         container = container,
                         snackbarHostState = snackbarHostState,
                         onOpenSettings = { navController.navigate(Routes.SETTINGS) },
+                        onOpenActivity = { navController.navigate(Routes.ACTIVITY) },
                     )
                 }
                 composable(Routes.SETTINGS) {

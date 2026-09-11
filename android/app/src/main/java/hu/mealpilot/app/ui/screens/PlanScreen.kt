@@ -13,7 +13,11 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Icon
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -44,6 +48,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import hu.mealpilot.app.AppContainer
 import hu.mealpilot.app.data.local.MealWithIngredients
 import hu.mealpilot.app.data.local.PlanEntity
+import hu.mealpilot.app.data.repo.PlanGenerationOutcome
 import hu.mealpilot.app.data.repo.PlanRepository
 import hu.mealpilot.app.notify.ReminderRefreshWorker
 import hu.mealpilot.app.ui.components.EmptyState
@@ -81,7 +86,7 @@ sealed interface GenerationState {
     data object Idle : GenerationState
     data class Running(val progress: GenerationProgress) : GenerationState
     data class Failed(val message: String) : GenerationState
-    data class Done(val planId: Long) : GenerationState
+    data class Done(val outcome: PlanGenerationOutcome) : GenerationState
 }
 
 class PlanViewModel(private val container: AppContainer) : ViewModel() {
@@ -103,7 +108,9 @@ class PlanViewModel(private val container: AppContainer) : ViewModel() {
 
     fun generate(days: Int, startTomorrow: Boolean, freeText: String) {
         if (generationJob?.isActive == true) return
-        generationJob = viewModelScope.launch {
+        // Alkalmazás-élettartamú scope: a háttérben készülő napok akkor is elkészülnek,
+        // ha a felhasználó közben átvált egy másik fülre.
+        generationJob = container.backgroundScope.launch {
             _generation.value = GenerationState.Running(
                 GenerationProgress(GenerationProgress.Stage.PREPARING, message = "Indulás…")
             )
@@ -123,9 +130,9 @@ class PlanViewModel(private val container: AppContainer) : ViewModel() {
             }
 
             _generation.value = result.fold(
-                onSuccess = { planId ->
+                onSuccess = { outcome ->
                     ReminderRefreshWorker.refreshNow(container.appContext)
-                    GenerationState.Done(planId)
+                    GenerationState.Done(outcome)
                 },
                 onFailure = { GenerationState.Failed(it.message ?: "Ismeretlen hiba.") },
             )
@@ -177,10 +184,25 @@ fun PlanScreen(
 
     LaunchedEffect(generation) {
         when (val current = generation) {
+            is GenerationState.Running -> {
+                // Amint az első napok megvannak, elengedjük a párbeszédet: a terv már
+                // használható, a többi nap a háttérben töltődik tovább.
+                if (current.progress.daysReady > 0 && showGenerator) {
+                    showGenerator = false
+                    snackbarHostState.showSnackbar(
+                        "${current.progress.daysReady} nap kész — a többi közben töltődik."
+                    )
+                }
+            }
             is GenerationState.Done -> {
-                snackbarHostState.showSnackbar("Kész az étrended!")
+                val outcome = current.outcome
                 viewModel.dismissGenerationResult()
                 showGenerator = false
+                snackbarHostState.showSnackbar(
+                    if (outcome.isComplete) "Kész az étrended!"
+                    else "${outcome.daysSaved} nap készült el a(z) ${outcome.requestedDays}-ból. " +
+                        "A többit újra megpróbálhatod."
+                )
             }
             is GenerationState.Failed -> {
                 snackbarHostState.showSnackbar(current.message)
@@ -317,7 +339,10 @@ private fun DayCard(
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
-                Text(if (expanded) "▲" else "▼")
+                Icon(
+                    if (expanded) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
+                    contentDescription = if (expanded) "Összecsukás" else "Kinyitás",
+                )
             }
 
             AnimatedVisibility(expanded) {

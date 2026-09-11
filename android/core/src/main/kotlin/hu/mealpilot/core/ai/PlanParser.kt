@@ -25,6 +25,10 @@ object PlanParser {
         json.decodeFromString(AiDayResponse.serializer(), extractJsonObject(raw))
     }
 
+    fun parseChat(raw: String): Result<AiChatResponse> = runCatching {
+        json.decodeFromString(AiChatResponse.serializer(), extractJsonObject(raw))
+    }
+
     /**
      * Kivágja az első teljes, kiegyensúlyozott zárójelezésű JSON objektumot.
      * A stringen belüli kapcsos zárójeleket és az escape-elt idézőjeleket is kezeli.

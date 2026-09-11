@@ -5,7 +5,10 @@ import hu.mealpilot.core.ai.AiDayResponse
 import hu.mealpilot.core.ai.AiIngredient
 import hu.mealpilot.core.ai.AiMeal
 import hu.mealpilot.core.ai.AiNutrition
+import hu.mealpilot.core.ai.AiChatResponse
 import hu.mealpilot.core.ai.AiPlanResponse
+import hu.mealpilot.core.ai.ChatContext
+import hu.mealpilot.core.ai.ChatTurn
 import hu.mealpilot.core.ai.GenerationProgress
 import hu.mealpilot.core.ai.MealAi
 import hu.mealpilot.core.ai.MealSlot
@@ -26,6 +29,7 @@ class OfflineMealAi : MealAi {
     override suspend fun generatePlan(
         request: PlanRequest,
         onProgress: (GenerationProgress) -> Unit,
+        onChunk: suspend (AiPlanResponse) -> Unit,
     ): Result<AiPlanResponse> = runCatching {
         val slots = MealSlot.forMealsPerDay(request.profile.mealsPerDay)
         val shares = slotShares(slots)
@@ -66,7 +70,7 @@ class OfflineMealAi : MealAi {
             )
         )
 
-        AiPlanResponse(
+        val result = AiPlanResponse(
             planTitle = "Gyors étrend",
             summary = "Sablonokból épített terv: a napi kalória és a makrók a célodhoz vannak " +
                 "méretezve. A szabad szöveges kéréseidet ez a változat nem veszi figyelembe.",
@@ -76,7 +80,17 @@ class OfflineMealAi : MealAi {
                 "A fehérjét oszd el egyenletesen a nap folyamán.",
             ),
         )
+        onChunk(result)
+        result
     }
+
+    override suspend fun chat(
+        context: ChatContext,
+        history: List<ChatTurn>,
+        message: String,
+    ): Result<AiChatResponse> = Result.failure(
+        MealAiException("A beszélgetéshez internetkapcsolat kell.")
+    )
 
     override suspend fun refineDay(
         request: PlanRequest,

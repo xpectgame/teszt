@@ -1,5 +1,9 @@
 package hu.mealpilot.app.ui.components
 
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.animateIntAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -18,6 +22,7 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -60,6 +65,18 @@ fun CalorieRing(
     size: androidx.compose.ui.unit.Dp = 160.dp,
 ) {
     val ratio = if (budget <= 0) 0f else (consumed.toFloat() / budget)
+    // A gyűrű és a szám is átúszik az új értékre. Naplózáskor ez az a visszajelzés,
+    // amitől a koppintás megtörténtnek érződik.
+    val sweep by animateFloatAsState(
+        targetValue = ratio.coerceIn(0f, 1f),
+        animationSpec = tween(durationMillis = 550, easing = FastOutSlowInEasing),
+        label = "calorie-ring",
+    )
+    val remaining by animateIntAsState(
+        targetValue = budget - consumed,
+        animationSpec = tween(durationMillis = 550, easing = FastOutSlowInEasing),
+        label = "calorie-remaining",
+    )
     val color = when {
         ratio > 1.05f -> BudgetColors.over
         ratio > 0.9f -> BudgetColors.close
@@ -84,7 +101,7 @@ fun CalorieRing(
             drawArc(
                 color = color,
                 startAngle = 135f,
-                sweepAngle = 270f * ratio.coerceIn(0f, 1f),
+                sweepAngle = 270f * sweep,
                 useCenter = false,
                 topLeft = androidx.compose.ui.geometry.Offset(inset, inset),
                 size = arcSize,
@@ -93,7 +110,7 @@ fun CalorieRing(
         }
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Text(
-                text = "${(budget - consumed)}",
+                text = "$remaining",
                 style = MaterialTheme.typography.headlineMedium,
                 fontWeight = FontWeight.Bold,
                 color = color,
@@ -124,6 +141,11 @@ fun MacroBar(
     color: Color,
     modifier: Modifier = Modifier,
 ) {
+    val animatedFraction by animateFloatAsState(
+        targetValue = if (target <= 0) 0f else (current / target).toFloat().coerceIn(0f, 1f),
+        animationSpec = tween(durationMillis = 450, easing = FastOutSlowInEasing),
+        label = "macro-$label",
+    )
     Column(modifier.fillMaxWidth()) {
         Row(
             Modifier.fillMaxWidth(),
@@ -138,7 +160,9 @@ fun MacroBar(
         }
         Spacer(Modifier.height(4.dp))
         LinearProgressIndicator(
-            progress = { if (target <= 0) 0f else (current / target).toFloat().coerceIn(0f, 1f) },
+            progress = {
+                if (target <= 0) 0f else animatedFraction
+            },
             modifier = Modifier
                 .fillMaxWidth()
                 .height(8.dp)

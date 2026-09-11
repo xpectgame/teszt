@@ -197,3 +197,18 @@ data class AchievementEntity(
     val unlockedAtMillis: Long,
     val notified: Boolean = false,
 )
+
+@Entity(tableName = "chat_messages")
+data class ChatMessageEntity(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    /** "USER" vagy "ASSISTANT". */
+    val role: String,
+    val body: String,
+    val sentAtMillis: Long,
+    /** Egy mondat arról, mit tenne az app — ez kerül a megerősítő gombra. */
+    val actionLabel: String = "",
+    /** A felismert művelet JSON-je, hogy megerősítés után végrehajtható legyen. */
+    val actionJson: String = "",
+    /** Igaz, amíg a művelet megerősítésre vár; végrehajtás vagy elvetés után false. */
+    val pendingAction: Boolean = false,
+)

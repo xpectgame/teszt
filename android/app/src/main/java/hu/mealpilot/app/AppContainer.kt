@@ -6,10 +6,14 @@ import hu.mealpilot.app.data.ai.OfflineMealAi
 import hu.mealpilot.app.data.local.AppDatabase
 import hu.mealpilot.app.data.prefs.SecureKeyStore
 import hu.mealpilot.app.data.prefs.SettingsRepository
+import hu.mealpilot.app.data.repo.ChatRepository
 import hu.mealpilot.app.data.repo.PlanRepository
 import hu.mealpilot.app.data.repo.StatsRepository
 import hu.mealpilot.app.data.repo.TrackingRepository
 import hu.mealpilot.core.ai.MealAi
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 
 /**
  * Kézi függőséginjektálás. Az app mérete ennyit még bőven elbír, cserébe nincs
@@ -38,6 +42,22 @@ class AppContainer(context: Context) {
             weightLogDao = database.weightLogDao(),
         )
     }
+
+    val chatRepository: ChatRepository by lazy {
+        ChatRepository(
+            chatDao = database.chatDao(),
+            planRepository = planRepository,
+            tracking = trackingRepository,
+            settings = settings,
+        )
+    }
+
+    /**
+     * Alkalmazás-élettartamú scope a háttérben futó tervezéshez. A ViewModel scope-ja
+     * eltűnhet, ha a felhasználó elnavigál — a félig kész terv generálását viszont nem
+     * szabad emiatt megszakítani.
+     */
+    val backgroundScope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
     val statsRepository: StatsRepository by lazy {
         StatsRepository(

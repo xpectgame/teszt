@@ -16,6 +16,9 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.ChevronLeft
+import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.filled.DirectionsRun
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -132,6 +135,7 @@ fun TodayScreen(
     snackbarHostState: SnackbarHostState,
     onOpenMeal: (Long) -> Unit,
     onCreatePlan: () -> Unit,
+    onOpenActivity: () -> Unit,
 ) {
     val viewModel: TodayViewModel = viewModel(
         factory = containerFactory(container) { TodayViewModel(it) }
@@ -150,7 +154,9 @@ fun TodayScreen(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                IconButton(onClick = { viewModel.shiftDay(-1) }) { Text("◀") }
+                IconButton(onClick = { viewModel.shiftDay(-1) }) {
+                    Icon(Icons.Filled.ChevronLeft, contentDescription = "Előző nap")
+                }
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(
                         state.date.hungarianLabel(),
@@ -161,7 +167,9 @@ fun TodayScreen(
                         Text(it.title, style = MaterialTheme.typography.labelSmall)
                     }
                 }
-                IconButton(onClick = { viewModel.shiftDay(1) }) { Text("▶") }
+                IconButton(onClick = { viewModel.shiftDay(1) }) {
+                    Icon(Icons.Filled.ChevronRight, contentDescription = "Következő nap")
+                }
             }
         }
 
@@ -193,6 +201,41 @@ fun TodayScreen(
                 MacroBar("Zsír", consumed.fatG, state.plan!!.targetFatG, Color(0xFFFB8C00))
                 Spacer(Modifier.height(8.dp))
                 MacroBar("Rost", consumed.fiberG, state.plan!!.targetFiberG, Color(0xFF8D6E63))
+            }
+        }
+
+        item {
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable(onClick = onOpenActivity),
+            ) {
+                Row(
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(14.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Icon(
+                        Icons.Filled.DirectionsRun,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                    )
+                    Spacer(Modifier.size(12.dp))
+                    Column(Modifier.weight(1f)) {
+                        Text("Mozgás", style = MaterialTheme.typography.titleSmall)
+                        Text(
+                            if (state.burnedNetKcal > 0) {
+                                "Ma ${state.burnedNetKcal} kcal többlet — ennek a fele beleszámít a keretbe."
+                            } else {
+                                "Ma még nincs naplózott mozgás."
+                            },
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    Icon(Icons.Filled.ChevronRight, contentDescription = null)
+                }
             }
         }
 

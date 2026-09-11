@@ -17,7 +17,11 @@ import hu.mealpilot.app.data.prefs.AppSettings
 import hu.mealpilot.app.data.prefs.SecureKeyStore
 import hu.mealpilot.core.ai.AiDay
 import hu.mealpilot.core.ai.AiDayResponse
+import hu.mealpilot.core.ai.AiChatResponse
 import hu.mealpilot.core.ai.AiPlanResponse
+import hu.mealpilot.core.ai.ChatContext
+import hu.mealpilot.core.ai.ChatPrompts
+import hu.mealpilot.core.ai.ChatTurn
 import hu.mealpilot.core.ai.GenerationProgress
 import hu.mealpilot.core.ai.MealAi
 import hu.mealpilot.core.ai.MealSlot
@@ -61,6 +65,7 @@ class AnthropicMealAi(
     override suspend fun generatePlan(
         request: PlanRequest,
         onProgress: (GenerationProgress) -> Unit,
+        onChunk: suspend (AiPlanResponse) -> Unit,
     ): Result<AiPlanResponse> = withContext(Dispatchers.IO) {
         val apiKey = keyStore.apiKey()
             ?: return@withContext Result.failure(MissingApiKeyException())
@@ -100,6 +105,23 @@ class AnthropicMealAi(
                 usedNames += chunkPlan.days.flatMap { day -> day.meals.map { it.name } }
                 if (title.isBlank()) title = chunkPlan.planTitle
                 if (summary.isBlank()) summary = chunkPlan.summary
+
+                // A kész szakaszt azonnal kiadjuk, hogy a felhasználó már használhassa,
+                // miközben a többi nap még készül.
+                onChunk(chunkPlan)
+                onProgress(
+                    GenerationProgress(
+                        stage = GenerationProgress.Stage.STREAMING,
+                        currentChunk = chunk.index + 1,
+                        totalChunks = chunk.total,
+                        daysReady = allDays.size,
+                        message = if (chunk.index + 1 < chunk.total) {
+                            "${allDays.size} nap kész, a többi töltődik…"
+                        } else {
+                            "Kész."
+                        },
+                    )
+                )
             }
 
             onProgress(
@@ -107,6 +129,7 @@ class AnthropicMealAi(
                     stage = GenerationProgress.Stage.DONE,
                     currentChunk = chunks.size,
                     totalChunks = chunks.size,
+                    daysReady = allDays.size,
                     message = "Kész.",
                 )
             )
@@ -224,6 +247,29 @@ class AnthropicMealAi(
         }
     }
 
+    override suspend fun chat(
+        context: ChatContext,
+        history: List<ChatTurn>,
+        message: String,
+    ): Result<AiChatResponse> = withContext(Dispatchers.IO) {
+        val apiKey = keyStore.apiKey() ?: return@withContext Result.failure(MissingApiKeyException())
+        try {
+            val raw = callModel(
+                client = client(apiKey),
+                settings = settingsProvider(),
+                userText = ChatPrompts.userPrompt(context, history, message),
+                systemPrompt = ChatPrompts.SYSTEM,
+                maxTokens = CHAT_MAX_TOKENS,
+                onChars = {},
+            )
+            Result.success(PlanParser.parseChat(raw).getOrThrow())
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (error: Throwable) {
+            Result.failure(translate(error))
+        }
+    }
+
     /**
      * Egy hívás a Messages API-ra, streamelve. A streamelés itt nem kényelmi kérdés:
      * nagy max_tokens mellett a nem streamelt kérés a HTTP időkorlátba futna.
@@ -232,15 +278,17 @@ class AnthropicMealAi(
         client: AnthropicClient,
         settings: AppSettings,
         userText: String,
+        systemPrompt: String = PlanPrompts.SYSTEM,
+        maxTokens: Long = MAX_OUTPUT_TOKENS,
         onChars: (Int) -> Unit,
     ): String {
         val builder = MessageCreateParams.builder()
             .model(settings.model.id)
-            .maxTokens(MAX_OUTPUT_TOKENS)
+            .maxTokens(maxTokens)
             .systemOfTextBlockParams(
                 listOf(
                     TextBlockParam.builder()
-                        .text(PlanPrompts.SYSTEM)
+                        .text(systemPrompt)
                         // A rendszerprompt minden hívásnál azonos, ezért cache-elhető:
                         // a heti darabok és a javító körök után is olcsóbb lesz.
                         .cacheControl(CacheControlEphemeral.builder().build())
@@ -306,6 +354,9 @@ class AnthropicMealAi(
     private companion object {
         const val TAG = "AnthropicMealAi"
         const val MAX_OUTPUT_TOKENS = 24_000L
+
+        /** A beszélgetés rövid válaszokat ad, itt nincs szükség nagy keretre. */
+        const val CHAT_MAX_TOKENS = 2_000L
 
         /** Egy első próbálkozás + egy javító kör. Több kör már csak pénzt égetne. */
         const val MAX_ATTEMPTS = 2

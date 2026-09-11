@@ -30,6 +30,19 @@ import java.time.ZoneId
 /**
  * A tervek életciklusa: generálás → mentés → bevásárlólista → napi lekérdezések.
  */
+/**
+ * Egy tervgenerálás eredménye. A generálás félúton is megszakadhat — ilyenkor a már
+ * elkészült napok megmaradnak, mert egy fél terv sokkal többet ér, mint a semmi.
+ */
+data class PlanGenerationOutcome(
+    val planId: Long,
+    val daysSaved: Int,
+    val requestedDays: Int,
+    val error: Throwable? = null,
+) {
+    val isComplete: Boolean get() = error == null && daysSaved >= requestedDays
+}
+
 class PlanRepository(
     private val planDao: PlanDao,
     private val mealDao: MealDao,
@@ -45,8 +58,12 @@ class PlanRepository(
     suspend fun activePlan(): PlanEntity? = planDao.activePlan()
 
     /**
-     * Legenerálja és elmenti a tervet. A visszatérési érték az új terv azonosítója,
-     * hogy a hívó rögtön be tudja állítani az emlékeztetőket.
+     * Legenerálja és elmenti a tervet, szakaszonként.
+     *
+     * A terv sora azonnal létrejön, és minden elkészült szakasz napjai rögtön bekerülnek
+     * az adatbázisba. A felület a tervet figyeli, ezért az első napok másodpercek alatt
+     * megjelennek és használhatók, miközben a többi még töltődik. Korábban az egész
+     * hónapot meg kellett várni, mire bármi látszott.
      */
     suspend fun generateAndSave(
         ai: MealAi,
@@ -56,7 +73,7 @@ class PlanRepository(
         days: Int,
         freeText: String,
         onProgress: (GenerationProgress) -> Unit = {},
-    ): Result<Long> {
+    ): Result<PlanGenerationOutcome> {
         val previousNames = planDao.activePlan()?.let { mealDao.namesInPlan(it.id) } ?: emptyList()
 
         val request = PlanRequest(
@@ -70,15 +87,10 @@ class PlanRepository(
             startWeekdayHu = startDate.hungarianWeekday(),
         )
 
-        val response = ai.generatePlan(request, onProgress).getOrElse { return Result.failure(it) }
-        if (response.days.isEmpty()) {
-            return Result.failure(MealAiException("A válasz egyetlen napot sem tartalmazott."))
-        }
-
         val planId = planDao.insert(
             PlanEntity(
-                title = response.planTitle.ifBlank { "Étrend – ${startDate}" },
-                summary = response.summary,
+                title = "Étrend készül…",
+                summary = "",
                 startEpochDay = startDate.toEpochDay(),
                 dayCount = days,
                 createdAtMillis = System.currentTimeMillis(),
@@ -88,16 +100,50 @@ class PlanRepository(
                 targetCarbsG = budget.target.carbsG,
                 targetFatG = budget.target.fatG,
                 targetFiberG = budget.target.fiberG,
-                coachNotesJson = encodeStrings(response.coachNotes),
                 isActive = true,
             )
         )
         planDao.deactivateOthers(planId)
 
-        response.days.forEach { day -> insertDay(planId, startDate, day) }
-        rebuildShoppingList(planId, startDate.toEpochDay(), startDate.toEpochDay() + days - 1)
+        var savedDays = 0
+        val coachNotes = mutableListOf<String>()
 
-        return Result.success(planId)
+        val result = ai.generatePlan(
+            request = request,
+            onProgress = onProgress,
+            onChunk = { chunk ->
+                chunk.days.forEach { day -> insertDay(planId, startDate, day) }
+                savedDays += chunk.days.size
+                coachNotes += chunk.coachNotes
+
+                planDao.byId(planId)?.let { current ->
+                    planDao.update(
+                        current.copy(
+                            title = current.title.takeIf { it != "Étrend készül…" }
+                                ?: chunk.planTitle.ifBlank { "Étrend – $startDate" },
+                            summary = current.summary.ifBlank { chunk.summary },
+                            coachNotesJson = encodeStrings(coachNotes.distinct().take(4)),
+                        )
+                    )
+                }
+                rebuildShoppingList(planId, startDate.toEpochDay(), startDate.toEpochDay() + days - 1)
+            },
+        )
+
+        val error = result.exceptionOrNull()
+        if (savedDays == 0) {
+            planDao.delete(planId)
+            return Result.failure(error ?: MealAiException("A válasz egyetlen napot sem tartalmazott."))
+        }
+
+        return Result.success(
+            PlanGenerationOutcome(
+                planId = planId,
+                daysSaved = savedDays,
+                requestedDays = days,
+                error = error,
+            )
+        )
     }
 
     /** Egy nap újratervezése szabad szöveges kérés alapján. */
