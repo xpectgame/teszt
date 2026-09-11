@@ -1,6 +1,10 @@
 package hu.mealpilot.app
 
 import android.content.Context
+import hu.mealpilot.app.billing.BillingGateway
+import hu.mealpilot.app.billing.EntitlementRepository
+import hu.mealpilot.app.billing.NoBillingGateway
+import hu.mealpilot.app.billing.PlayBillingGateway
 import hu.mealpilot.app.data.ai.AnthropicMealAi
 import hu.mealpilot.app.data.ai.OfflineMealAi
 import hu.mealpilot.app.data.local.AppDatabase
@@ -15,6 +19,7 @@ import hu.mealpilot.core.ai.MealAi
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 
 /**
  * Kézi függőséginjektálás. Az app mérete ennyit még bőven elbír, cserébe nincs
@@ -63,6 +68,24 @@ class AppContainer(context: Context) {
     /** A hosszan futó tervezés egyetlen gazdája — minden képernyő ezt figyeli. */
     val generation: GenerationCoordinator by lazy { GenerationCoordinator(this) }
 
+    val entitlements: EntitlementRepository by lazy { EntitlementRepository(appContext) }
+
+    /**
+     * A bolt. Ha a Play nem érhető el (oldalról telepített build, Play nélküli eszköz),
+     * a tartalék változat fut, és az app az ingyenes sávban teljes értékűen működik.
+     */
+    val billing: BillingGateway by lazy {
+        runCatching {
+            PlayBillingGateway(appContext) { subscribed, pending, expiresAt ->
+                backgroundScope.launch {
+                    entitlements.applyPurchaseState(subscribed, pending, expiresAt)
+                }
+            }.also { it.refresh() }
+        }.getOrElse {
+            NoBillingGateway("A Google Play fizetés ezen az eszközön nem érhető el.")
+        }
+    }
+
     val statsRepository: StatsRepository by lazy {
         StatsRepository(
             tracking = trackingRepository,
@@ -83,4 +106,18 @@ class AppContainer(context: Context) {
         if (forceOffline || !secureKeyStore.hasApiKey()) offlineAi else anthropicAi
 
     val hasApiKey: Boolean get() = secureKeyStore.hasApiKey()
+
+    /**
+     * Minden helyben tárolt adat törlése.
+     *
+     * Az app nem vezet fiókot, minden a készüléken van — de a felhasználónak akkor is
+     * joga van egy gombbal mindent eltüntetni, és a Play is elvárja, hogy legyen rá mód.
+     * Az előfizetést ez nem mondja le: az a Google fiókhoz tartozik.
+     */
+    suspend fun wipeAllData() {
+        database.clearAllTables()
+        settings.clearAll()
+        entitlements.clearAll()
+        secureKeyStore.setApiKey(null)
+    }
 }

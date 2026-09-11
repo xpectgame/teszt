@@ -11,11 +11,13 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.AssistChip
@@ -50,6 +52,7 @@ import hu.mealpilot.app.data.local.MealWithIngredients
 import hu.mealpilot.app.data.local.PlanEntity
 import hu.mealpilot.app.data.repo.PlanGenerationOutcome
 import hu.mealpilot.app.work.GenerationCoordinator
+import hu.mealpilot.core.billing.Tiers
 import hu.mealpilot.app.data.repo.PlanRepository
 import hu.mealpilot.app.notify.ReminderRefreshWorker
 import hu.mealpilot.app.ui.components.EmptyState
@@ -65,6 +68,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
@@ -76,8 +80,10 @@ import kotlin.math.roundToInt
 data class PlanUiState(
     val plan: PlanEntity? = null,
     val meals: List<MealWithIngredients> = emptyList(),
-    /** Igaz, ha a tervezőszolgáltatás elérhető, tehát egy nap szavakkal átírható. */
+    /** Igaz, ha a tervezőszolgáltatás elérhető ÉS a csomag engedi a napok átírását. */
     val canRefine: Boolean = false,
+    /** A csomagban kérhető leghosszabb terv. */
+    val maxPlanDays: Int = Tiers.PREMIUM.maxPlanDays,
 ) {
     val byDay: Map<Int, List<MealWithIngredients>>
         get() = meals.groupBy { it.meal.dayIndex }.toSortedMap()
@@ -86,14 +92,23 @@ data class PlanUiState(
 class PlanViewModel(private val container: AppContainer) : ViewModel() {
 
     @OptIn(ExperimentalCoroutinesApi::class)
-    val state: StateFlow<PlanUiState> = container.planRepository.observeActivePlan()
-        .flatMapLatest { plan ->
-            if (plan == null) flowOf(PlanUiState(canRefine = container.hasApiKey))
+    val state: StateFlow<PlanUiState> = combine(
+        container.planRepository.observeActivePlan(),
+        container.entitlements.entitlement,
+    ) { plan, entitlement -> plan to entitlement }
+        .flatMapLatest { (plan, entitlement) ->
+            val base = PlanUiState(
+                canRefine = container.hasApiKey && entitlement.limits.canRefineDays,
+                maxPlanDays = entitlement.limits.maxPlanDays,
+            )
+            if (plan == null) flowOf(base)
             else container.planRepository.observePlanMeals(plan.id).map { meals ->
-                PlanUiState(plan = plan, meals = meals, canRefine = container.hasApiKey)
+                base.copy(plan = plan, meals = meals)
             }
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), PlanUiState())
+
+    fun requestPaywall(reason: String) = container.generation.requestPaywall(reason)
 
     /** A tervezés állapota — ugyanaz a forrás, amit az alkalmazás összes képernyője figyel. */
     val status: StateFlow<GenerationCoordinator.Status> = container.generation.status
@@ -238,6 +253,8 @@ fun PlanScreen(
     if (showGenerator) {
         GeneratorDialog(
             status = status,
+            maxDays = state.maxPlanDays,
+            onLocked = { viewModel.requestPaywall(it) },
             onDismiss = {
                 if (status.running) viewModel.cancelGeneration()
                 showGenerator = false
@@ -336,10 +353,12 @@ private fun DayCard(
 @Composable
 private fun GeneratorDialog(
     status: GenerationCoordinator.Status,
+    maxDays: Int,
+    onLocked: (String) -> Unit,
     onDismiss: () -> Unit,
     onGenerate: (days: Int, startTomorrow: Boolean, freeText: String) -> Unit,
 ) {
-    var days by remember { mutableStateOf(7) }
+    var days by remember { mutableStateOf(minOf(7, maxDays)) }
     var startTomorrow by remember { mutableStateOf(false) }
     var freeText by remember { mutableStateOf("") }
     val running = status.running
@@ -372,10 +391,22 @@ private fun GeneratorDialog(
                     Spacer(Modifier.height(8.dp))
                     FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         listOf(3 to "3 nap", 7 to "1 hét", 14 to "2 hét", 30 to "1 hónap").forEach { (value, label) ->
+                            val locked = value > maxDays
                             FilterChip(
-                                selected = days == value,
-                                onClick = { days = value },
+                                selected = days == value && !locked,
+                                onClick = {
+                                    if (locked) {
+                                        onLocked(
+                                            "Az ingyenes csomagban legfeljebb $maxDays napos terv kérhető."
+                                        )
+                                    } else {
+                                        days = value
+                                    }
+                                },
                                 label = { Text(label) },
+                                leadingIcon = if (locked) {
+                                    { Icon(Icons.Filled.Lock, contentDescription = null, modifier = Modifier.size(16.dp)) }
+                                } else null,
                             )
                         }
                     }

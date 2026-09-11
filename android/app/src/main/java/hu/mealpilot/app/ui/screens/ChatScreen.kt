@@ -67,6 +67,7 @@ import hu.mealpilot.core.ai.ChatTurn
 import hu.mealpilot.core.ai.GenerationProgress
 import hu.mealpilot.core.ai.MealSlot
 import hu.mealpilot.core.ai.PlanParser
+import hu.mealpilot.core.billing.PaidFeature
 import hu.mealpilot.core.energy.EnergyCalculator
 import hu.mealpilot.core.model.DietRestriction
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -98,8 +99,14 @@ class ChatViewModel(private val container: AppContainer) : ViewModel() {
     fun send(text: String) {
         if (_busy.value != ChatBusy.Idle) return
         viewModelScope.launch {
+            val entitlement = container.entitlements.current()
+            entitlement.blockReason(PaidFeature.CHAT)?.let { reason ->
+                container.generation.requestPaywall(reason)
+                return@launch
+            }
             _busy.value = ChatBusy.Thinking
-            container.chatRepository.send(container.mealAi(), text)
+            val result = container.chatRepository.send(container.mealAi(), text)
+            if (result.isSuccess) container.entitlements.recordChatMessage()
             _busy.value = ChatBusy.Idle
         }
     }
@@ -118,6 +125,16 @@ class ChatViewModel(private val container: AppContainer) : ViewModel() {
             PlanParser.json.decodeFromString(AiChatAction.serializer(), message.actionJson)
         }.getOrNull() ?: return
 
+        viewModelScope.launch {
+            container.entitlements.current().blockReason(PaidFeature.CHAT_ACTIONS)?.let { reason ->
+                container.generation.requestPaywall(reason)
+                return@launch
+            }
+            runConfirmed(message, action)
+        }
+    }
+
+    private fun runConfirmed(message: ChatMessageEntity, action: AiChatAction) {
         container.generation.runAction(message.actionLabel.ifBlank { "Dolgozom rajta" }) { progress ->
             val result = execute(action, progress)
             container.chatRepository.dismissAction(message.id)

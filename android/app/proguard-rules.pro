@@ -24,5 +24,10 @@
     kotlinx.serialization.KSerializer serializer(...);
 }
 
+# --- Google Play Billing ---
+# A könyvtár hoz saját szabályokat; ez csak biztonsági háló a modellosztályokra.
+-keep class com.android.billingclient.api.** { *; }
+-dontwarn com.android.billingclient.**
+
 # Room
 -keep class * extends androidx.room.RoomDatabase { <init>(); }

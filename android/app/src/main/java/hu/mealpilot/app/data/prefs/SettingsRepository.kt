@@ -114,6 +114,11 @@ class SettingsRepository(context: Context) {
         }
     }
 
+    /** Minden beállítás törlése — az app a bekapcsolás utáni állapotba kerül. */
+    suspend fun clearAll() {
+        store.edit { it.clear() }
+    }
+
     suspend fun setOnboardingDone(done: Boolean) {
         store.edit { it[K_ONBOARDING] = done }
     }

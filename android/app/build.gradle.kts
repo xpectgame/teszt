@@ -107,6 +107,9 @@ dependencies {
     // Hivatalos Anthropic Java SDK — a Kotlin ezt használja.
     implementation(libs.anthropic.java)
 
+    // Google Play Billing az előfizetéshez.
+    implementation(libs.billing.ktx)
+
     coreLibraryDesugaring(libs.desugar.jdk.libs)
 
     debugImplementation(libs.androidx.compose.ui.tooling)

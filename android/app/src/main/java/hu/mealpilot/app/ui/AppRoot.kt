@@ -32,7 +32,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -49,6 +51,7 @@ import hu.mealpilot.app.ui.screens.ActivityScreen
 import hu.mealpilot.app.ui.screens.ChatScreen
 import hu.mealpilot.app.ui.screens.MealDetailScreen
 import hu.mealpilot.app.ui.screens.OnboardingScreen
+import hu.mealpilot.app.ui.screens.PaywallScreen
 import hu.mealpilot.app.ui.screens.PlanScreen
 import hu.mealpilot.app.ui.screens.ProfileScreen
 import hu.mealpilot.app.ui.screens.SettingsScreen
@@ -62,6 +65,7 @@ object Routes {
     const val SHOPPING = "shopping"
     const val ACTIVITY = "activity"
     const val CHAT = "chat"
+    const val PAYWALL = "paywall"
     const val PROFILE = "profile"
     const val SETTINGS = "settings"
     const val MEAL = "meal/{mealId}"
@@ -91,6 +95,17 @@ fun AppRoot(
     val snackbarHostState = remember { SnackbarHostState() }
     val settings by container.settings.settings.collectAsState(initial = null)
     val generationStatus by container.generation.status.collectAsState()
+    val paywallPrompt by container.generation.paywallPrompt.collectAsState()
+    var paywallReason by remember { mutableStateOf<String?>(null) }
+
+    // Bárhonnan kérhető a paywall: a képernyőknek nem kell tudniuk, hogyan kell odajutni.
+    LaunchedEffect(paywallPrompt) {
+        paywallPrompt?.let { reason ->
+            paywallReason = reason
+            container.generation.consumePaywallPrompt()
+            navController.navigate(Routes.PAYWALL)
+        }
+    }
 
     // Az értesítésből érkező étkezés megnyitása.
     LaunchedEffect(openMealId) {
@@ -175,6 +190,18 @@ fun AppRoot(
                         container = container,
                         snackbarHostState = snackbarHostState,
                         onBack = { navController.popBackStack() },
+                        onOpenPaywall = {
+                            paywallReason = null
+                            navController.navigate(Routes.PAYWALL)
+                        },
+                    )
+                }
+                composable(Routes.PAYWALL) {
+                    PaywallScreen(
+                        container = container,
+                        reason = paywallReason,
+                        snackbarHostState = snackbarHostState,
+                        onClose = { navController.popBackStack() },
                     )
                 }
                 composable(Routes.MEAL) { entry ->

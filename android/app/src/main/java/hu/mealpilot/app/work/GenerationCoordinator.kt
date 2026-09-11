@@ -5,6 +5,7 @@ import hu.mealpilot.app.AppContainer
 import hu.mealpilot.app.data.repo.PlanGenerationOutcome
 import hu.mealpilot.app.notify.ReminderRefreshWorker
 import hu.mealpilot.core.ai.GenerationProgress
+import hu.mealpilot.core.billing.PaidFeature
 import hu.mealpilot.core.energy.EnergyCalculator
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -48,6 +49,17 @@ class GenerationCoordinator(private val container: AppContainer) {
 
     fun consumeOutcome() { _lastOutcome.value = null }
 
+    /**
+     * Ha a felület fizetős falba ütközik, ide kerül az indok. Az AppRoot ezt figyeli, és
+     * megnyitja a paywallt — így nem kell minden képernyőnek külön tudnia róla.
+     */
+    private val _paywallPrompt = MutableStateFlow<String?>(null)
+    val paywallPrompt: StateFlow<String?> = _paywallPrompt.asStateFlow()
+
+    fun requestPaywall(reason: String) { _paywallPrompt.value = reason }
+
+    fun consumePaywallPrompt() { _paywallPrompt.value = null }
+
     private var job: Job? = null
 
     val isBusy: Boolean get() = job?.isActive == true
@@ -55,7 +67,16 @@ class GenerationCoordinator(private val container: AppContainer) {
     fun generatePlan(days: Int, startTomorrow: Boolean, freeText: String) {
         if (isBusy) return
         job = container.backgroundScope.launch {
-            begin(totalDays = days, headline = "Összeállítom az étrended")
+            // A kvótát a munka MEGKEZDÉSE előtt nézzük meg: egy elutasított kérésért ne
+            // fusson le a drága rész, és ne is fogyjon a keret.
+            val entitlement = container.entitlements.current()
+            entitlement.blockReason(PaidFeature.PLAN_GENERATION)?.let { reason ->
+                requestPaywall(reason)
+                return@launch
+            }
+            val allowedDays = entitlement.allowedPlanDays(days)
+
+            begin(totalDays = allowedDays, headline = "Összeállítom az étrended")
             try {
                 val profile = container.settings.currentProfile()
                 val budget = EnergyCalculator.budget(profile)
@@ -64,11 +85,15 @@ class GenerationCoordinator(private val container: AppContainer) {
                     profile = profile,
                     budget = budget,
                     startDate = if (startTomorrow) LocalDate.now().plusDays(1) else LocalDate.now(),
-                    days = days,
+                    days = allowedDays,
                     freeText = freeText,
-                    onProgress = { progress -> publish(progress, days) },
+                    onProgress = { progress -> publish(progress, allowedDays) },
                 )
-                result.onSuccess { ReminderRefreshWorker.refreshNow(container.appContext) }
+                result.onSuccess {
+                    ReminderRefreshWorker.refreshNow(container.appContext)
+                    // Csak a ténylegesen elkészült terv fogyasztja a keretet.
+                    container.entitlements.recordPlanGenerated()
+                }
                 _lastOutcome.value = result
             } catch (error: Throwable) {
                 Log.e(TAG, "A tervezés megszakadt.", error)

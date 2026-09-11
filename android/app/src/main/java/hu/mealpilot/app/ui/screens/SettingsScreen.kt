@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
@@ -54,6 +55,7 @@ import hu.mealpilot.app.notify.ReminderRefreshWorker
 import hu.mealpilot.app.ui.components.ProfileForm
 import hu.mealpilot.app.ui.components.SectionCard
 import hu.mealpilot.app.ui.containerFactory
+import hu.mealpilot.core.billing.BillingPeriod
 import hu.mealpilot.core.model.UserProfile
 import kotlinx.coroutines.launch
 
@@ -78,6 +80,16 @@ class SettingsViewModel(private val container: AppContainer) : ViewModel() {
         ReminderRefreshWorker.refreshNow(container.appContext)
     }
 
+    val entitlement = container.entitlements.entitlement
+
+    fun setDeveloperPremium(enabled: Boolean) = viewModelScope.launch {
+        container.entitlements.setDeveloperPremium(enabled)
+    }
+
+    fun wipeAllData() = viewModelScope.launch {
+        container.wipeAllData()
+    }
+
     fun saveProfile(profile: UserProfile) = viewModelScope.launch {
         container.settings.saveProfile(profile)
         ReminderRefreshWorker.refreshNow(container.appContext)
@@ -90,6 +102,7 @@ fun SettingsScreen(
     container: AppContainer,
     snackbarHostState: SnackbarHostState,
     onBack: () -> Unit,
+    onOpenPaywall: () -> Unit,
 ) {
     val viewModel: SettingsViewModel = viewModel(factory = containerFactory(container) { SettingsViewModel(it) })
     val settings by viewModel.settings.collectAsState(initial = null)
@@ -108,6 +121,8 @@ fun SettingsScreen(
 
     val current = settings ?: return
     val profile = editedProfile ?: return
+    val entitlement by viewModel.entitlement.collectAsState(initial = null)
+    var confirmWipe by remember { mutableStateOf(false) }
 
     Column(
         Modifier
@@ -118,6 +133,42 @@ fun SettingsScreen(
         TextButton(onClick = onBack) { Text("← Vissza") }
         Text("Beállítások", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
         Spacer(Modifier.height(16.dp))
+
+        SectionCard(title = "Csomag") {
+            val plan = entitlement
+            Text(
+                plan?.tier?.hu ?: "…",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+            )
+            Spacer(Modifier.height(4.dp))
+            if (plan != null && !plan.isPremium) {
+                Text(
+                    "Ebben a hónapban még ${plan.remainingPlans()} étrend és " +
+                        "${plan.remainingMessages()} üzenet maradt. " +
+                        "A keret ${BillingPeriod.daysUntilReset()} nap múlva nullázódik.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Spacer(Modifier.height(12.dp))
+                Button(onClick = onOpenPaywall, modifier = Modifier.fillMaxWidth()) {
+                    Text("Teljes csomag")
+                }
+            } else if (plan != null) {
+                Text(
+                    "Korlátlan étrend és beszélgetés. Köszönjük!",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Spacer(Modifier.height(12.dp))
+                OutlinedButton(
+                    onClick = { context.openUrl(LegalLinks.manageSubscription(context.packageName)) },
+                    modifier = Modifier.fillMaxWidth(),
+                ) { Text("Előfizetés kezelése") }
+            }
+        }
+
+        Spacer(Modifier.height(12.dp))
 
         // A modellválasztás és a hozzáférési kulcs nem felhasználói döntés: aki az appot
         // használja, étrendet akar, nem tervezőmotort konfigurálni. Ezért ezek a Névjegy
@@ -203,6 +254,19 @@ fun SettingsScreen(
                 }
                 Text(
                     "Az alaposabb beállítás pontosabban tartja a kalóriakeretet, de több tokent használ.",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+
+                Spacer(Modifier.height(16.dp))
+                SettingSwitch(
+                    label = "Teljes csomag teszthez",
+                    checked = entitlement?.isPremium == true,
+                    onChange = { viewModel.setDeveloperPremium(it) },
+                )
+                Text(
+                    "Vásárlás nélkül bekapcsolja a fizetős funkciókat, hogy tesztelhető " +
+                        "legyen, mielőtt a Play Console-ban él a termék.",
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -313,6 +377,29 @@ fun SettingsScreen(
         }
 
         Spacer(Modifier.height(12.dp))
+        SectionCard(title = "Jogi tudnivalók és adatok") {
+            TextButton(onClick = { context.openUrl(LegalLinks.TERMS) }) {
+                Text("Felhasználási feltételek")
+            }
+            TextButton(onClick = { context.openUrl(LegalLinks.PRIVACY) }) {
+                Text("Adatkezelési tájékoztató")
+            }
+            TextButton(onClick = { context.openUrl("mailto:${LegalLinks.SUPPORT_EMAIL}") }) {
+                Text("Kapcsolat: ${LegalLinks.SUPPORT_EMAIL}")
+            }
+            Spacer(Modifier.height(8.dp))
+            Text(
+                "Az étrended, a naplóid és a testadataid a telefonodon maradnak. " +
+                    "Tervezéskor a profilodból származó adatok (nem, életkor, testadatok, " +
+                    "étrendi kizárások, kéréseid) kimennek a tervezőszolgáltatáshoz.",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Spacer(Modifier.height(12.dp))
+            OutlinedButton(onClick = { confirmWipe = true }) { Text("Minden adat törlése") }
+        }
+
+        Spacer(Modifier.height(12.dp))
         SectionCard(title = "Névjegy") {
             Text(
                 "MealPilot ${BuildConfig.VERSION_NAME}",
@@ -337,6 +424,28 @@ fun SettingsScreen(
         }
 
         Spacer(Modifier.height(32.dp))
+    }
+
+    if (confirmWipe) {
+        AlertDialog(
+            onDismissRequest = { confirmWipe = false },
+            title = { Text("Minden adat törlése") },
+            text = {
+                Text(
+                    "Törlődik az étrended, az összes naplód, a súly- és mozgásadataid, a " +
+                        "beszélgetésed és a beállításaid. Ez nem vonható vissza. " +
+                        "Az előfizetésedet ez nem mondja le."
+                )
+            },
+            confirmButton = {
+                Button(onClick = {
+                    confirmWipe = false
+                    viewModel.wipeAllData()
+                    scope.launch { snackbarHostState.showSnackbar("Minden adat törölve.") }
+                }) { Text("Törlés") }
+            },
+            dismissButton = { TextButton(onClick = { confirmWipe = false }) { Text("Mégse") } },
+        )
     }
 }
 
