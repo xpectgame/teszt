@@ -64,6 +64,7 @@ import hu.mealpilot.app.ui.containerFactory
 import hu.mealpilot.core.ai.AiChatAction
 import hu.mealpilot.core.ai.ChatActionType
 import hu.mealpilot.core.ai.ChatTurn
+import hu.mealpilot.core.ai.GenerationProgress
 import hu.mealpilot.core.ai.MealSlot
 import hu.mealpilot.core.ai.PlanParser
 import hu.mealpilot.core.energy.EnergyCalculator
@@ -117,14 +118,17 @@ class ChatViewModel(private val container: AppContainer) : ViewModel() {
             PlanParser.json.decodeFromString(AiChatAction.serializer(), message.actionJson)
         }.getOrNull() ?: return
 
-        container.generation.runAction(message.actionLabel.ifBlank { "Dolgozom rajta" }) {
-            val result = execute(action)
+        container.generation.runAction(message.actionLabel.ifBlank { "Dolgozom rajta" }) { progress ->
+            val result = execute(action, progress)
             container.chatRepository.dismissAction(message.id)
             result
         }
     }
 
-    private suspend fun execute(action: AiChatAction): String {
+    private suspend fun execute(
+        action: AiChatAction,
+        onProgress: (GenerationProgress) -> Unit = {},
+    ): String {
         val profile = container.settings.currentProfile()
         val budget = EnergyCalculator.budget(profile)
 
@@ -152,6 +156,7 @@ class ChatViewModel(private val container: AppContainer) : ViewModel() {
                     freeText = listOf(profile.preferences, action.instruction)
                         .filter { it.isNotBlank() }
                         .joinToString(". "),
+                    onProgress = onProgress,
                 ).getOrThrow()
                 ReminderRefreshWorker.refreshNow(container.appContext)
                 "Kész: ${outcome.daysSaved} nap."

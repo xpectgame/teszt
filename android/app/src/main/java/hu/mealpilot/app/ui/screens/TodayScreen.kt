@@ -15,23 +15,32 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.ChevronLeft
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.DirectionsRun
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -47,6 +56,7 @@ import hu.mealpilot.app.data.local.MealLogEntity
 import hu.mealpilot.app.data.local.MealWithIngredients
 import hu.mealpilot.app.data.local.PlanEntity
 import hu.mealpilot.app.ui.components.CalorieRing
+import hu.mealpilot.app.ui.components.MealEntrySheet
 import hu.mealpilot.app.ui.components.EmptyState
 import hu.mealpilot.app.ui.components.MacroBar
 import hu.mealpilot.app.ui.components.SectionCard
@@ -65,6 +75,13 @@ import kotlinx.coroutines.launch
 import java.time.LocalDate
 import kotlin.math.roundToInt
 
+/** Amit tényleg megevett: a tervezett, a helyette megevett és a terven kívüli is. */
+private val CONSUMED_STATUSES = setOf(
+    LogStatus.EATEN.name,
+    LogStatus.REPLACED.name,
+    LogStatus.EXTRA.name,
+)
+
 data class TodayUiState(
     val date: LocalDate = LocalDate.now(),
     val plan: PlanEntity? = null,
@@ -75,8 +92,7 @@ data class TodayUiState(
 ) {
     val consumed: Nutrients
         get() = Nutrients.sum(
-            logs.filter { it.status == LogStatus.EATEN.name || it.status == LogStatus.EXTRA.name }
-                .map { it.nutrients.toNutrients() }
+            logs.filter { it.status in CONSUMED_STATUSES }.map { it.nutrients.toNutrients() }
         )
 
     val baseTarget: Int get() = plan?.targetKcal ?: 0
@@ -86,8 +102,13 @@ data class TodayUiState(
         get() = if (baseTarget <= 0) 0
         else EnergyCalculator.adjustedDailyKcal(baseTarget, burnedNetKcal, eatBackRatio)
 
+    fun logFor(mealId: Long): MealLogEntity? = logs.firstOrNull { it.mealId == mealId }
+
     fun statusOf(mealId: Long): LogStatus? =
-        logs.firstOrNull { it.mealId == mealId }?.let { runCatching { LogStatus.valueOf(it.status) }.getOrNull() }
+        logFor(mealId)?.let { runCatching { LogStatus.valueOf(it.status) }.getOrNull() }
+
+    /** A terven kívül felvitt étkezések — ezek nem tartoznak egy tervezett fogáshoz sem. */
+    val extras: List<MealLogEntity> get() = logs.filter { it.mealId == null }
 }
 
 class TodayViewModel(private val container: AppContainer) : ViewModel() {
@@ -127,6 +148,26 @@ class TodayViewModel(private val container: AppContainer) : ViewModel() {
     fun undo(mealId: Long) = viewModelScope.launch {
         container.database.mealLogDao().deleteForMeal(mealId)
     }
+
+    /** „Nem ezt ettem, hanem ezt" — a terv marad, csak a napló lesz pontos. */
+    fun logReplaced(mealId: Long, name: String, nutrients: Nutrients) = viewModelScope.launch {
+        container.trackingRepository.logReplacedMeal(mealId, name, nutrients)
+        refreshAchievements()
+    }
+
+    fun logExtra(name: String, nutrients: Nutrients) = viewModelScope.launch {
+        container.trackingRepository.logCustomMeal(date.value, name, nutrients)
+        refreshAchievements()
+    }
+
+    fun deleteLog(id: Long) = viewModelScope.launch {
+        container.trackingRepository.deleteMealLog(id)
+    }
+
+    private suspend fun refreshAchievements() {
+        val plan = container.planRepository.activePlan() ?: return
+        container.statsRepository.refreshAndCollectNew(plan.targetKcal, plan.targetProteinG)
+    }
 }
 
 @Composable
@@ -142,6 +183,8 @@ fun TodayScreen(
     )
     val state by viewModel.state.collectAsState()
     val consumed = state.consumed
+    var replacing by remember { mutableStateOf<MealWithIngredients?>(null) }
+    var addingExtra by remember { mutableStateOf(false) }
 
     LazyColumn(
         modifier = Modifier.fillMaxWidth(),
@@ -251,12 +294,92 @@ fun TodayScreen(
         items(state.meals, key = { it.meal.id }) { mealWithIngredients ->
             MealRow(
                 meal = mealWithIngredients,
+                log = state.logFor(mealWithIngredients.meal.id),
                 status = state.statusOf(mealWithIngredients.meal.id),
                 onOpen = { onOpenMeal(mealWithIngredients.meal.id) },
                 onAte = { viewModel.log(mealWithIngredients.meal.id, LogStatus.EATEN) },
                 onSkip = { viewModel.log(mealWithIngredients.meal.id, LogStatus.SKIPPED) },
+                onReplace = { replacing = mealWithIngredients },
                 onUndo = { viewModel.undo(mealWithIngredients.meal.id) },
             )
+        }
+
+        items(state.extras, key = { "extra-${it.id}" }) { extra ->
+            ExtraRow(log = extra, onDelete = { viewModel.deleteLog(extra.id) })
+        }
+
+        item {
+            Spacer(Modifier.height(4.dp))
+            OutlinedButton(
+                onClick = { addingExtra = true },
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Icon(Icons.Filled.Add, contentDescription = null, modifier = Modifier.size(18.dp))
+                Spacer(Modifier.size(8.dp))
+                Text("Egyéb étkezés hozzáadása")
+            }
+            Spacer(Modifier.height(24.dp))
+        }
+    }
+
+    replacing?.let { target ->
+        MealEntrySheet(
+            title = "Mást ettél?",
+            initialName = target.meal.name,
+            initialNutrients = target.meal.nutrients.toNutrients(),
+            confirmLabel = "Ezt ettem",
+            onDismiss = { replacing = null },
+            onSave = { name, nutrients ->
+                viewModel.logReplaced(target.meal.id, name, nutrients)
+                replacing = null
+            },
+        )
+    }
+
+    if (addingExtra) {
+        MealEntrySheet(
+            title = "Egyéb étkezés",
+            confirmLabel = "Hozzáadom",
+            onDismiss = { addingExtra = false },
+            onSave = { name, nutrients ->
+                viewModel.logExtra(name, nutrients)
+                addingExtra = false
+            },
+        )
+    }
+}
+
+/** Terven kívül felvitt étkezés a napi listán. */
+@Composable
+private fun ExtraRow(log: MealLogEntity, onDelete: () -> Unit) {
+    val n = log.nutrients
+    Card(Modifier.fillMaxWidth()) {
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(
+                Icons.Filled.Add,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(20.dp),
+            )
+            Spacer(Modifier.size(12.dp))
+            Column(Modifier.weight(1f)) {
+                Text("Terven kívül", style = MaterialTheme.typography.labelSmall)
+                Text(log.name, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
+                Text(
+                    "${n.kcal.roundToInt()} kcal · F ${n.proteinG.roundToInt()} g · " +
+                        "Sz ${n.carbsG.roundToInt()} g · Zs ${n.fatG.roundToInt()} g",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            IconButton(onClick = onDelete) {
+                Icon(Icons.Filled.Close, contentDescription = "Törlés")
+            }
         }
     }
 }
@@ -264,14 +387,20 @@ fun TodayScreen(
 @Composable
 private fun MealRow(
     meal: MealWithIngredients,
+    log: MealLogEntity?,
     status: LogStatus?,
     onOpen: () -> Unit,
     onAte: () -> Unit,
     onSkip: () -> Unit,
+    onReplace: () -> Unit,
     onUndo: () -> Unit,
 ) {
     val slot = MealSlot.fromRaw(meal.meal.slot)
-    val n = meal.meal.nutrients
+    val replaced = status == LogStatus.REPLACED
+    // Felülírásnál azt mutatjuk, amit tényleg megevett — nem azt, amit terveztünk.
+    val shownName = if (replaced) log?.name.orEmpty().ifBlank { meal.meal.name } else meal.meal.name
+    val n = if (replaced && log != null) log.nutrients else meal.meal.nutrients
+    var menuOpen by remember { mutableStateOf(false) }
 
     Card(
         modifier = Modifier
@@ -279,7 +408,7 @@ private fun MealRow(
             .clickable(onClick = onOpen),
         colors = CardDefaults.cardColors(
             containerColor = when (status) {
-                LogStatus.EATEN -> MaterialTheme.colorScheme.primaryContainer
+                LogStatus.EATEN, LogStatus.REPLACED -> MaterialTheme.colorScheme.primaryContainer
                 LogStatus.SKIPPED -> MaterialTheme.colorScheme.surfaceVariant
                 else -> MaterialTheme.colorScheme.surface
             }
@@ -301,9 +430,12 @@ private fun MealRow(
             }
             Spacer(Modifier.size(12.dp))
             Column(Modifier.weight(1f)) {
-                Text(slot.hu, style = MaterialTheme.typography.labelSmall)
                 Text(
-                    meal.meal.name,
+                    if (replaced) "${slot.hu} · helyette" else slot.hu,
+                    style = MaterialTheme.typography.labelSmall,
+                )
+                Text(
+                    shownName,
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.SemiBold,
                     textDecoration = if (status == LogStatus.SKIPPED) TextDecoration.LineThrough else null,
@@ -319,8 +451,22 @@ private fun MealRow(
                 FilledTonalIconButton(onClick = onAte) {
                     Icon(Icons.Filled.Check, contentDescription = "Megettem")
                 }
-                IconButton(onClick = onSkip) {
-                    Icon(Icons.Filled.Close, contentDescription = "Kihagytam")
+                Box {
+                    IconButton(onClick = { menuOpen = true }) {
+                        Icon(Icons.Filled.MoreVert, contentDescription = "További lehetőségek")
+                    }
+                    DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+                        DropdownMenuItem(
+                            text = { Text("Mást ettem") },
+                            onClick = { menuOpen = false; onReplace() },
+                            leadingIcon = { Icon(Icons.Filled.Edit, contentDescription = null) },
+                        )
+                        DropdownMenuItem(
+                            text = { Text("Kihagytam") },
+                            onClick = { menuOpen = false; onSkip() },
+                            leadingIcon = { Icon(Icons.Filled.Close, contentDescription = null) },
+                        )
+                    }
                 }
             } else {
                 androidx.compose.material3.TextButton(onClick = onUndo) { Text("Vissza") }

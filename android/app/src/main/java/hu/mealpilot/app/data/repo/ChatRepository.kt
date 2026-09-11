@@ -131,7 +131,11 @@ class ChatRepository(
         }
 
         val todayLogs = tracking.allMealLogs().filter { it.epochDay == today.toEpochDay() }
-        val eaten = todayLogs.filter { it.status == LogStatus.EATEN.name || it.status == LogStatus.EXTRA.name }
+        val eaten = todayLogs.filter {
+            it.status == LogStatus.EATEN.name ||
+                it.status == LogStatus.REPLACED.name ||
+                it.status == LogStatus.EXTRA.name
+        }
         val consumed = Nutrients.sum(eaten.map { it.nutrients.toNutrients() })
         val burned = tracking.allActivityLogs()
             .filter { it.epochDay == today.toEpochDay() }

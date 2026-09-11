@@ -100,10 +100,11 @@ class PlanRepository(
                 targetCarbsG = budget.target.carbsG,
                 targetFatG = budget.target.fatG,
                 targetFiberG = budget.target.fiberG,
-                isActive = true,
+                // Az új terv addig nem lép életbe, amíg nincs benne egyetlen nap sem.
+                // Így egy megszakadt generálás nem veszi el a működő tervet.
+                isActive = false,
             )
         )
-        planDao.deactivateOthers(planId)
 
         var savedDays = 0
         val coachNotes = mutableListOf<String>()
@@ -112,6 +113,7 @@ class PlanRepository(
             request = request,
             onProgress = onProgress,
             onChunk = { chunk ->
+                val isFirstChunk = savedDays == 0
                 chunk.days.forEach { day -> insertDay(planId, startDate, day) }
                 savedDays += chunk.days.size
                 coachNotes += chunk.coachNotes
@@ -123,8 +125,16 @@ class PlanRepository(
                                 ?: chunk.planTitle.ifBlank { "Étrend – $startDate" },
                             summary = current.summary.ifBlank { chunk.summary },
                             coachNotesJson = encodeStrings(coachNotes.distinct().take(4)),
+                            isActive = true,
                         )
                     )
+                }
+
+                // Az első kész szakasznál váltunk: innentől ez az aktív terv, a korábbiak
+                // pedig törlődnek. A régit nem elég deaktiválni — a naplózás és a napi
+                // nézet átfedő dátumoknál egyébként duplán mutatná az étkezéseket.
+                if (isFirstChunk) {
+                    planDao.deleteOthers(planId)
                 }
                 rebuildShoppingList(planId, startDate.toEpochDay(), startDate.toEpochDay() + days - 1)
             },

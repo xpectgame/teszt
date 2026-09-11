@@ -32,7 +32,11 @@ class StatsRepository(
         val weights = tracking.allWeights()
 
         val eatenByDay = mealLogs
-            .filter { it.status == LogStatus.EATEN.name || it.status == LogStatus.EXTRA.name }
+            .filter {
+                it.status == LogStatus.EATEN.name ||
+                    it.status == LogStatus.REPLACED.name ||
+                    it.status == LogStatus.EXTRA.name
+            }
             .groupBy { it.epochDay }
 
         val loggedDays = eatenByDay.keys.sorted()
@@ -65,7 +69,7 @@ class StatsRepository(
             plansGenerated = planDao.count(),
             shoppingListsCompleted = shoppingDao.completedListCount(),
             distinctRecipesEaten = mealLogs
-                .filter { it.status == LogStatus.EATEN.name }
+                .filter { it.status == LogStatus.EATEN.name || it.status == LogStatus.REPLACED.name }
                 .map { it.name.trim().lowercase() }
                 .filter { it.isNotBlank() }
                 .distinct().size,

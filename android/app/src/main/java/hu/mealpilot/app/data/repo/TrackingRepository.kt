@@ -53,6 +53,36 @@ class TrackingRepository(
         return true
     }
 
+    /**
+     * A tervezett étkezés helyett mást evett a felhasználó.
+     *
+     * A tervet nem írjuk át — az étkezés a helyén marad, csak a naplóba az kerül, ami
+     * tényleg megtörtént. Így a napi összesítő pontos lesz anélkül, hogy bármit újra
+     * kellene terveztetni.
+     */
+    suspend fun logReplacedMeal(
+        mealId: Long,
+        name: String,
+        nutrients: Nutrients,
+        note: String = "",
+    ): Boolean {
+        val meal = mealDao.byId(mealId) ?: return false
+        mealLogDao.deleteForMeal(mealId)
+        mealLogDao.insert(
+            MealLogEntity(
+                mealId = mealId,
+                planId = meal.planId,
+                epochDay = meal.epochDay,
+                loggedAtMillis = System.currentTimeMillis(),
+                status = LogStatus.REPLACED.name,
+                name = name.ifBlank { meal.name },
+                nutrients = NutrientsColumns.from(nutrients),
+                note = note,
+            )
+        )
+        return true
+    }
+
     /** Terven kívüli étkezés kézi felvitele. */
     suspend fun logCustomMeal(date: LocalDate, name: String, nutrients: Nutrients, note: String = "") {
         mealLogDao.insert(

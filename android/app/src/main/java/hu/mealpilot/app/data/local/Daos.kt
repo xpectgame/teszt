@@ -37,6 +37,10 @@ interface PlanDao {
 
     @Query("DELETE FROM plans WHERE id = :id")
     suspend fun delete(id: Long)
+
+    /** A régi tervek törlése. A naplóbejegyzések megmaradnak: saját névvel és tápértékkel. */
+    @Query("DELETE FROM plans WHERE id != :keepId")
+    suspend fun deleteOthers(keepId: Long)
 }
 
 @Dao
@@ -54,8 +58,19 @@ interface MealDao {
     @Query("DELETE FROM meals WHERE planId = :planId AND dayIndex = :dayIndex")
     suspend fun deleteDay(planId: Long, dayIndex: Int)
 
+    /**
+     * Csak az aktív terv étkezései. A tervszűrés nélkül egy korábbi, már deaktivált terv
+     * átfedő napjai is bejönnének, és minden étkezés kétszer jelenne meg.
+     */
     @Transaction
-    @Query("SELECT * FROM meals WHERE epochDay = :epochDay ORDER BY scheduledAtMillis")
+    @Query(
+        """
+        SELECT * FROM meals
+        WHERE epochDay = :epochDay
+          AND planId IN (SELECT id FROM plans WHERE isActive = 1)
+        ORDER BY scheduledAtMillis
+        """
+    )
     fun observeDay(epochDay: Long): Flow<List<MealWithIngredients>>
 
     @Transaction
