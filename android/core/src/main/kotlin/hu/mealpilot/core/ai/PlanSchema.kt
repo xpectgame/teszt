@@ -1,17 +1,22 @@
 package hu.mealpilot.core.ai
 
+import hu.mealpilot.core.i18n.Localized
 import hu.mealpilot.core.model.Nutrients
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 /** Az étkezés napon belüli helye — ez határozza meg az emlékeztető sorrendjét is. */
-enum class MealSlot(val hu: String, val defaultTime: String) {
-    BREAKFAST("Reggeli", "07:30"),
-    MORNING_SNACK("Tízórai", "10:00"),
-    LUNCH("Ebéd", "12:30"),
-    AFTERNOON_SNACK("Uzsonna", "16:00"),
-    DINNER("Vacsora", "19:30"),
-    EVENING_SNACK("Esti falat", "21:30");
+enum class MealSlot(
+    override val hu: String,
+    override val en: String,
+    val defaultTime: String,
+) : Localized {
+    BREAKFAST("Reggeli", "Breakfast", "07:30"),
+    MORNING_SNACK("Tízórai", "Morning snack", "10:00"),
+    LUNCH("Ebéd", "Lunch", "12:30"),
+    AFTERNOON_SNACK("Uzsonna", "Afternoon snack", "16:00"),
+    DINNER("Vacsora", "Dinner", "19:30"),
+    EVENING_SNACK("Esti falat", "Evening snack", "21:30");
 
     companion object {
         fun fromRaw(raw: String?): MealSlot = fromRawOrNull(raw) ?: AFTERNOON_SNACK
@@ -36,16 +41,16 @@ enum class MealSlot(val hu: String, val defaultTime: String) {
 }
 
 /** Bolti polc / kategória a bevásárlólista csoportosításához. */
-enum class Aisle(val hu: String) {
-    ZOLDSEG_GYUMOLCS("Zöldség, gyümölcs"),
-    HUS_HAL("Hús, hal"),
-    TEJTERMEK("Tejtermék, tojás"),
-    PEKARU("Pékáru"),
-    SZARAZARU("Szárazáru, konzerv"),
-    FAGYASZTOTT("Fagyasztott"),
-    FUSZER("Fűszer, olaj, alapok"),
-    ITAL("Ital"),
-    EGYEB("Egyéb");
+enum class Aisle(override val hu: String, override val en: String) : Localized {
+    ZOLDSEG_GYUMOLCS("Zöldség, gyümölcs", "Produce"),
+    HUS_HAL("Hús, hal", "Meat and fish"),
+    TEJTERMEK("Tejtermék, tojás", "Dairy and eggs"),
+    PEKARU("Pékáru", "Bakery"),
+    SZARAZARU("Szárazáru, konzerv", "Pantry and tinned"),
+    FAGYASZTOTT("Fagyasztott", "Frozen"),
+    FUSZER("Fűszer, olaj, alapok", "Spices, oils, staples"),
+    ITAL("Ital", "Drinks"),
+    EGYEB("Egyéb", "Other");
 
     companion object {
         fun fromRaw(raw: String?): Aisle =

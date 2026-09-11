@@ -1,5 +1,7 @@
 package hu.mealpilot.core.model
 
+import hu.mealpilot.core.i18n.Localized
+
 /** Biológiai nem — kizárólag az anyagcsere-képletek (Mifflin-St Jeor, Keytel) bemenete. */
 enum class Sex { MALE, FEMALE }
 
@@ -11,27 +13,36 @@ enum class Sex { MALE, FEMALE }
  * címkék szándékosan edzésszámban beszélnek, mert arra könnyebb válaszolni, mint egy
  * elvont „közepesen aktív" besorolásra.
  */
-enum class ActivityLevel(val factor: Double, val hu: String) {
-    SEDENTARY(1.20, "Ülő életmód, alig mozgok"),
-    LIGHT(1.375, "Heti 1–3 edzés vagy sok gyaloglás"),
-    MODERATE(1.55, "Heti 3–5 edzés"),
-    HIGH(1.725, "Heti 6–7 edzés vagy fizikai munka"),
-    EXTREME(1.90, "Napi kétszeri edzés vagy nehéz fizikai munka");
+enum class ActivityLevel(
+    val factor: Double,
+    override val hu: String,
+    override val en: String,
+) : Localized {
+    SEDENTARY(1.20, "Ülő életmód, alig mozgok", "Mostly sitting, little exercise"),
+    LIGHT(1.375, "Heti 1–3 edzés vagy sok gyaloglás", "1–3 workouts a week, or lots of walking"),
+    MODERATE(1.55, "Heti 3–5 edzés", "3–5 workouts a week"),
+    HIGH(1.725, "Heti 6–7 edzés vagy fizikai munka", "6–7 workouts a week, or physical work"),
+    EXTREME(1.90, "Napi kétszeri edzés vagy nehéz fizikai munka", "Twice-daily training or heavy labour");
 }
 
-enum class DietStyle(val hu: String) {
-    OMNIVORE("Mindenevő"),
-    VEGETARIAN("Vegetáriánus"),
-    VEGAN("Vegán"),
-    PESCATARIAN("Pescatariánus"),
-    LOW_CARB("Alacsony szénhidrát"),
-    MEDITERRANEAN("Mediterrán");
+enum class DietStyle(override val hu: String, override val en: String) : Localized {
+    OMNIVORE("Mindenevő", "Everything"),
+    VEGETARIAN("Vegetáriánus", "Vegetarian"),
+    VEGAN("Vegán", "Vegan"),
+    PESCATARIAN("Pescatariánus", "Pescatarian"),
+    LOW_CARB("Alacsony szénhidrát", "Low carb"),
+    MEDITERRANEAN("Mediterrán", "Mediterranean");
 }
 
-enum class MacroPreset(val hu: String, val proteinPerKg: Double, val fatPerKg: Double) {
-    BALANCED("Kiegyensúlyozott", 1.8, 0.9),
-    HIGH_PROTEIN("Magas fehérje", 2.2, 0.8),
-    LOW_CARB("Alacsony szénhidrát", 2.0, 1.3);
+enum class MacroPreset(
+    override val hu: String,
+    override val en: String,
+    val proteinPerKg: Double,
+    val fatPerKg: Double,
+) : Localized {
+    BALANCED("Kiegyensúlyozott", "Balanced", 1.8, 0.9),
+    HIGH_PROTEIN("Magas fehérje", "High protein", 2.2, 0.8),
+    LOW_CARB("Alacsony szénhidrát", "Low carb", 2.0, 1.3);
 }
 
 /**

@@ -1,11 +1,13 @@
 package hu.mealpilot.core.billing
 
+import hu.mealpilot.core.i18n.AppLanguage
+import hu.mealpilot.core.i18n.Localized
 import java.time.LocalDate
 
 /** Csomag. A szabad sáv önmagában is használható app, nem csonkolt demó. */
-enum class PlanTier(val hu: String) {
-    FREE("Ingyenes"),
-    PREMIUM("Teljes");
+enum class PlanTier(override val hu: String, override val en: String) : Localized {
+    FREE("Ingyenes", "Free"),
+    PREMIUM("Teljes", "Full");
 }
 
 /**
@@ -55,20 +57,36 @@ object Tiers {
     }
 
     /** A fizetős csomag érvei — ugyanez a lista jelenik meg a paywallon. */
-    val premiumBenefits: List<String> = listOf(
-        "Korlátlan étrend, akár egy hónapra előre",
-        "Korlátlan beszélgetés: bármit átírhatsz szavakkal",
-        "Egy-egy nap külön átíratása, ha közbejön valami",
-        "Minden új funkció, amint elkészül",
-    )
+    fun premiumBenefits(language: AppLanguage): List<String> = when (language) {
+        AppLanguage.EN -> listOf(
+            "Unlimited meal plans, up to a month ahead",
+            "Unlimited chat: change anything in your own words",
+            "Rewrite a single day when something comes up",
+            "Every new feature, as soon as it ships",
+        )
+        AppLanguage.HU -> listOf(
+            "Korlátlan étrend, akár egy hónapra előre",
+            "Korlátlan beszélgetés: bármit átírhatsz szavakkal",
+            "Egy-egy nap külön átíratása, ha közbejön valami",
+            "Minden új funkció, amint elkészül",
+        )
+    }
 
     /** Ami a fizetős csomag nélkül is jár — ezt is kiírjuk, hogy ne érezze csapdának. */
-    val freeBenefits: List<String> = listOf(
-        "Étkezés- és súlynapló, korlátlanul",
-        "Bevásárlólista és étkezési emlékeztetők",
-        "Beépített receptekből készülő étrend, internet nélkül is",
-        "Havonta egy teljes AI-étrend",
-    )
+    fun freeBenefits(language: AppLanguage): List<String> = when (language) {
+        AppLanguage.EN -> listOf(
+            "Meal and weight log, unlimited",
+            "Shopping list and meal reminders",
+            "Plans from the built-in recipes, even offline",
+            "One full AI meal plan a month",
+        )
+        AppLanguage.HU -> listOf(
+            "Étkezés- és súlynapló, korlátlanul",
+            "Bevásárlólista és étkezési emlékeztetők",
+            "Beépített receptekből készülő étrend, internet nélkül is",
+            "Havonta egy teljes AI-étrend",
+        )
+    }
 }
 
 /**
@@ -133,28 +151,43 @@ data class Entitlement(
      * Miért nem indulhat a művelet — a felületnek szánt, kész mondat.
      * Null, ha mehet.
      */
-    fun blockReason(feature: PaidFeature, now: String = BillingPeriod.currentKey()): String? = when (feature) {
-        PaidFeature.PLAN_GENERATION ->
-            if (canGeneratePlan(now)) null
-            else "Ebben a hónapban elhasználtad az ingyenes étrended. " +
-                "A kvóta ${BillingPeriod.daysUntilReset()} nap múlva nullázódik."
+    fun blockReason(
+        feature: PaidFeature,
+        now: String = BillingPeriod.currentKey(),
+        language: AppLanguage = AppLanguage.DEFAULT,
+    ): String? {
+        val days = BillingPeriod.daysUntilReset()
+        val english = language == AppLanguage.EN
+        return when (feature) {
+            PaidFeature.PLAN_GENERATION ->
+                if (canGeneratePlan(now)) null
+                else if (english) "You have used this month's free meal plan. " +
+                    "Your quota resets in $days days."
+                else "Ebben a hónapban elhasználtad az ingyenes étrended. " +
+                    "A kvóta $days nap múlva nullázódik."
 
-        PaidFeature.CHAT ->
-            if (canSendMessage(now)) null
-            else "Ebben a hónapban elfogyott az ingyenes üzenetkereted. " +
-                "A kvóta ${BillingPeriod.daysUntilReset()} nap múlva nullázódik."
+            PaidFeature.CHAT ->
+                if (canSendMessage(now)) null
+                else if (english) "You have used up this month's free messages. " +
+                    "Your quota resets in $days days."
+                else "Ebben a hónapban elfogyott az ingyenes üzenetkereted. " +
+                    "A kvóta $days nap múlva nullázódik."
 
-        PaidFeature.CHAT_ACTIONS ->
-            if (limits.canRunChatActions) null
-            else "A beszélgetésből indított módosításokhoz előfizetés kell."
+            PaidFeature.CHAT_ACTIONS ->
+                if (limits.canRunChatActions) null
+                else if (english) "Changes made from chat need a subscription."
+                else "A beszélgetésből indított módosításokhoz előfizetés kell."
 
-        PaidFeature.DAY_REFINE ->
-            if (limits.canRefineDays) null
-            else "Egy-egy nap átíratásához előfizetés kell."
+            PaidFeature.DAY_REFINE ->
+                if (limits.canRefineDays) null
+                else if (english) "Rewriting a single day needs a subscription."
+                else "Egy-egy nap átíratásához előfizetés kell."
 
-        PaidFeature.LONG_PLAN ->
-            if (limits.maxPlanDays >= 7) null
-            else "Az ingyenes csomagban legfeljebb ${limits.maxPlanDays} napos terv kérhető."
+            PaidFeature.LONG_PLAN ->
+                if (limits.maxPlanDays >= 7) null
+                else if (english) "The free plan allows at most ${limits.maxPlanDays} days."
+                else "Az ingyenes csomagban legfeljebb ${limits.maxPlanDays} napos terv kérhető."
+        }
     }
 }
 

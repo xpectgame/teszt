@@ -1,5 +1,6 @@
 package hu.mealpilot.core
 
+import hu.mealpilot.core.i18n.AppLanguage
 import hu.mealpilot.core.billing.BillingPeriod
 import hu.mealpilot.core.billing.Entitlement
 import hu.mealpilot.core.billing.PaidFeature
@@ -117,7 +118,7 @@ class EntitlementTest {
         assertTrue(Tiers.FREE.aiPlansPerMonth > 0)
         assertTrue(Tiers.FREE.chatMessagesPerMonth > 0)
         assertTrue(Tiers.FREE.maxPlanDays > 0)
-        assertTrue(Tiers.freeBenefits.isNotEmpty())
-        assertTrue(Tiers.premiumBenefits.isNotEmpty())
+        assertTrue(Tiers.freeBenefits(AppLanguage.HU).isNotEmpty())
+        assertTrue(Tiers.premiumBenefits(AppLanguage.HU).isNotEmpty())
     }
 }
