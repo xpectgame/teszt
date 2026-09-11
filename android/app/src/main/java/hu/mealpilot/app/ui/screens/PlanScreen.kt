@@ -56,6 +56,7 @@ import hu.mealpilot.core.billing.Tiers
 import hu.mealpilot.app.data.repo.PlanRepository
 import hu.mealpilot.app.notify.ReminderRefreshWorker
 import hu.mealpilot.app.data.repo.ReportKind
+import hu.mealpilot.app.data.telemetry.TelemetryEvent
 import hu.mealpilot.app.ui.components.EmptyState
 import hu.mealpilot.app.ui.components.ReportDialog
 import hu.mealpilot.app.ui.components.SectionCard
@@ -125,6 +126,7 @@ class PlanViewModel(private val container: AppContainer) : ViewModel() {
 
     fun refineDay(dayIndex: Int, instruction: String, onResult: suspend (String) -> Unit) =
         viewModelScope.launch {
+            container.telemetry.record(TelemetryEvent.DAY_REFINED)
             val plan = container.planRepository.activePlan() ?: return@launch
             val profile = container.settings.currentProfile()
             val budget = EnergyCalculator.budget(profile)

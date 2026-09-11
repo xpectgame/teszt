@@ -31,6 +31,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import hu.mealpilot.app.AppContainer
+import hu.mealpilot.app.data.telemetry.TelemetryEvent
 import hu.mealpilot.app.data.local.LogStatus
 import hu.mealpilot.app.data.local.MealWithIngredients
 import hu.mealpilot.app.data.repo.PlanRepository
@@ -56,6 +57,7 @@ class MealDetailViewModel(
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
     fun log(mealId: Long, status: LogStatus) = viewModelScope.launch {
+        container.telemetry.record(TelemetryEvent.MEAL_LOGGED)
         container.trackingRepository.logPlannedMeal(mealId, status)
         val plan = container.planRepository.activePlan() ?: return@launch
         container.statsRepository.refreshAndCollectNew(plan.targetKcal, plan.targetProteinG)

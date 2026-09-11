@@ -38,6 +38,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import hu.mealpilot.app.AppContainer
+import hu.mealpilot.app.data.telemetry.TelemetryEvent
 import hu.mealpilot.app.billing.PREMIUM_SUBSCRIPTION_ID
 import hu.mealpilot.core.billing.BillingPeriod
 import hu.mealpilot.core.billing.Tiers
@@ -91,6 +92,7 @@ fun PaywallScreen(
     LaunchedEffect(Unit) { container.billing.refresh() }
     LaunchedEffect(billing.subscribed) {
         if (billing.subscribed) {
+            container.telemetry.record(TelemetryEvent.SUBSCRIBED)
             snackbarHostState.showSnackbar("Köszönjük! A teljes csomag aktív.")
             onClose()
         }
@@ -166,6 +168,7 @@ fun PaywallScreen(
 
         Button(
             onClick = {
+                container.telemetry.record(TelemetryEvent.PURCHASE_STARTED)
                 context.findActivity()?.let { container.billing.launchPurchase(it) }
             },
             enabled = billing.available && price != null && !billing.subscribed,

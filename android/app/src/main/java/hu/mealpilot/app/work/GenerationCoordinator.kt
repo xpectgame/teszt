@@ -4,6 +4,7 @@ import android.util.Log
 import hu.mealpilot.app.AppContainer
 import hu.mealpilot.app.data.ai.QuotaExceededException
 import hu.mealpilot.app.data.repo.PlanGenerationOutcome
+import hu.mealpilot.app.data.telemetry.TelemetryEvent
 import hu.mealpilot.app.notify.ReminderRefreshWorker
 import hu.mealpilot.core.ai.GenerationProgress
 import hu.mealpilot.core.billing.PaidFeature
@@ -57,7 +58,10 @@ class GenerationCoordinator(private val container: AppContainer) {
     private val _paywallPrompt = MutableStateFlow<String?>(null)
     val paywallPrompt: StateFlow<String?> = _paywallPrompt.asStateFlow()
 
-    fun requestPaywall(reason: String) { _paywallPrompt.value = reason }
+    fun requestPaywall(reason: String) {
+        container.telemetry.record(TelemetryEvent.PAYWALL_SHOWN)
+        _paywallPrompt.value = reason
+    }
 
     fun consumePaywallPrompt() { _paywallPrompt.value = null }
 
@@ -68,6 +72,7 @@ class GenerationCoordinator(private val container: AppContainer) {
      */
     private fun offerUpgradeIfQuota(error: Throwable?): Boolean {
         val quota = error as? QuotaExceededException ?: return false
+        container.telemetry.record(TelemetryEvent.QUOTA_BLOCKED)
         if (quota.upgradeOffered) requestPaywall(quota.message ?: "Elfogyott a havi keret.")
         return quota.upgradeOffered
     }
@@ -88,6 +93,7 @@ class GenerationCoordinator(private val container: AppContainer) {
             }
             val allowedDays = entitlement.allowedPlanDays(days)
 
+            container.telemetry.record(TelemetryEvent.PLAN_REQUESTED)
             begin(totalDays = allowedDays, headline = "Összeállítom az étrended")
             try {
                 val profile = container.settings.currentProfile()
@@ -105,11 +111,16 @@ class GenerationCoordinator(private val container: AppContainer) {
                     ReminderRefreshWorker.refreshNow(container.appContext)
                     // Csak a ténylegesen elkészült terv fogyasztja a keretet.
                     container.entitlements.recordPlanGenerated()
+                    container.telemetry.record(TelemetryEvent.PLAN_GENERATED)
                 }
-                result.onFailure { error -> offerUpgradeIfQuota(error) }
+                result.onFailure { error ->
+                    container.telemetry.record(TelemetryEvent.PLAN_FAILED)
+                    offerUpgradeIfQuota(error)
+                }
                 _lastOutcome.value = result
             } catch (error: Throwable) {
                 Log.e(TAG, "A tervezés megszakadt.", error)
+                container.telemetry.record(TelemetryEvent.PLAN_FAILED)
                 offerUpgradeIfQuota(error)
                 _lastOutcome.value = Result.failure(error)
             } finally {

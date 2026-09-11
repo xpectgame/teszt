@@ -8,6 +8,12 @@ export interface Env {
   PLAY_SERVICE_ACCOUNT_JSON?: string
   /** A Pub/Sub push végpont közös titka — enélkül a webhookot bárki hívhatná. */
   RTDN_SHARED_SECRET?: string
+  /**
+   * A fejlesztő saját buildjének kulcsa. Aki ezt küldi, kvóta nélkül használhatja a
+   * szolgáltatást. A bolti buildbe SOHA nem kerül bele — ha mégis kiszivárogna, elég
+   * itt lecserélni, és a régi azonnal érvénytelen.
+   */
+  OWNER_KEY?: string
 
   // Beállítások (wrangler.toml [vars])
   ANDROID_PACKAGE: string
@@ -17,6 +23,7 @@ export interface Env {
   PLAN_EFFORT: string
   FREE_OUTPUT_TOKEN_CAP: string
   PREMIUM_OUTPUT_TOKEN_CAP: string
+  OWNER_OUTPUT_TOKEN_CAP?: string
 }
 
 export function intVar(value: string | undefined, fallback: number): number {

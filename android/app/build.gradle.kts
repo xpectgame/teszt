@@ -79,16 +79,34 @@ android {
         }
     }
 
+    // A fejlesztő saját kulcsa: aki ezt küldi, a backenden kvóta nélkül dolgozik, és az
+    // appban is teljes csomagot lát. A saját telefonodra szánt buildbe kell, a Play-re
+    // feltöltöttbe SOHA — ezért a release build alapból nem kapja meg.
+    val ownerKey = System.getenv("MEALPILOT_OWNER_KEY")?.trim().orEmpty()
+    val ownerKeyInRelease = System.getenv("MEALPILOT_OWNER_KEY_IN_RELEASE") == "1"
+    if (ownerKey.isNotBlank() && ownerKeyInRelease) {
+        logger.warn(
+            "FIGYELEM: a tulajdonosi kulcs bekerül a RELEASE buildbe. Ezt a csomagot ne " +
+                "töltsd fel a Play Console-ba — a kulcs visszafejthető lenne belőle."
+        )
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
             if (canSignRelease) signingConfig = signingConfigs.getByName("release")
+            buildConfigField(
+                "String",
+                "OWNER_KEY",
+                "\"${if (ownerKeyInRelease) ownerKey else ""}\"",
+            )
         }
         debug {
             applicationIdSuffix = ".debug"
             signingConfig = signingConfigs.getByName("debug")
+            buildConfigField("String", "OWNER_KEY", "\"$ownerKey\"")
         }
     }
 

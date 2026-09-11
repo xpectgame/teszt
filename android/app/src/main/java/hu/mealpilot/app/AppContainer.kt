@@ -15,6 +15,8 @@ import hu.mealpilot.app.data.repo.ChatRepository
 import hu.mealpilot.app.data.remote.BackendClient
 import hu.mealpilot.app.data.repo.PlanRepository
 import hu.mealpilot.app.data.repo.ReportRepository
+import hu.mealpilot.app.data.telemetry.CrashReporter
+import hu.mealpilot.app.data.telemetry.Telemetry
 import hu.mealpilot.app.data.repo.StatsRepository
 import hu.mealpilot.app.data.repo.TrackingRepository
 import hu.mealpilot.app.work.GenerationCoordinator
@@ -71,7 +73,24 @@ class AppContainer(context: Context) {
     /** A hosszan futó tervezés egyetlen gazdája — minden képernyő ezt figyeli. */
     val generation: GenerationCoordinator by lazy { GenerationCoordinator(this) }
 
-    val entitlements: EntitlementRepository by lazy { EntitlementRepository(appContext) }
+    /**
+     * A fejlesztő saját buildje: a kulcs fordításkor kerül bele (MEALPILOT_OWNER_KEY).
+     * A boltból telepített appban üres, tehát ott ennek nincs hatása.
+     */
+    val isOwnerBuild: Boolean get() = BuildConfig.OWNER_KEY.isNotBlank()
+
+    val entitlements: EntitlementRepository by lazy {
+        EntitlementRepository(appContext, ownerBuild = isOwnerBuild)
+    }
+
+    /**
+     * Névtelen használati számlálók és összeomlás-jelentés.
+     *
+     * A felhasználó kikapcsolhatja; kikapcsolva a gyűjtés is leáll, nem csak a küldés.
+     */
+    val telemetry: Telemetry by lazy {
+        Telemetry(appContext, backgroundScope) { settings.currentSettings().telemetryEnabled }
+    }
 
     /**
      * A bolt. Ha a Play nem érhető el (oldalról telepített build, Play nélküli eszköz),
@@ -113,6 +132,7 @@ class AppContainer(context: Context) {
                 // A vásárlás tokenjét a bolt adja; ebből igazolja a szerver a jogosultságot.
                 purchaseToken = { billing.state.value.purchaseToken },
                 appVersion = BuildConfig.VERSION_NAME,
+                ownerKey = BuildConfig.OWNER_KEY,
             )
         }
     }
@@ -157,6 +177,8 @@ class AppContainer(context: Context) {
         database.clearAllTables()
         settings.clearAll()
         entitlements.clearAll()
+        telemetry.clearAll()
+        CrashReporter.clear(appContext)
         secureKeyStore.setApiKey(null)
     }
 }

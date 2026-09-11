@@ -22,6 +22,9 @@ Amit a kód már tud, és amit neked kell elintézned ahhoz, hogy eladható legy
 | **Tartalom jelentése** | terv, fogás és beszélgetés jelenthető; backend hiányában e-mailre esik vissza |
 | **Backend kliens** | `BackendMealAi` — kulcs nélküli működés, a szerver dönt a jogosultságról |
 | **Kiadási aláírás** | `signingConfigs.release`, a kulcs a repón kívülről (fájl vagy környezeti változó) |
+| **Összeomlás-jelentés** | saját, külső szolgáltató nélkül: fájlba ír, a következő indításkor küld |
+| **Használati statisztika** | napi összesített darabszámok, a Beállításokban kikapcsolható |
+| **Tulajdonosi build** | a te saját telefonodon kvóta és vásárlás nélkül jár a teljes csomag |
 
 ### A backendben (`backend/`)
 
@@ -36,6 +39,9 @@ Amit a kód már tud, és amit neked kell elintézned ahhoz, hogy eladható legy
 | Tokenplafon | kemény havi korlát — ez az, amit egy módosított kliens sem tud megkerülni |
 | Könyvelés | hívásonként token és becsült költség a `requests` táblában |
 | Bejelentések | a `reports` tábla gyűjti a jelentett terveket |
+| Összeomlások | a `crashes` tábla, ujjlenyomat szerint csoportosíthatóan |
+| Statisztika | az `events` tábla, napi bontásban |
+| Tulajdonosi kulcs | `OWNER_KEY` titok — aki küldi, kvóta nélkül dolgozik |
 
 **Termékazonosító a kódban:** `mealpilot_premium_monthly`
 (`app/src/main/java/hu/mealpilot/app/billing/BillingGateway.kt`)
@@ -59,6 +65,7 @@ npm run db:remote
 npx wrangler secret put ANTHROPIC_API_KEY
 npx wrangler secret put PLAY_SERVICE_ACCOUNT_JSON
 npx wrangler secret put RTDN_SHARED_SECRET
+npx wrangler secret put OWNER_KEY          # a saját buildedhez, lásd lent
 npm run deploy
 ```
 
@@ -77,6 +84,35 @@ megérintésével előjövő fejlesztői részben: ott kiírja, melyik tervező 
 A telepítési azonosítót a telefon generálja, tehát az ingyenes sávot elvileg lehet új
 azonosítókkal csapolni. Ma ez ellen a szűk ingyenes keret és a tokenplafon véd. Ha a
 napló alapján valaki tényleg csapolja, a következő lépés a **Play Integrity API**.
+
+---
+
+## 2/a. A saját telefonod: tulajdonosi build
+
+Hogy neked mindig legyen teljes hozzáférésed vásárlás nélkül, egy közös titok kell az
+appban és a backenden. Találj ki egy hosszú, véletlen szöveget (pl. `openssl rand -hex 32`),
+és add meg mindkét helyen:
+
+```bash
+# backend
+npx wrangler secret put OWNER_KEY
+
+# app — a te telefonodra szánt build
+MEALPILOT_OWNER_KEY=<ugyanaz> \
+MEALPILOT_BACKEND_URL=https://... \
+  ./gradlew :app:assembleDebug
+```
+
+Ettől az app teljes csomagot mutat (bolt és vásárlás nélkül), a backend pedig kvóta nélkül
+szolgál ki. A Beállítások → Névjegyben ki is írja: **„Tulajdonosi build"**.
+
+**Ez a kulcs SOHA nem kerülhet a Play-re feltöltött csomagba.** Ezért a release build
+alapból nem kapja meg, csak ha külön kéred (`MEALPILOT_OWNER_KEY_IN_RELEASE=1`) — és
+akkor a build figyelmeztet. Ugyanezért **ne tedd GitHub secretbe sem**, ha a CI debug
+APK-ja letölthető olyanoknak, akiknek nem akarod odaadni: az APK-ból visszafejthető.
+
+Ha mégis kiszivárogna, elég a `wrangler secret put OWNER_KEY` paranccsal lecserélni —
+a régi azonnal érvénytelen lesz.
 
 ---
 
@@ -179,6 +215,10 @@ A jogosultság megadása után a Play oldalán **akár 24 óra**, amíg élesedi
   - Titkosított továbbítás? **Igen** (HTTPS)
   - Kérhető a törlés? **Igen** — az appban egy gombbal
   - Kötelező a gyűjtés? **Igen**, a funkció működéséhez
+  - **Összeomlási naplók: Igen**, gyűjtjük (hibakeresés). Nem kötelező — kikapcsolható.
+  - **Diagnosztika / alkalmazásinterakciók: Igen**, névtelen napi darabszámok
+    (analitika). Nem kötelező — ugyanazzal a kapcsolóval kikapcsolható.
+  - Hirdetés vagy harmadik féltől származó nyomkövető: **nincs**
 - [ ] **Tartalom besorolása** (IARC kérdőív)
 - [ ] **Célközönség:** 18+
 - [ ] **Egészségügyi app nyilatkozat:** nem egészségügyi szolgáltató
@@ -220,10 +260,14 @@ cd backend && npx wrangler d1 execute mealpilot --remote --command \
 
 ## 6. Ami még hiányzik a kódból
 
-- [ ] Összeomlás- és hibajelentés (pl. Crashlytics vagy Sentry) — enélkül vakon repülsz
-- [ ] Alapvető termékanalitika (hány terv készül, hol morzsolódnak le a felhasználók)
 - [ ] Előfizetői élmény finomhangolása: emlékeztető a próbaidőszak végéről
 - [ ] Play Integrity API, ha az ingyenes sáv csapolása gonddá válik
+- [ ] A release build `mapping.txt`-jét tedd el minden kiadáshoz. Az összeomlás-jelentés
+      obfuszkált hívási láncot küld; visszaolvasni az R8 `retrace` eszközével lehet:
+      `retrace mapping.txt stack.txt`. A Play Console-ba is érdemes feltölteni.
+- [ ] Ha az app sok emberhez jut el, a saját összeomlás-gyűjtés helyett érdemes egy erre
+      való eszköz (Crashlytics, Sentry): csoportosít, riaszt, és magától feloldja a
+      szimbólumokat. A mostani megoldás cserébe nem visz adatot harmadik félhez.
 
 ---
 

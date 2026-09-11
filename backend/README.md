@@ -15,6 +15,9 @@ Amit megold:
 | Könyvelés | minden hívás tokenje és becsült költsége naplózva |
 | Lemondás | Play valós idejű értesítések (RTDN), azonnali érvényesüléssel |
 | Jelentés | „jelentsd ezt a tervet" bejelentések gyűjtése |
+| Összeomlás | az appból érkező hibajelentések, ujjlenyomat szerint csoportosíthatóan |
+| Statisztika | névtelen napi eseményszámlálók |
+| Tulajdonosi kulcs | a fejlesztő saját buildje kvóta nélkül dolgozik |
 
 Futtatókörnyezet: **Cloudflare Workers + D1**. Nincs szerver, amit karban kell tartani,
 a streamelés működik, és a forgalom nagyságrendjén ez ingyenes vagy fillérekbe kerül.
@@ -37,6 +40,7 @@ npm run db:remote
 npx wrangler secret put ANTHROPIC_API_KEY
 npx wrangler secret put PLAY_SERVICE_ACCOUNT_JSON   # a szolgáltatásfiók JSON-ja, egy sorban
 npx wrangler secret put RTDN_SHARED_SECRET          # bármilyen hosszú véletlen szöveg
+npx wrangler secret put OWNER_KEY                  # openssl rand -hex 32
 
 npm run deploy
 ```
@@ -86,6 +90,7 @@ derül ki. Ez nem katasztrófa, de a visszatérített vásárlás addig kiszolg�
 | `POST /v1/session` | jogosultság és a hónapból hátralévő keret |
 | `POST /v1/generate` | tervezés, nap-átírás, beszélgetés — NDJSON stream |
 | `POST /v1/report` | „jelentsd ezt a tervet" bejelentés |
+| `POST /v1/telemetry` | összeomlások és napi számlálók |
 | `POST /v1/play/rtdn` | Play értesítések (Pub/Sub push) |
 | `GET /healthz` | életjel |
 
@@ -94,8 +99,13 @@ Minden `/v1` hívás fejlécei:
 ```
 Authorization: Bearer <telepítési azonosító>
 X-Play-Purchase-Token: <a Play vásárlási tokenje>   (ha van előfizetés)
+X-Owner-Key: <az OWNER_KEY>                         (csak a fejlesztő saját buildjében)
 X-App-Version: 0.1.0 (build 42)
 ```
+
+Az `X-Owner-Key` mindent megelőz: aki küldi, kvóta nélkül dolgozik. A bolti buildbe nem
+kerül bele (a Gradle a release buildből alapból kihagyja). Ha kiszivárogna, elég a titkot
+lecserélni — a régi azonnal érvénytelen.
 
 ### `POST /v1/generate`
 
@@ -181,3 +191,37 @@ A bejelentések:
 npx wrangler d1 execute mealpilot --remote --command \
   "SELECT created_at, kind, reason, detail FROM reports WHERE handled = 0 ORDER BY created_at DESC"
 ```
+
+## Összeomlások és statisztika
+
+A leggyakoribb hibák, csoportosítva:
+
+```bash
+npx wrangler d1 execute mealpilot --remote --command \
+  "SELECT fingerprint, exception, count(*) AS db, max(happened_at) AS utoljara, \
+          count(DISTINCT user_id) AS erintett \
+   FROM crashes GROUP BY fingerprint ORDER BY db DESC LIMIT 20"
+```
+
+Egy konkrét hiba teljes hívási lánca:
+
+```bash
+npx wrangler d1 execute mealpilot --remote --command \
+  "SELECT app_version, device, android_api, stack FROM crashes \
+   WHERE fingerprint = '...' ORDER BY happened_at DESC LIMIT 1"
+```
+
+A release build obfuszkált, tehát a hívási lánc olvashatatlan lesz. Visszafejtéshez tedd
+el minden kiadás `mapping.txt`-jét, és használd az R8 `retrace` eszközét.
+
+A tölcsér (hányan jutnak el az onboardingtól a tervig és az előfizetésig):
+
+```bash
+npx wrangler d1 execute mealpilot --remote --command \
+  "SELECT day, name, sum(count) AS db, sum(users) AS kuldok \
+   FROM events WHERE day >= date('now','-14 day') GROUP BY day, name ORDER BY day DESC, db DESC"
+```
+
+Az `events` tábla szándékosan **nem eseménynapló**: nincs időbélyeg eseményenként és
+nincs sorrend, tehát egy ember napirendjét nem lehet visszaolvasni belőle. A felhasználó
+a Beállításokban ki is kapcsolhatja az egészet, és akkor az app nem is gyűjti.

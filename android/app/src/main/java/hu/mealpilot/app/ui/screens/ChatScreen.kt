@@ -65,6 +65,7 @@ import hu.mealpilot.app.notify.ReminderRefreshWorker
 import hu.mealpilot.app.work.GenerationCoordinator
 import hu.mealpilot.app.data.ai.QuotaExceededException
 import hu.mealpilot.app.data.repo.ReportKind
+import hu.mealpilot.app.data.telemetry.TelemetryEvent
 import hu.mealpilot.app.ui.components.ReportDialog
 import hu.mealpilot.app.ui.containerFactory
 import hu.mealpilot.core.ai.AiChatAction
@@ -111,6 +112,7 @@ class ChatViewModel(private val container: AppContainer) : ViewModel() {
                 return@launch
             }
             _busy.value = ChatBusy.Thinking
+            container.telemetry.record(TelemetryEvent.CHAT_MESSAGE)
             val result = container.chatRepository.send(container.mealAi(), text)
             if (result.isSuccess) container.entitlements.recordChatMessage()
             // A helyi számláló megelőzi ezt, de a végső szó a szerveré: ha ő utasít el
@@ -137,6 +139,7 @@ class ChatViewModel(private val container: AppContainer) : ViewModel() {
         }.getOrNull() ?: return
 
         viewModelScope.launch {
+            container.telemetry.record(TelemetryEvent.CHAT_ACTION_CONFIRMED)
             container.entitlements.current().blockReason(PaidFeature.CHAT_ACTIONS)?.let { reason ->
                 container.generation.requestPaywall(reason)
                 return@launch

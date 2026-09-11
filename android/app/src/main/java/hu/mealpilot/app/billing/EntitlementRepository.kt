@@ -22,12 +22,19 @@ private val Context.billingStore: DataStore<Preferences> by preferencesDataStore
 /**
  * A jogosultság és a havi kvóta tárolása.
  *
- * A számlálók helyben élnek, tehát egy elszánt felhasználó megkerülheti őket. Ez tudatos
- * döntés ebben a szakaszban: amíg a modellhívás a felhasználó saját kulcsán fut, a
- * megkerülés neki kerül pénzbe, nem nekünk. Amint a backend kiszolgálja a hívásokat, a
- * kvótát is oda kell tenni — ez a legfontosabb tétel a kiadási checklistán.
+ * A számlálók helyben élnek, tehát egy elszánt felhasználó megkerülheti őket — de ez
+ * már nem sokat ér neki: ha a hívás a backenden megy ki, a döntést a szerver hozza, és
+ * ott a saját számlálója számít. Ez a példány a FELÜLETÉRT felel: abból tudja az app,
+ * mit írjon ki és mit ajánljon fel, mielőtt egyáltalán kimenne egy kérés.
  */
-class EntitlementRepository(context: Context) {
+class EntitlementRepository(
+    context: Context,
+    /**
+     * A fejlesztő saját buildje. Ilyenkor a teljes csomag jár, bolt és vásárlás nélkül —
+     * a backend ugyanezt a kulcsot ellenőrzi, tehát a szerver is így szolgál ki.
+     */
+    private val ownerBuild: Boolean = false,
+) {
 
     private val store = context.billingStore
 
@@ -91,7 +98,7 @@ class EntitlementRepository(context: Context) {
     }
 
     private fun Preferences.toEntitlement(): Entitlement {
-        val devPremium = this[K_DEV_PREMIUM] ?: false
+        val devPremium = ownerBuild || (this[K_DEV_PREMIUM] ?: false)
         val storedTier = runCatching { PlanTier.valueOf(this[K_TIER] ?: PlanTier.FREE.name) }
             .getOrDefault(PlanTier.FREE)
         return Entitlement(

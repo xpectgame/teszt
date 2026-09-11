@@ -68,6 +68,13 @@ data class AppSettings(
      */
     val acceptedTermsVersion: String = "",
     val acceptedTermsAtMillis: Long = 0L,
+    /**
+     * Összeomlás-jelentés és névtelen használati számlálók.
+     *
+     * Alapból be van kapcsolva: enélkül egy hiba észrevétlenül maradna a telefonokon.
+     * Kikapcsolva nemcsak a küldés áll le, hanem a gyűjtés is.
+     */
+    val telemetryEnabled: Boolean = true,
 )
 
 class SettingsRepository(context: Context) {
@@ -119,6 +126,7 @@ class SettingsRepository(context: Context) {
             p[K_MODEL] = settings.model.id
             p[K_EFFORT] = settings.effort.apiValue
             p[K_DEVELOPER] = settings.developerMode
+            p[K_TELEMETRY] = settings.telemetryEnabled
         }
     }
 
@@ -176,6 +184,7 @@ class SettingsRepository(context: Context) {
         developerMode = this[K_DEVELOPER] ?: false,
         acceptedTermsVersion = this[K_TERMS_VERSION] ?: "",
         acceptedTermsAtMillis = this[K_TERMS_AT] ?: 0L,
+        telemetryEnabled = this[K_TELEMETRY] ?: true,
     )
 
     private companion object {
@@ -206,5 +215,6 @@ class SettingsRepository(context: Context) {
         val K_DEVELOPER = booleanPreferencesKey("developer_mode")
         val K_TERMS_VERSION = stringPreferencesKey("accepted_terms_version")
         val K_TERMS_AT = longPreferencesKey("accepted_terms_at")
+        val K_TELEMETRY = booleanPreferencesKey("telemetry_enabled")
     }
 }

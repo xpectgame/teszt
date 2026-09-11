@@ -23,8 +23,12 @@ PLAN_EFFORT = "medium"
 # egy módosított kliens megpróbálhatja megkerülni, ezt nem tudja.
 FREE_OUTPUT_TOKEN_CAP = "80000"
 PREMIUM_OUTPUT_TOKEN_CAP = "3000000"
+# A fejlesztő saját buildje sem költhet korlátlanul — egy elszabadult ciklus vagy egy
+# kiszivárgott kulcs itt akad meg.
+OWNER_OUTPUT_TOKEN_CAP = "5000000"
 
 # Titkok — NEM ide, hanem:
 #   wrangler secret put ANTHROPIC_API_KEY
 #   wrangler secret put PLAY_SERVICE_ACCOUNT_JSON
 #   wrangler secret put RTDN_SHARED_SECRET
+#   wrangler secret put OWNER_KEY

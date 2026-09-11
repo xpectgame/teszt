@@ -6,6 +6,7 @@ import { PROMPT_HASHES, PLAN_SYSTEM_PROMPT, CHAT_SYSTEM_PROMPT } from '../src/pr
 
 const free = DEFAULT_LIMITS.FREE
 const premium = DEFAULT_LIMITS.PREMIUM
+const owner = DEFAULT_LIMITS.OWNER
 
 function check(overrides: Partial<Parameters<typeof checkQuota>[0]>) {
   return checkQuota({
@@ -61,6 +62,19 @@ describe('kvóta', () => {
     const usage = { ...EMPTY_USAGE, plans: 500, messages: 5000 }
     expect(check({ tier: 'PREMIUM', limits: premium, usage }).allowed).toBe(true)
     expect(check({ tier: 'PREMIUM', limits: premium, usage, task: 'CHAT' }).allowed).toBe(true)
+  })
+
+  it('a fejlesztő saját buildje nem akad el darabszámon', () => {
+    const usage = { ...EMPTY_USAGE, plans: 999, messages: 9999 }
+    expect(check({ tier: 'OWNER', limits: owner, usage, requestedDays: 30 }).allowed).toBe(true)
+    expect(check({ tier: 'OWNER', limits: owner, usage, task: 'CHAT' }).allowed).toBe(true)
+    expect(check({ tier: 'OWNER', limits: owner, usage, task: 'DAY' }).allowed).toBe(true)
+  })
+
+  it('a fejlesztő saját buildje is beleütközik a tokenplafonba', () => {
+    // Egy elszabadult ciklus vagy egy kiszivárgott kulcs itt akad meg.
+    const usage = { ...EMPTY_USAGE, outputTokens: owner.outputTokenCap }
+    expect(check({ tier: 'OWNER', limits: owner, usage }).code).toBe('TOKEN_CAP')
   })
 
   it('a nap átírása csak a teljes csomagban megy', () => {

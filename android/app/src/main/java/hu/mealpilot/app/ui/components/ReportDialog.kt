@@ -28,6 +28,7 @@ import hu.mealpilot.app.AppContainer
 import hu.mealpilot.app.data.repo.ReportKind
 import hu.mealpilot.app.data.repo.ReportOutcome
 import hu.mealpilot.app.data.repo.ReportReason
+import hu.mealpilot.app.data.telemetry.TelemetryEvent
 import hu.mealpilot.app.ui.screens.LegalLinks
 import kotlinx.coroutines.launch
 
@@ -95,6 +96,7 @@ fun ReportDialog(
                 onClick = {
                     sending = true
                     scope.launch {
+                        container.telemetry.record(TelemetryEvent.REPORT_SENT)
                         val outcome = container.reportRepository.submit(kind, reason, detail, payload)
                         when (outcome) {
                             is ReportOutcome.Sent -> onResult("Köszönjük, megkaptuk. Átnézzük.")

@@ -6,7 +6,7 @@
  * mindig ez a fájl hozza — egy módosított app a saját számlálóját átírhatja, ezt nem.
  */
 
-export type Tier = 'FREE' | 'PREMIUM'
+export type Tier = 'FREE' | 'PREMIUM' | 'OWNER'
 export type Task = 'PLAN' | 'DAY' | 'CHAT'
 
 export interface TierLimits {
@@ -33,6 +33,16 @@ export const DEFAULT_LIMITS: Record<Tier, TierLimits> = {
     maxPlanDays: 30,
     canRefineDays: true,
     outputTokenCap: 3_000_000,
+  },
+  // A fejlesztő saját buildje. Nem a Play-ből jön, nem fizet, és nem is akadhat el
+  // kvótán — de tokenplafont ez is kap, hogy egy elszabadult ciklus vagy egy kiszivárgott
+  // kulcs se tudjon korlátlanul költeni.
+  OWNER: {
+    aiPlansPerMonth: -1,
+    chatMessagesPerMonth: -1,
+    maxPlanDays: 30,
+    canRefineDays: true,
+    outputTokenCap: 5_000_000,
   },
 }
 

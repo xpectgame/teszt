@@ -1,6 +1,7 @@
 package hu.mealpilot.app.data.remote
 
 import hu.mealpilot.app.data.ai.MealAiException
+import hu.mealpilot.app.data.telemetry.CrashRecord
 import hu.mealpilot.app.data.ai.QuotaExceededException
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -26,6 +27,11 @@ class BackendClient(
     /** A Play vásárlási tokenje, ha van előfizetés. Ebből igazolja a szerver a jogosultságot. */
     private val purchaseToken: () -> String?,
     private val appVersion: String,
+    /**
+     * A fejlesztő saját buildjének kulcsa, ha ez egy ilyen build. A szerver ettől kvóta
+     * nélkül szolgál ki. A boltból telepített appban üres.
+     */
+    private val ownerKey: String = "",
 ) {
 
     private val json = Json { ignoreUnknownKeys = true; encodeDefaults = true }
@@ -113,6 +119,35 @@ class BackendClient(
         }
     }
 
+    /** Összeomlások és napi számlálók feltöltése. */
+    fun telemetry(
+        day: String,
+        androidApi: Int,
+        device: String,
+        crashes: List<CrashRecord>,
+        events: Map<String, Int>,
+    ) {
+        val body = json.encodeToString(
+            TelemetryRequest.serializer(),
+            TelemetryRequest(
+                day = day,
+                androidApi = androidApi,
+                device = device,
+                crashes = crashes.map {
+                    TelemetryCrash(
+                        exception = it.exception,
+                        message = it.message,
+                        stack = it.stack,
+                        fingerprint = it.fingerprint,
+                        happenedAt = it.happenedAt,
+                    )
+                },
+                events = events,
+            ),
+        )
+        execute(post("v1/telemetry", body)).use { response -> checkOk(response) }
+    }
+
     /** „Jelentsd ezt a tervet" bejelentés elküldése. */
     fun report(kind: String, reason: String, detail: String?, payload: String?) {
         val body = json.encodeToString(
@@ -129,6 +164,7 @@ class BackendClient(
             .addHeader("x-app-version", appVersion)
             .post(body.toRequestBody(JSON_MEDIA))
         purchaseToken()?.takeIf { it.isNotBlank() }?.let { builder.addHeader("x-play-purchase-token", it) }
+        ownerKey.takeIf { it.isNotBlank() }?.let { builder.addHeader("x-owner-key", it) }
         return builder.build()
     }
 
@@ -200,6 +236,24 @@ private data class ErrorResponse(
     val error: String? = null,
     val message: String? = null,
     val upgrade: Boolean? = null,
+)
+
+@Serializable
+private data class TelemetryRequest(
+    val day: String,
+    @SerialName("android_api") val androidApi: Int,
+    val device: String,
+    val crashes: List<TelemetryCrash>,
+    val events: Map<String, Int>,
+)
+
+@Serializable
+private data class TelemetryCrash(
+    val exception: String,
+    val message: String? = null,
+    val stack: String,
+    val fingerprint: String,
+    @SerialName("happened_at") val happenedAt: Long,
 )
 
 @Serializable

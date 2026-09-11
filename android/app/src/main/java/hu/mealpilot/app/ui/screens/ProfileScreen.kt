@@ -55,6 +55,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import hu.mealpilot.app.AppContainer
+import hu.mealpilot.app.data.telemetry.TelemetryEvent
 import hu.mealpilot.app.data.local.WeightLogEntity
 import hu.mealpilot.app.ui.components.SectionCard
 import hu.mealpilot.app.ui.components.StatChip
@@ -111,6 +112,7 @@ class ProfileViewModel(private val container: AppContainer) : ViewModel() {
     }
 
     fun logWeight(weightKg: Double, bodyFat: Double?, onDone: suspend (String) -> Unit) = viewModelScope.launch {
+        container.telemetry.record(TelemetryEvent.WEIGHT_LOGGED)
         container.trackingRepository.logWeight(LocalDate.now(), weightKg, bodyFat)
         // A profil súlya követi a mérést, különben a kalóriakeret elavulna.
         container.settings.updateWeight(weightKg, bodyFat)

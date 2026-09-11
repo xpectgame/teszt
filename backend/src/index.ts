@@ -15,6 +15,17 @@ const TASK_CONFIG: Record<Task, { maxTokens: number; maxPromptChars: number; sys
   CHAT: { maxTokens: 2_000, maxPromptChars: 16_000, system: CHAT_SYSTEM_PROMPT },
 }
 
+/** Egy feltöltésben ennyi fér el — a többit a kliens eldobja, nem gyűjtjük végtelenül. */
+const MAX_CRASHES_PER_UPLOAD = 10
+const MAX_STACK_CHARS = 20_000
+const MAX_EVENT_NAMES = 40
+const MAX_EVENT_COUNT = 100_000
+
+/** UTC naptári nap, a számlálók kulcsa. */
+function isoDay(at: number): string {
+  return new Date(at).toISOString().slice(0, 10)
+}
+
 const app = new Hono<{ Bindings: Env }>()
 
 app.use('/v1/*', cors({ origin: '*', allowHeaders: ['authorization', 'content-type', 'x-play-purchase-token', 'x-app-version'] }))
@@ -251,6 +262,79 @@ app.post('/v1/report', async (c) => {
     .run()
 
   return c.json({ ok: true })
+})
+
+/**
+ * Összeomlások és névtelen napi számlálók fogadása.
+ *
+ * Nem külső szolgáltató: a saját backend gyűjti, mert már itt van, és így nem kerül
+ * harmadik félhez semmi. Cserébe nincs szimbólumfeloldás és riasztás — ha az app
+ * tényleg sok emberhez jut el, egy erre való eszköz (Crashlytics, Sentry) többet ad.
+ */
+app.post('/v1/telemetry', async (c) => {
+  const caller = await resolveCaller(c.env, c.req.raw)
+  const body = (await c.req.json().catch(() => null)) as {
+    day?: string
+    android_api?: number
+    device?: string
+    crashes?: Array<{
+      exception?: string
+      message?: string
+      stack?: string
+      fingerprint?: string
+      happened_at?: number
+    }>
+    events?: Record<string, number>
+  } | null
+
+  if (!body) return c.json({ error: 'BAD_REQUEST', message: 'Hibás kérés.' }, 400)
+
+  const now = Date.now()
+  const appVersion = caller.appVersion ?? ''
+  const writes: Array<D1PreparedStatement> = []
+
+  for (const crash of (body.crashes ?? []).slice(0, MAX_CRASHES_PER_UPLOAD)) {
+    if (!crash.stack || !crash.exception) continue
+    writes.push(
+      c.env.DB.prepare(
+        `INSERT INTO crashes
+           (id, user_id, app_version, android_api, device, exception, message, stack, fingerprint, happened_at, received_at)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)`,
+      ).bind(
+        crypto.randomUUID(),
+        caller.userId,
+        appVersion,
+        body.android_api ?? null,
+        body.device ? String(body.device).slice(0, 120) : null,
+        String(crash.exception).slice(0, 300),
+        crash.message ? String(crash.message).slice(0, 1000) : null,
+        String(crash.stack).slice(0, MAX_STACK_CHARS),
+        String(crash.fingerprint ?? crash.exception).slice(0, 64),
+        crash.happened_at ?? now,
+        now,
+      ),
+    )
+  }
+
+  const day = /^\d{4}-\d{2}-\d{2}$/.test(String(body.day)) ? String(body.day) : isoDay(now)
+  for (const [name, rawCount] of Object.entries(body.events ?? {}).slice(0, MAX_EVENT_NAMES)) {
+    if (!/^[a-z0-9_]{1,40}$/.test(name)) continue
+    const count = Math.min(Math.max(Math.trunc(Number(rawCount) || 0), 0), MAX_EVENT_COUNT)
+    if (count === 0) continue
+    writes.push(
+      c.env.DB.prepare(
+        `INSERT INTO events (day, name, app_version, count, users, updated_at)
+         VALUES (?1, ?2, ?3, ?4, 1, ?5)
+         ON CONFLICT(day, name, app_version) DO UPDATE SET
+           count = events.count + ?4,
+           users = events.users + 1,
+           updated_at = ?5`,
+      ).bind(day, name, appVersion, count, now),
+    )
+  }
+
+  if (writes.length > 0) await c.env.DB.batch(writes)
+  return c.json({ ok: true, stored: writes.length })
 })
 
 /**

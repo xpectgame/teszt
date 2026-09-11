@@ -17,6 +17,7 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -28,6 +29,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import hu.mealpilot.app.AppContainer
+import hu.mealpilot.app.data.telemetry.TelemetryEvent
 import hu.mealpilot.app.data.local.ShoppingItemEntity
 import hu.mealpilot.app.data.local.endEpochDay
 import hu.mealpilot.app.ui.components.EmptyState
@@ -139,6 +141,8 @@ fun ShoppingScreen(
 ) {
     val viewModel: ShoppingViewModel = viewModel(factory = containerFactory(container) { ShoppingViewModel(it) })
     val state by viewModel.state.collectAsState()
+
+    LaunchedEffect(Unit) { container.telemetry.record(TelemetryEvent.SHOPPING_OPENED) }
 
     LazyColumn(
         contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp),

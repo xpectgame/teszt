@@ -39,6 +39,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import hu.mealpilot.app.AppContainer
+import hu.mealpilot.app.data.telemetry.TelemetryEvent
 import hu.mealpilot.app.data.local.ActivityLogEntity
 import hu.mealpilot.app.ui.components.SectionCard
 import hu.mealpilot.app.ui.components.StatChip
@@ -88,6 +89,7 @@ class ActivityViewModel(private val container: AppContainer) : ViewModel() {
 
     fun log(exerciseKey: String, minutes: Int, heartRate: Int?, onDone: suspend (String) -> Unit) =
         viewModelScope.launch {
+            container.telemetry.record(TelemetryEvent.ACTIVITY_LOGGED)
             val profile = container.settings.currentProfile()
             val result = container.trackingRepository.logActivity(
                 profile = profile,

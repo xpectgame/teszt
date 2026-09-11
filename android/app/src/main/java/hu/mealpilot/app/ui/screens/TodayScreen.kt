@@ -51,6 +51,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import hu.mealpilot.app.AppContainer
+import hu.mealpilot.app.data.telemetry.TelemetryEvent
 import hu.mealpilot.app.data.local.LogStatus
 import hu.mealpilot.app.data.local.MealLogEntity
 import hu.mealpilot.app.data.local.MealWithIngredients
@@ -140,6 +141,7 @@ class TodayViewModel(private val container: AppContainer) : ViewModel() {
     }
 
     fun log(mealId: Long, status: LogStatus) = viewModelScope.launch {
+        container.telemetry.record(TelemetryEvent.MEAL_LOGGED)
         container.trackingRepository.logPlannedMeal(mealId, status)
         val plan = container.planRepository.activePlan() ?: return@launch
         container.statsRepository.refreshAndCollectNew(plan.targetKcal, plan.targetProteinG)
@@ -151,11 +153,13 @@ class TodayViewModel(private val container: AppContainer) : ViewModel() {
 
     /** „Nem ezt ettem, hanem ezt" — a terv marad, csak a napló lesz pontos. */
     fun logReplaced(mealId: Long, name: String, nutrients: Nutrients) = viewModelScope.launch {
+        container.telemetry.record(TelemetryEvent.MEAL_LOGGED)
         container.trackingRepository.logReplacedMeal(mealId, name, nutrients)
         refreshAchievements()
     }
 
     fun logExtra(name: String, nutrients: Nutrients) = viewModelScope.launch {
+        container.telemetry.record(TelemetryEvent.MEAL_LOGGED)
         container.trackingRepository.logCustomMeal(date.value, name, nutrients)
         refreshAchievements()
     }

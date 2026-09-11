@@ -46,11 +46,28 @@ function readInstallToken(request: Request): string {
 
 function limitsFor(env: Env, tier: Tier): TierLimits {
   const base = DEFAULT_LIMITS[tier]
-  const cap =
-    tier === 'PREMIUM'
-      ? intVar(env.PREMIUM_OUTPUT_TOKEN_CAP, base.outputTokenCap)
-      : intVar(env.FREE_OUTPUT_TOKEN_CAP, base.outputTokenCap)
-  return { ...base, outputTokenCap: cap }
+  const configured =
+    tier === 'OWNER'
+      ? env.OWNER_OUTPUT_TOKEN_CAP
+      : tier === 'PREMIUM'
+        ? env.PREMIUM_OUTPUT_TOKEN_CAP
+        : env.FREE_OUTPUT_TOKEN_CAP
+  return { ...base, outputTokenCap: intVar(configured, base.outputTokenCap) }
+}
+
+/**
+ * Időzítésre nem árulkodó összehasonlítás.
+ *
+ * Egy sima `===` a nem egyező karakternél azonnal visszatér, amiből elvileg ki lehet
+ * mérni a kulcsot. Itt nem valószínű támadás, de a helyes forma nem kerül semmibe.
+ */
+function secretMatches(provided: string, expected: string): boolean {
+  if (provided.length !== expected.length) return false
+  let diff = 0
+  for (let i = 0; i < provided.length; i++) {
+    diff |= provided.charCodeAt(i) ^ expected.charCodeAt(i)
+  }
+  return diff === 0
 }
 
 export async function resolveCaller(env: Env, request: Request): Promise<Caller> {
@@ -58,6 +75,21 @@ export async function resolveCaller(env: Env, request: Request): Promise<Caller>
   const userId = await sha256Hex(installToken)
   const appVersion = request.headers.get('x-app-version')
   const user = await touchUser(env, userId, appVersion)
+
+  // A fejlesztő saját buildje. Ez megelőz mindent: nem a boltból jön, nincs vásárlási
+  // tokenje, és nem is kellene, hogy legyen.
+  const ownerKey = request.headers.get('x-owner-key')?.trim() || null
+  if (ownerKey && env.OWNER_KEY && secretMatches(ownerKey, env.OWNER_KEY)) {
+    return {
+      userId,
+      tier: 'OWNER',
+      limits: limitsFor(env, 'OWNER'),
+      subject: `owner:${userId}`,
+      subscriptionState: null,
+      expiresAt: null,
+      appVersion,
+    }
+  }
 
   const purchaseToken = request.headers.get('x-play-purchase-token')?.trim() || null
   const now = Date.now()

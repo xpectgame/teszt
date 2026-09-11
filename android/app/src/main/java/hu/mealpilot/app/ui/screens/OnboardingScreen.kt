@@ -34,6 +34,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import hu.mealpilot.app.AppContainer
+import hu.mealpilot.app.data.telemetry.TelemetryEvent
 import hu.mealpilot.app.ui.components.ProfileForm
 import hu.mealpilot.app.ui.components.SectionCard
 import hu.mealpilot.app.ui.components.StatChip
@@ -52,6 +53,7 @@ class OnboardingViewModel(private val container: AppContainer) : ViewModel() {
         // és utólag igazolható legyen — ezért a verziót és az időpontot is eltesszük.
         container.settings.recordConsent(LegalLinks.VERSION)
         container.settings.setOnboardingDone(true)
+        container.telemetry.record(TelemetryEvent.ONBOARDING_DONE)
     }
 }
 

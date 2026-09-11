@@ -418,6 +418,28 @@ fun SettingsScreen(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             Spacer(Modifier.height(12.dp))
+            Row(
+                Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column(Modifier.weight(1f)) {
+                    Text("Hibajelentés és névtelen statisztika", style = MaterialTheme.typography.bodyMedium)
+                    Text(
+                        "Ha az app összeomlik, elküldi a hiba helyét, és napi szinten " +
+                            "megszámolja, hány terv és bejegyzés készül. Étrend, napló, " +
+                            "testadat nem megy el. Kikapcsolva a gyűjtés is leáll.",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                Switch(
+                    checked = current.telemetryEnabled,
+                    onCheckedChange = { viewModel.saveSettings(current.copy(telemetryEnabled = it)) },
+                )
+            }
+
+            Spacer(Modifier.height(12.dp))
             // Az elfogadás tényét a Play is elvárja, és vita esetén ez az egyetlen
             // nyoma annak, hogy a felhasználó mikor és melyik szöveget fogadta el.
             if (current.acceptedTermsVersion == LegalLinks.VERSION) {
@@ -456,6 +478,15 @@ fun SettingsScreen(
                     }
                 },
             )
+            if (container.isOwnerBuild) {
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    "Tulajdonosi build — a teljes csomag vásárlás nélkül aktív. " +
+                        "Ezt a csomagot ne töltsd fel a Play Console-ba.",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.primary,
+                )
+            }
             Spacer(Modifier.height(8.dp))
             Text(
                 "Az étrendeket gépi tervező állítja össze a megadott adataid alapján. " +
