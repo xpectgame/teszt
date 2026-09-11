@@ -37,6 +37,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import hu.mealpilot.app.BuildConfig
 import hu.mealpilot.app.AppContainer
 import hu.mealpilot.app.data.telemetry.TelemetryEvent
 import hu.mealpilot.app.billing.PREMIUM_SUBSCRIPTION_ID
@@ -44,17 +45,24 @@ import hu.mealpilot.core.billing.BillingPeriod
 import hu.mealpilot.core.billing.Tiers
 
 /**
- * Az app jogi és bolti hivatkozásai. A Play a nyilvános adatvédelmi URL-t kötelezően kéri.
+ * Az app jogi és bolti hivatkozásai. A Play a nyilvános adatvédelmi URL-t kötelezően kéri,
+ * és a generatív AI nyilatkozathoz az adattörlési meg a támogatási címet is elvárja.
  *
- * FIGYELEM kiadás előtt: a [SITE] jelenleg arra a domainre mutat, amit a repó GitHub Pages
- * oldala kiszolgál — az viszont egy másik projekthez tartozik. Éles kiadáshoz olyan domain
- * kell, amit a MealPilot néven te birtokolsz, és a privacy.html / terms.html oda kerüljön.
- * A fájlok csak a main ágra merge után kerülnek ki, mert a Pages onnan épül.
+ * Az oldalak a repó `mealpilot/` könyvtárában vannak; a cím fordításkor állítható
+ * (MEALPILOT_SITE_URL), mert a domain a kiadás előtt még változni fog. A lépések és az
+ * alapértelmezés korlátai: docs/DOMAIN.md.
  */
 object LegalLinks {
-    const val SITE = "https://hernadicsaba.hu"
-    const val PRIVACY = "$SITE/privacy.html"
-    const val TERMS = "$SITE/terms.html"
+    /**
+     * A jogi oldalak címe. Fordításkor állítható (MEALPILOT_SITE_URL), mert a domain a
+     * kiadás előtt még változni fog — így nem kell kódot módosítani hozzá.
+     */
+    val SITE: String = BuildConfig.SITE_URL
+
+    val PRIVACY = "$SITE/privacy.html"
+    val TERMS = "$SITE/terms.html"
+    val SUPPORT = "$SITE/support.html"
+    val DELETE_DATA = "$SITE/delete-data.html"
     const val SUPPORT_EMAIL = "mate.teke@gmail.com"
 
     /**

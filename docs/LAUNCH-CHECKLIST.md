@@ -202,11 +202,14 @@ A jogosultság megadása után a Play oldalán **akár 24 óra**, amíg élesedi
 - [ ] Nyelv: magyar (elsődleges)
 
 ### 4.5 Kötelező nyilatkozatok
-- [ ] **Adatvédelmi tájékoztató URL.** A `privacy.html` és a `terms.html` a repó
-      gyökerében van, de **csak a `main` ágra merge után kerül ki**, mert a GitHub Pages
-      onnan épül. A Pages jelenleg a `hernadicsaba.hu` domainen szolgál ki, ami egy másik
-      projekthez tartozik — **kiadás előtt MealPilot néven birtokolt domain kell**, és a
-      `LegalLinks.SITE` konstanst is át kell írni (`PaywallScreen.kt`).
+- [ ] **Adatvédelmi tájékoztató URL:** `<domain>/privacy.html`
+- [ ] **Adattörlési URL:** `<domain>/delete-data.html`
+- [ ] **Támogatási webhely:** `<domain>/support.html`
+
+      Az oldalak a `mealpilot/` könyvtárban készen vannak, de **csak a `main` ágra merge
+      után élnek**, mert a GitHub Pages onnan épül. A cím az appban fordításkor állítható
+      (`MEALPILOT_SITE_URL`), tehát domainváltáshoz nem kell kódot írni. A lépések:
+      [`DOMAIN.md`](DOMAIN.md).
 - [ ] **Adatbiztonság (Data safety) űrlap.** A jelenlegi működés szerinti válaszok:
   - Gyűjtünk adatot? **Igen** — „Egészség és fitnesz" (testadatok, étkezés, mozgás)
   - Megosztjuk harmadik féllel? **Igen** — a tervezőszolgáltatóval (Anthropic), a
@@ -275,12 +278,14 @@ cd backend && npx wrangler d1 execute mealpilot --remote --command \
 
 1. Backend deploy + szolgáltatásfiók + RTDN (2. és 4.3 pont)
 2. Release keystore, aláírt release build kipróbálása valódi eszközön (3. pont)
-3. Saját domain a jogi oldalaknak, `LegalLinks.SITE` átírása, merge a `main` ágra
+3. Saját domain a jogi oldalaknak (lásd [`DOMAIN.md`](DOMAIN.md)), merge a `main` ágra
 4. Play Console: termék létrehozása, licenctesztelők, teljes vásárlás végigpróbálása
 5. Jogi szövegek felülvizsgálata és az adatkezelő adatainak kitöltése
 6. Hiányzó funkciók (6. pont)
 7. Zárt teszt → éles
 
-A jogi szövegek (`privacy.html`, `terms.html`) **tervezetek**. A működést pontosan írják
-le, de közzététel előtt nézesd át valakivel, aki ért hozzá — egészségügyi témában és
-előfizetéses modellnél ez nem formalitás.
+A jogi szövegek (`mealpilot/privacy.html`, `mealpilot/terms.html`) **tervezetek**. A
+működést pontosan írják le, de közzététel előtt nézesd át valakivel, aki ért hozzá —
+egészségügyi témában és előfizetéses modellnél ez nem formalitás. Az adatkezelő és a
+szolgáltató adatai még `[…]` helyőrzők, azokat ki kell tölteni; a részletek a
+[`DOMAIN.md`](DOMAIN.md) végén.

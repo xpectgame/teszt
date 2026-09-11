@@ -1,5 +1,12 @@
 import java.util.Properties
 
+/**
+ * A jogi oldalak alapértelmezett címe. Ez ma egy másik projekt domainjének alkönyvtára —
+ * működik, de kiadás előtt saját, MealPilot néven birtokolt domain kell helyette
+ * (lásd docs/DOMAIN.md). A cserét a MEALPILOT_SITE_URL környezeti változó végzi.
+ */
+val DEFAULT_SITE_URL = "https://hernadicsaba.hu/mealpilot"
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
@@ -35,6 +42,16 @@ android {
             "String",
             "BACKEND_URL",
             "\"${System.getenv("MEALPILOT_BACKEND_URL")?.trim()?.trimEnd('/') ?: ""}\"",
+        )
+
+        // A jogi oldalak és a támogatás címe. Amíg nincs saját MealPilot-domain, a
+        // meglévő Pages-oldal alkönyvtára szolgálja ki — a tartalom ugyanaz, csak a cím
+        // változik. Saját domain bekötése után elég ezt az egy változót átírni:
+        //   MEALPILOT_SITE_URL=https://mealpilot.hu ./gradlew :app:bundleRelease
+        buildConfigField(
+            "String",
+            "SITE_URL",
+            "\"${System.getenv("MEALPILOT_SITE_URL")?.trim()?.trimEnd('/') ?: DEFAULT_SITE_URL}\"",
         )
     }
 

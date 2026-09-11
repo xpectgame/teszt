@@ -1,0 +1,141 @@
+/* MealPilot — közös stílus a jogi és tájékoztató oldalakhoz.
+   Szándékosan egyetlen fájl, külső betűtípus és szkript nélkül: ezek az oldalak
+   akkor is be kell töltsenek, ha a hálózat lassú vagy egy CDN éppen nem elérhető. */
+
+:root {
+  --bg: #fdfdfb;
+  --fg: #1a1d17;
+  --muted: #6b7263;
+  --accent: #2f6b3e;
+  --line: #e3e6dd;
+  --card: #f5f7f1;
+  --warn-bg: #fbeeec;
+  --warn-line: #a32e22;
+  --draft-bg: #fdf8e8;
+  --draft-line: #c9a227;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #101310;
+    --fg: #e7ebe3;
+    --muted: #929a8b;
+    --accent: #96d6a2;
+    --line: #262b24;
+    --card: #171b16;
+    --warn-bg: #2c1713;
+    --warn-line: #ff9a88;
+    --draft-bg: #2a2412;
+    --draft-line: #c9a227;
+  }
+}
+
+* { box-sizing: border-box; }
+
+body {
+  max-width: 46rem;
+  margin: 0 auto;
+  padding: 2rem 1.25rem 5rem;
+  font: 16px/1.65 Georgia, "Times New Roman", serif;
+  color: var(--fg);
+  background: var(--bg);
+}
+
+h1 {
+  font-size: 1.9rem;
+  line-height: 1.15;
+  margin: 0 0 .4rem;
+  font-family: system-ui, -apple-system, sans-serif;
+}
+
+h2 {
+  font-size: 1.05rem;
+  margin: 2.2rem 0 .6rem;
+  font-family: system-ui, -apple-system, sans-serif;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  color: var(--accent);
+}
+
+h3 {
+  font-size: 1rem;
+  font-family: system-ui, -apple-system, sans-serif;
+  margin: 1.4rem 0 .4rem;
+}
+
+a { color: var(--accent); }
+
+ul { padding-left: 1.3rem; }
+li { margin-bottom: .45rem; }
+
+.meta {
+  color: var(--muted);
+  font-size: .9rem;
+  margin-bottom: 2rem;
+}
+
+.nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .4rem 1.1rem;
+  padding-bottom: 1.4rem;
+  margin-bottom: 1.6rem;
+  border-bottom: 1px solid var(--line);
+  font-family: system-ui, -apple-system, sans-serif;
+  font-size: .88rem;
+}
+
+.nav strong { margin-right: auto; }
+.nav a { text-decoration: none; }
+.nav a:hover { text-decoration: underline; }
+
+.draft {
+  border-left: 3px solid var(--draft-line);
+  background: var(--draft-bg);
+  padding: .8rem 1rem;
+  margin: 1.5rem 0;
+  font-size: .92rem;
+}
+
+.warn {
+  border-left: 3px solid var(--warn-line);
+  background: var(--warn-bg);
+  padding: .9rem 1rem;
+  margin: 1.5rem 0;
+}
+
+.warn h2 { margin-top: 0; }
+
+.card {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: .6rem;
+  padding: 1.1rem 1.2rem;
+  margin: 1.2rem 0;
+}
+
+.card h3 { margin-top: 0; }
+
+.lead {
+  font-size: 1.1rem;
+  color: var(--fg);
+}
+
+footer {
+  margin-top: 4rem;
+  padding-top: 1.2rem;
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+  font-size: .85rem;
+  font-family: system-ui, -apple-system, sans-serif;
+}
+
+footer a { color: var(--muted); }
+
+code {
+  font-family: ui-monospace, "SFMono-Regular", Menlo, monospace;
+  font-size: .9em;
+  background: var(--card);
+  padding: .1em .35em;
+  border-radius: .25em;
+}

@@ -406,6 +406,12 @@ fun SettingsScreen(
             TextButton(onClick = { context.openUrl(LegalLinks.PRIVACY) }) {
                 Text("Adatkezelési tájékoztató")
             }
+            TextButton(onClick = { context.openUrl(LegalLinks.DELETE_DATA) }) {
+                Text("Adatok törlése — mi hol van")
+            }
+            TextButton(onClick = { context.openUrl(LegalLinks.SUPPORT) }) {
+                Text("Támogatás és gyakori kérdések")
+            }
             TextButton(onClick = { context.openUrl("mailto:${LegalLinks.SUPPORT_EMAIL}") }) {
                 Text("Kapcsolat: ${LegalLinks.SUPPORT_EMAIL}")
             }
