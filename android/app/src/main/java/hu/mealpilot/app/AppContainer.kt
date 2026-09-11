@@ -17,6 +17,7 @@ import hu.mealpilot.app.data.repo.PlanRepository
 import hu.mealpilot.app.data.repo.ReportRepository
 import hu.mealpilot.app.data.telemetry.CrashReporter
 import hu.mealpilot.app.data.telemetry.Telemetry
+import hu.mealpilot.app.i18n.LanguageStore
 import hu.mealpilot.app.data.repo.StatsRepository
 import hu.mealpilot.app.data.repo.TrackingRepository
 import hu.mealpilot.app.work.GenerationCoordinator
@@ -40,6 +41,15 @@ class AppContainer(context: Context) {
     val secureKeyStore: SecureKeyStore by lazy { SecureKeyStore(appContext) }
 
     val settings: SettingsRepository by lazy { SettingsRepository(appContext) }
+
+    /**
+     * Az app nyelve. Nem a beállítások közt lakik, mert az Activity indulásakor —
+     * a felület felépítése előtt — is tudni kell, oda pedig nem fér be egy
+     * felfüggesztett olvasás.
+     */
+    val languageStore: LanguageStore by lazy { LanguageStore(appContext) }
+
+    val language: hu.mealpilot.core.i18n.AppLanguage get() = languageStore.current()
 
     val planRepository: PlanRepository by lazy {
         PlanRepository(database.planDao(), database.mealDao(), database.shoppingDao())
@@ -177,6 +187,7 @@ class AppContainer(context: Context) {
         settings.clearAll()
         entitlements.clearAll()
         telemetry.clearAll()
+        languageStore.clear()
         CrashReporter.clear(appContext)
         secureKeyStore.setApiKey(null)
     }

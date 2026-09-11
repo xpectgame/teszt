@@ -29,6 +29,7 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -49,6 +50,8 @@ import androidx.navigation.compose.rememberNavController
 import hu.mealpilot.app.AppContainer
 import hu.mealpilot.app.ui.screens.ChatScreen
 import hu.mealpilot.app.ui.screens.MealDetailScreen
+import hu.mealpilot.app.i18n.LocalAppLanguage
+import hu.mealpilot.app.ui.screens.LanguageScreen
 import hu.mealpilot.app.ui.screens.OnboardingScreen
 import hu.mealpilot.app.ui.screens.PaywallScreen
 import hu.mealpilot.app.ui.screens.PlanScreen
@@ -93,6 +96,10 @@ fun AppRoot(
     val navController = rememberNavController()
     val snackbarHostState = remember { SnackbarHostState() }
     val settings by container.settings.settings.collectAsState(initial = null)
+    val language by container.languageStore.language.collectAsState()
+    // Az első képernyő a nyelvválasztás — még az adatfelvétel előtt, mert az étrend
+    // nyelvét is ez dönti el, nem csak a feliratokét.
+    var languageChosen by remember { mutableStateOf(container.languageStore.isChosen) }
     val generationStatus by container.generation.status.collectAsState()
     val paywallPrompt by container.generation.paywallPrompt.collectAsState()
     var paywallReason by remember { mutableStateOf<String?>(null) }
@@ -116,6 +123,20 @@ fun AppRoot(
 
     val onboardingDone = settings?.onboardingDone
 
+    if (!languageChosen) {
+        Surface(color = MaterialTheme.colorScheme.background) {
+            LanguageScreen(
+                initial = language,
+                onConfirm = {
+                    container.languageStore.set(it)
+                    languageChosen = true
+                },
+            )
+        }
+        return
+    }
+
+    CompositionLocalProvider(LocalAppLanguage provides language) {
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         bottomBar = {
@@ -205,6 +226,7 @@ fun AppRoot(
                 }
             }
         }
+    }
     }
 }
 

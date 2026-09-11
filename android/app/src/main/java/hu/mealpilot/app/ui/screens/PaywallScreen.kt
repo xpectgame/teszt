@@ -38,6 +38,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import hu.mealpilot.app.BuildConfig
+import hu.mealpilot.app.i18n.LocalAppLanguage
 import hu.mealpilot.app.AppContainer
 import hu.mealpilot.app.data.telemetry.TelemetryEvent
 import hu.mealpilot.app.billing.PREMIUM_SUBSCRIPTION_ID
@@ -149,7 +150,7 @@ fun PaywallScreen(
         )
 
         Spacer(Modifier.height(24.dp))
-        Tiers.premiumBenefits.forEach { benefit ->
+        Tiers.premiumBenefits(LocalAppLanguage.current).forEach { benefit ->
             Row(Modifier.padding(vertical = 6.dp), verticalAlignment = Alignment.Top) {
                 Icon(
                     Icons.Filled.Check,
@@ -222,7 +223,7 @@ fun PaywallScreen(
             fontWeight = FontWeight.SemiBold,
         )
         Spacer(Modifier.height(8.dp))
-        Tiers.freeBenefits.forEach { benefit ->
+        Tiers.freeBenefits(LocalAppLanguage.current).forEach { benefit ->
             Text("• $benefit", style = MaterialTheme.typography.bodyMedium)
             Spacer(Modifier.height(4.dp))
         }

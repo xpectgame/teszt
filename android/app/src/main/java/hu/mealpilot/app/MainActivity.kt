@@ -1,6 +1,7 @@
 package hu.mealpilot.app
 
 import android.Manifest
+import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
@@ -13,6 +14,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.core.content.ContextCompat
+import hu.mealpilot.app.i18n.LanguageStore
 import hu.mealpilot.app.ui.AppRoot
 import hu.mealpilot.app.ui.theme.MealPilotTheme
 
@@ -22,6 +24,14 @@ class MainActivity : ComponentActivity() {
 
     private val notificationPermission =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { /* a felhasználó dönt */ }
+
+    /**
+     * A nyelvet a felület felépítése ELŐTT kell beállítani, különben az app egy
+     * pillanatra a régi nyelven villanna fel.
+     */
+    override fun attachBaseContext(newBase: Context) {
+        super.attachBaseContext(LanguageStore.wrap(newBase))
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)

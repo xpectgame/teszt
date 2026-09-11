@@ -84,7 +84,7 @@ class PlanRepository(
             totalDays = days,
             freeText = freeText,
             avoidRecipes = previousNames.takeLast(40),
-            startWeekdayHu = startDate.hungarianWeekday(),
+            startWeekday = startDate.hungarianWeekday(),
         )
 
         val planId = planDao.insert(
@@ -178,7 +178,7 @@ class PlanRepository(
             days = 1,
             startDayIndex = dayIndex,
             totalDays = plan.dayCount,
-            startWeekdayHu = date.hungarianWeekday(),
+            startWeekday = date.hungarianWeekday(),
         )
 
         val response = ai.refineDay(request, current.toAiDayJson(dayIndex), instruction)

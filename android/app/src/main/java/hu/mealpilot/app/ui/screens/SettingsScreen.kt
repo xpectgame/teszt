@@ -55,6 +55,7 @@ import hu.mealpilot.app.notify.ReminderRefreshWorker
 import hu.mealpilot.app.ui.components.ProfileForm
 import hu.mealpilot.app.ui.components.SectionCard
 import hu.mealpilot.app.ui.containerFactory
+import hu.mealpilot.core.i18n.AppLanguage
 import hu.mealpilot.core.billing.BillingPeriod
 import hu.mealpilot.core.model.UserProfile
 import kotlinx.coroutines.launch
@@ -114,6 +115,7 @@ fun SettingsScreen(
     val storedProfile by viewModel.profile.collectAsState(initial = null)
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+    val language by container.languageStore.language.collectAsState()
 
     var apiKeyInput by remember { mutableStateOf("") }
     var maskedKey by remember { mutableStateOf(viewModel.maskedKey()) }
@@ -298,6 +300,35 @@ fun SettingsScreen(
                     versionTaps = 0
                     viewModel.saveSettings(current.copy(developerMode = false))
                 }) { Text("Fejlesztői mód kikapcsolása") }
+            }
+        }
+
+        Spacer(Modifier.height(12.dp))
+        SectionCard(title = "Nyelv / Language") {
+            Text(
+                "Ez az étrend nyelvét is meghatározza: a fogásnevek, a hozzávalók és a " +
+                    "bevásárlólista is ezen a nyelven készül. A már elkészült terv nem " +
+                    "fordítódik le — az a nyelvén marad, amin készült.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Spacer(Modifier.height(10.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                AppLanguage.entries.forEach { option ->
+                    FilterChip(
+                        selected = language == option,
+                        onClick = {
+                            if (option != language) {
+                                container.languageStore.set(option)
+                                // Az Activity a nyelvet indításkor veszi fel, ezért újra
+                                // kell építeni — enélkül a fele felület a régi nyelven
+                                // maradna a következő indításig.
+                                context.findActivity()?.recreate()
+                            }
+                        },
+                        label = { Text(option.selfName) },
+                    )
+                }
             }
         }
 
