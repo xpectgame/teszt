@@ -141,19 +141,19 @@ describe('költségszámítás', () => {
       cacheReadTokens: 1000,
       cacheWriteTokens: 0,
     })
-    expect(full).toBe(3000)
-    expect(cached).toBe(300)
+    expect(full).toBe(2000)
+    expect(cached).toBe(200)
   })
 
   it('egy heti terv nagyságrendje néhány tized cent', () => {
-    // ~2k bemenet + ~9k kimenet Sonnet 5-ön
+    // ~2k bemenet + ~9k kimenet Sonnet 5-ön: 0,004 + 0,09 dollár
     const micros = costMicros('claude-sonnet-5', {
       inputTokens: 2000,
       outputTokens: 9000,
       cacheReadTokens: 0,
       cacheWriteTokens: 0,
     })
-    expect(micros / 1_000_000).toBeCloseTo(0.141, 3)
+    expect(micros / 1_000_000).toBeCloseTo(0.094, 3)
   })
 
   it('ismeretlen modellre is ad árat, nem nullát', () => {

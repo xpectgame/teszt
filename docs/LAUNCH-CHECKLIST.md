@@ -242,15 +242,34 @@ A jogosultság megadása után a Play oldalán **akár 24 óra**, amíg élesedi
 
 ## 5. Árazás — nagyságrendek
 
-Becslés a jelenlegi modellárakon, egy hét étrend ≈ 2k bemeneti + ~9k kimeneti token.
+Modellárak millió tokenenként (bemenet / kimenet): **Sonnet 5 — 2 / 10 USD**,
+**Opus 5 — 5 / 25 USD**, **Haiku 4.5 — 1 / 5 USD**. Egy heti étrend ≈ 2k bemeneti és
+~9k kimeneti token.
 
-| Modell | Egy heti terv | Aktív felhasználó / hó |
+| Modell | Egy heti terv | Aktív előfizető / hó (tipikus) |
 |---|---|---|
-| Sonnet 5 (alapértelmezés) | ~0,14 USD | ~0,5–0,7 USD |
-| Opus 5 | ~0,70 USD | ~1,3–1,8 USD |
-| Haiku 4.5 | ~0,05 USD | ~0,25 USD |
+| Sonnet 5 (alapértelmezés) | ~0,09 USD | ~0,6–1,0 USD |
+| Opus 5 | ~0,24 USD | ~1,5–2,5 USD |
+| Haiku 4.5 | ~0,05 USD | ~0,3–0,5 USD |
 
-1 990 Ft/hó (~5 USD) mellett, a Play 15%-os jutaléka után is **70–90% bruttó fedezet**.
+A tipikus oszlop becslés (havi ~4 terv + nap-átírások + beszélgetés). A **felső határ
+viszont nem becslés**, hanem kikényszerített szám: a havi kimeneti tokenplafon.
+
+| Csomag | Tokenplafon / hó | Ennyibe kerülhet legrosszabb esetben (Sonnet 5) |
+|---|---|---|
+| Ingyenes | 80 000 | ~0,80 USD |
+| Prémium | 400 000 | ~4,00 USD |
+| Tulajdonosi | 1 500 000 | ~15,00 USD |
+
+1 990 Ft/hó (~5 USD) mellett a Play 15%-os jutaléka után ~4,3 USD marad, tehát a
+prémium plafon a nettó bevétel alatt van: **egyetlen előfizető sem tud veszteséget
+termelni**, akkor sem, ha a klienst átírják. A tipikus használatnál a fedezet 75–85%.
+
+Az ingyenes sáv a valódi kitettség, mert nem hoz bevételt: felhasználónként tipikusan
+~0,11 USD, a plafon miatt legfeljebb 0,80 USD havonta. Száz ingyenes felhasználó a
+tipikus szinten ~11 USD, a legrosszabb esetben 80 USD havonta — ezért érdemes az
+Anthropic-fiókon keménylimitet állítani (lásd [`MONETIZATION.md`](MONETIZATION.md)).
+
 A tényleges számokat ne becsüld, hanem nézd meg — a backend minden hívást könyvel:
 
 ```bash
@@ -258,6 +277,9 @@ cd backend && npx wrangler d1 execute mealpilot --remote --command \
   "SELECT subject, sum(cost_micros)/1000000.0 AS usd, count(*) AS hivas \
    FROM requests GROUP BY subject ORDER BY usd DESC LIMIT 20"
 ```
+
+Hogy mit kell előre kifizetned és mit nem, arról külön írás szól:
+[`MONETIZATION.md`](MONETIZATION.md).
 
 ---
 

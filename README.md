@@ -9,7 +9,7 @@ kalória- és makrócélt, összeállít egy étrendet, bevásárlólistát ír 
 | [`android/`](android/) | az alkalmazás — Kotlin, Jetpack Compose, Room ([README](android/README.md)) |
 | [`backend/`](backend/) | a kiszolgáló — Cloudflare Workers + D1 ([README](backend/README.md)) |
 | [`mealpilot/`](mealpilot/) | a nyilvános oldalak: adatkezelés, feltételek, támogatás, adattörlés |
-| [`docs/`](docs/) | [kiadási checklista](docs/LAUNCH-CHECKLIST.md), [domain](docs/DOMAIN.md), [designer brief](docs/DESIGN-BRIEF.md) |
+| [`docs/`](docs/) | [kiadási checklista](docs/LAUNCH-CHECKLIST.md), [monetizáció](docs/MONETIZATION.md), [domain](docs/DOMAIN.md), [designer brief](docs/DESIGN-BRIEF.md) |
 
 A legfrissebb, telefonra telepíthető APK a
 [Actions](../../actions) legutóbbi zöld futásának *Artifacts* szekciójában van.

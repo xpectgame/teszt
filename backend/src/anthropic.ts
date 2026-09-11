@@ -19,12 +19,13 @@ interface Price {
 }
 
 const PRICES: Record<string, Price> = {
-  'claude-opus-5': { input: 15, output: 75 },
-  'claude-sonnet-5': { input: 3, output: 15 },
+  'claude-opus-5': { input: 5, output: 25 },
+  'claude-sonnet-5': { input: 2, output: 10 },
   'claude-haiku-4-5': { input: 1, output: 5 },
 }
 
-const DEFAULT_PRICE: Price = { input: 3, output: 15 }
+/** Ismeretlen modellnél inkább felül becsülünk: a meglepetés drágább, mint az óvatosság. */
+const DEFAULT_PRICE: Price = { input: 5, output: 25 }
 
 /** A cache-ből olvasott bemenet a listaár tizede, a cache írása másfélszerese. */
 export function costMicros(model: string, usage: Usage): number {

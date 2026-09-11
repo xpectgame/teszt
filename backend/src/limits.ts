@@ -32,7 +32,10 @@ export const DEFAULT_LIMITS: Record<Tier, TierLimits> = {
     chatMessagesPerMonth: -1,
     maxPlanDays: 30,
     canRefineDays: true,
-    outputTokenCap: 3_000_000,
+    // 400k kimeneti token ≈ 4 USD Sonnet 5-ön, nagyjából az előfizetés nettó ára.
+    // Valódi használatnál elérhetetlen: egy 30 napos terv ~45k tokent visz, tehát ez
+    // nyolc teljes hónapnyi terv EGY hónapban. Aki ezt átlépi, nem étrendet tervez.
+    outputTokenCap: 400_000,
   },
   // A fejlesztő saját buildje. Nem a Play-ből jön, nem fizet, és nem is akadhat el
   // kvótán — de tokenplafont ez is kap, hogy egy elszabadult ciklus vagy egy kiszivárgott
@@ -42,7 +45,9 @@ export const DEFAULT_LIMITS: Record<Tier, TierLimits> = {
     chatMessagesPerMonth: -1,
     maxPlanDays: 30,
     canRefineDays: true,
-    outputTokenCap: 5_000_000,
+    // ≈ 15 USD/hó. Bőven elég saját használatra és teszteléshez, de egy elszabadult
+    // ciklus vagy egy kiszivárgott kulcs itt megáll.
+    outputTokenCap: 1_500_000,
   },
 }
 

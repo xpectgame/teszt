@@ -21,11 +21,15 @@ CHAT_MODEL = "claude-sonnet-5"
 PLAN_EFFORT = "medium"
 # Havi kimeneti token plafon csomagonként. Ez a kemény korlát: a darabszám-korlátokat
 # egy módosított kliens megpróbálhatja megkerülni, ezt nem tudja.
+#
+# A számok Sonnet 5 árán (2 USD bemenet / 10 USD kimenet millió tokenenként):
+#   80 000 kimeneti token ≈ 0,80 USD   (ingyenes sáv felső határa)
+#  400 000 kimeneti token ≈ 4,00 USD   (előfizetés nettó ára körül)
 FREE_OUTPUT_TOKEN_CAP = "80000"
-PREMIUM_OUTPUT_TOKEN_CAP = "3000000"
+PREMIUM_OUTPUT_TOKEN_CAP = "400000"
 # A fejlesztő saját buildje sem költhet korlátlanul — egy elszabadult ciklus vagy egy
 # kiszivárgott kulcs itt akad meg.
-OWNER_OUTPUT_TOKEN_CAP = "5000000"
+OWNER_OUTPUT_TOKEN_CAP = "1500000"
 
 # Titkok — NEM ide, hanem:
 #   wrangler secret put ANTHROPIC_API_KEY
