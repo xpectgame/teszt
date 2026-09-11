@@ -1,0 +1,30 @@
+name = "mealpilot-backend"
+main = "src/index.ts"
+compatibility_date = "2024-12-18"
+compatibility_flags = ["nodejs_compat"]
+
+# Az adatbázis azonosítóját a `wrangler d1 create mealpilot` adja vissza.
+# Írd be ide, mielőtt először deployolsz.
+[[d1_databases]]
+binding = "DB"
+database_name = "mealpilot"
+database_id = "PASTE_D1_DATABASE_ID_HERE"
+
+[vars]
+# A Play Console-ban szereplő csomagnév. Éles kiadásnál ez a release applicationId,
+# NEM a ".debug" végű.
+ANDROID_PACKAGE = "hu.mealpilot.app"
+PREMIUM_PRODUCT_ID = "mealpilot_premium_monthly"
+# Melyik modell szolgálja ki a hívásokat. A kliens ezt nem befolyásolhatja.
+PLAN_MODEL = "claude-sonnet-5"
+CHAT_MODEL = "claude-sonnet-5"
+PLAN_EFFORT = "medium"
+# Havi kimeneti token plafon csomagonként. Ez a kemény korlát: a darabszám-korlátokat
+# egy módosított kliens megpróbálhatja megkerülni, ezt nem tudja.
+FREE_OUTPUT_TOKEN_CAP = "80000"
+PREMIUM_OUTPUT_TOKEN_CAP = "3000000"
+
+# Titkok — NEM ide, hanem:
+#   wrangler secret put ANTHROPIC_API_KEY
+#   wrangler secret put PLAY_SERVICE_ACCOUNT_JSON
+#   wrangler secret put RTDN_SHARED_SECRET

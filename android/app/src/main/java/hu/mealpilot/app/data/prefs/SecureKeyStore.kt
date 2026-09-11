@@ -66,10 +66,30 @@ class SecureKeyStore(context: Context) {
         if (it.length <= 12) "••••" else "${it.take(8)}…${it.takeLast(4)}"
     }
 
+    /**
+     * A telepítés azonosítója a saját backend felé.
+     *
+     * Nem fiók és nem személyes adat: egy véletlen szám, ami az első indításkor
+     * keletkezik, és csak arra jó, hogy a havi keretet valamihez kösse a szerver.
+     * Törléskor (Minden adat törlése, app eltávolítása) eltűnik, és újat kap — az
+     * előfizetés ettől nem vész el, mert az a Google fiókhoz tartozik.
+     */
+    fun installId(): String {
+        prefs.getString(KEY_INSTALL, null)?.takeIf { it.isNotBlank() }?.let { return it }
+        val bytes = ByteArray(24).also { java.security.SecureRandom().nextBytes(it) }
+        val generated = android.util.Base64.encodeToString(
+            bytes,
+            android.util.Base64.URL_SAFE or android.util.Base64.NO_PADDING or android.util.Base64.NO_WRAP,
+        )
+        prefs.edit().putString(KEY_INSTALL, generated).apply()
+        return generated
+    }
+
     private companion object {
         const val TAG = "SecureKeyStore"
         const val FILE_NAME = "mealpilot_secure_prefs"
         const val FALLBACK_FILE_NAME = "mealpilot_prefs_plain"
         const val KEY_API = "anthropic_api_key"
+        const val KEY_INSTALL = "install_id"
     }
 }

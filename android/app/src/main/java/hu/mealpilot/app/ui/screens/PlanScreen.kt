@@ -55,7 +55,9 @@ import hu.mealpilot.app.work.GenerationCoordinator
 import hu.mealpilot.core.billing.Tiers
 import hu.mealpilot.app.data.repo.PlanRepository
 import hu.mealpilot.app.notify.ReminderRefreshWorker
+import hu.mealpilot.app.data.repo.ReportKind
 import hu.mealpilot.app.ui.components.EmptyState
+import hu.mealpilot.app.ui.components.ReportDialog
 import hu.mealpilot.app.ui.components.SectionCard
 import hu.mealpilot.app.ui.containerFactory
 import hu.mealpilot.core.ai.GenerationProgress
@@ -98,7 +100,7 @@ class PlanViewModel(private val container: AppContainer) : ViewModel() {
     ) { plan, entitlement -> plan to entitlement }
         .flatMapLatest { (plan, entitlement) ->
             val base = PlanUiState(
-                canRefine = container.hasApiKey && entitlement.limits.canRefineDays,
+                canRefine = container.hasPlanner && entitlement.limits.canRefineDays,
                 maxPlanDays = entitlement.limits.maxPlanDays,
             )
             if (plan == null) flowOf(base)
@@ -154,6 +156,8 @@ fun PlanScreen(
     val outcome by viewModel.outcome.collectAsState()
     var showGenerator by remember { mutableStateOf(false) }
     var refineDayIndex by remember { mutableStateOf<Int?>(null) }
+    var reporting by remember { mutableStateOf(false) }
+    val scope = androidx.compose.runtime.rememberCoroutineScope()
     var expandedDay by remember { mutableStateOf<Int?>(0) }
 
     // Amint az első napok megvannak, elengedjük a párbeszédet: a terv már használható,
@@ -231,6 +235,10 @@ fun PlanScreen(
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
+                    TextButton(
+                        onClick = { reporting = true },
+                        contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp),
+                    ) { Text("Hibás vagy zavaró? Jelentsd.") }
                 }
             }
 
@@ -260,6 +268,16 @@ fun PlanScreen(
                 showGenerator = false
             },
             onGenerate = { days, tomorrow, text -> viewModel.generate(days, tomorrow, text) },
+        )
+    }
+
+    if (reporting) {
+        ReportDialog(
+            container = container,
+            kind = ReportKind.PLAN,
+            payload = state.plan?.let { plan -> planReportPayload(plan, state.byDay) },
+            onDismiss = { reporting = false },
+            onResult = { message -> scope.launch { snackbarHostState.showSnackbar(message) } },
         )
     }
 
@@ -485,3 +503,21 @@ private fun RefineDialog(
         dismissButton = { TextButton(onClick = onDismiss) { Text("Mégse") } },
     )
 }
+
+/**
+ * A bejelentéshez küldött összefoglaló.
+ *
+ * Szándékosan csak az, ami a hiba megítéléséhez kell: fogásnevek és tápértékek. Név,
+ * testsúly, étkezési napló nem megy ki — azok nem segítenének, és nem is ránk tartoznak.
+ */
+private fun planReportPayload(plan: PlanEntity, byDay: Map<Int, List<MealWithIngredients>>): String =
+    buildString {
+        appendLine("${plan.title} — ${plan.dayCount} nap, cél ${plan.targetKcal} kcal/nap")
+        byDay.entries.take(7).forEach { (dayIndex, meals) ->
+            appendLine("${dayIndex + 1}. nap:")
+            meals.forEach { item ->
+                val meal = item.meal
+                appendLine("  - ${meal.name} (${meal.nutrients.kcal.roundToInt()} kcal)")
+            }
+        }
+    }

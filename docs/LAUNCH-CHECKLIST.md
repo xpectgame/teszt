@@ -6,6 +6,8 @@ Amit a kód már tud, és amit neked kell elintézned ahhoz, hogy eladható legy
 
 ## 1. Ami a kódban készen van
 
+### Az appban
+
 | | |
 |---|---|
 | Csomagmodell | `core/billing/Tiers.kt` — ingyenes és teljes csomag, korlátok egy helyen |
@@ -16,142 +18,225 @@ Amit a kód már tud, és amit neked kell elintézned ahhoz, hogy eladható legy
 | Bolt nélkül | `NoBillingGateway` — az app ilyenkor is fut, csak nem lehet előfizetni |
 | Teszt kapcsoló | fejlesztői részben bekapcsolható a teljes csomag vásárlás nélkül |
 | Jogi felületek | feltételek, adatkezelés, kapcsolat, „minden adat törlése" |
-| Jogi oldalak | `privacy.html`, `terms.html` a repó gyökerében — a domain még beállítandó |
+| **Elfogadás rögzítése** | az onboarding végén kötelező pipa, a verzió és az időpont eltárolva |
+| **Tartalom jelentése** | terv, fogás és beszélgetés jelenthető; backend hiányában e-mailre esik vissza |
+| **Backend kliens** | `BackendMealAi` — kulcs nélküli működés, a szerver dönt a jogosultságról |
+| **Kiadási aláírás** | `signingConfigs.release`, a kulcs a repón kívülről (fájl vagy környezeti változó) |
+
+### A backendben (`backend/`)
+
+| | |
+|---|---|
+| Futtatókörnyezet | Cloudflare Workers + D1 — nincs karbantartandó szerver |
+| Kulcs | az Anthropic kulcs titok a Workeren, sosem kerül ki az appba |
+| Rendszerprompt | a szerveren él; a kliens csak adatot küld, így a hívás nem alakítható át |
+| Előfizetés | Play Developer API (`purchases.subscriptionsv2`), 6 órás gyorsítótárral |
+| Lemondás | Play valós idejű értesítések (RTDN) végpont, Pub/Sub pusholva |
+| Kvóta | naptári hónaponként, szerveroldalon, az ELŐFIZETÉSHEZ kötve |
+| Tokenplafon | kemény havi korlát — ez az, amit egy módosított kliens sem tud megkerülni |
+| Könyvelés | hívásonként token és becsült költség a `requests` táblában |
+| Bejelentések | a `reports` tábla gyűjti a jelentett terveket |
 
 **Termékazonosító a kódban:** `mealpilot_premium_monthly`
 (`app/src/main/java/hu/mealpilot/app/billing/BillingGateway.kt`)
 
-**Az ingyenes sáv jelenlegi korlátai** (`Tiers.FREE`): havi 1 AI-étrend, havi 10 üzenet,
-legfeljebb 3 napos terv, nap-átírás és beszélgetésből indított módosítás nincs.
-Ezek egy helyen állíthatók.
+**Az ingyenes sáv korlátai** (`Tiers.FREE` és `backend/src/limits.ts`): havi 1 étrend,
+havi 10 üzenet, legfeljebb 3 napos terv, nap-átírás nincs. A kliens csak kiírja őket,
+a döntést a szerver hozza — a két helyen ugyanazok a számok legyenek.
 
 ---
 
-## 2. Amit még meg KELL csinálni, mielőtt élesben pénzt kérsz
+## 2. Backend üzembe helyezése
 
-### 2.1 Backend proxy — ez a legfontosabb
-Ma a modellhívás a felhasználó saját API kulcsán fut. Fizetős termékhez ez nem működik:
-a felhasználó nem fog kulcsot szerezni. Kell egy vékony szerver, ami:
+Részletes lépések: [`backend/README.md`](../backend/README.md). Röviden:
 
-- a te Anthropic kulcsoddal hív, a kulcs sosem hagyja el a szervert;
-- ellenőrzi, hogy a hívónak van-e érvényes előfizetése;
-- számolja a kvótát **szerveroldalon** (a mostani helyi számláló megkerülhető);
-- naplózza a token- és költségfelhasználást felhasználónként.
+```bash
+cd backend
+npm install
+npx wrangler login
+npx wrangler d1 create mealpilot        # a database_id-t írd a wrangler.toml-ba
+npm run db:remote
+npx wrangler secret put ANTHROPIC_API_KEY
+npx wrangler secret put PLAY_SERVICE_ACCOUNT_JSON
+npx wrangler secret put RTDN_SHARED_SECRET
+npm run deploy
+```
 
-A kód elő van készítve: a `MealAi` interfész mögé egy `BackendMealAi` kerül, a felület és
-az üzleti logika nem változik.
+Aztán az app buildjébe:
 
-### 2.2 Előfizetés szerveroldali igazolása
-A kliens ma maga dönti el, hogy előfizető-e. Éles rendszerben ezt a
-**Play Developer API `purchases.subscriptions.v2.get`** hívással kell ellenőrizni a
-szerveren, és érdemes bekötni a **Real-time developer notifications**-t (Pub/Sub), hogy a
-lemondás, visszatérítés és felfüggesztés azonnal érvényesüljön.
+```bash
+MEALPILOT_BACKEND_URL=https://mealpilot-backend.pelda.workers.dev ./gradlew :app:bundleRelease
+```
 
-### 2.3 Kiadási aláírás
-A mostani build **debug kulccsal** van aláírva, és az azonosítója `hu.mealpilot.app.debug`.
-Kiadáshoz kell:
-- saját release keystore (biztonságos helyen, verziókezelésen kívül);
-- `signingConfigs.release` + `buildTypes.release`;
-- a `applicationIdSuffix = ".debug"` csak a debug buildre vonatkozik — ezt ellenőrizd;
-- **Play App Signing** bekapcsolása (a Play őrzi az aláíró kulcsot).
+**Ha ez a változó nincs beállítva, az APK-ban nincs backend**, és a felhasználó offline
+sablonokat kap. Kiadás előtt ezt ellenőrizd le a Beállítások → Névjegy hétszeri
+megérintésével előjövő fejlesztői részben: ott kiírja, melyik tervező fut.
 
-### 2.4 Release build ellenőrzése
-A release build `minifyEnabled = true`. Fordítás után **próbáld ki a release APK-t/AAB-t
-valódi eszközön** — az obfuszkáció a reflexiót használó részeket (Anthropic SDK, Jackson,
-kotlinx.serialization) elronthatja. A keep szabályok készen vannak, de ezt meg kell nézni.
+### Amire a backend NEM elég önmagában
+
+A telepítési azonosítót a telefon generálja, tehát az ingyenes sávot elvileg lehet új
+azonosítókkal csapolni. Ma ez ellen a szűk ingyenes keret és a tokenplafon véd. Ha a
+napló alapján valaki tényleg csapolja, a következő lépés a **Play Integrity API**.
 
 ---
 
-## 3. Play Console teendők
+## 3. Kiadási aláírás
 
-### 3.1 Fiók és app
+A kulcs soha nem kerül a repóba. Két út, a build mindkettőt elfogadja:
+
+```bash
+# 1. helyi fájl: android/keystore.properties (gitignore-olva)
+storeFile=/home/te/mealpilot-release.jks
+storePassword=...
+keyAlias=mealpilot
+keyPassword=...
+
+# 2. környezeti változók (CI-hez)
+MEALPILOT_KEYSTORE=/path/mealpilot-release.jks
+MEALPILOT_KEYSTORE_PASSWORD=...
+MEALPILOT_KEY_ALIAS=mealpilot
+MEALPILOT_KEY_PASSWORD=...
+```
+
+Ha egyik sincs, az `assembleRelease` **aláíratlan** APK-t ad. Fordul, de a Play elutasítja.
+
+Kulcs készítése:
+
+```bash
+keytool -genkeypair -v -keystore mealpilot-release.jks -alias mealpilot \
+  -keyalg RSA -keysize 4096 -validity 10000
+```
+
+Ezt a fájlt tedd biztonságos helyre, és készíts róla mentést. **Play App Signing**
+bekapcsolásával a Google őrzi az aláíró kulcsot, és ez a fájl csak a feltöltéshez kell —
+így egy elveszett kulcs sem zárja ki a frissítésekből.
+
+- [ ] Release keystore elkészítve, mentve
+- [ ] `keystore.properties` kitöltve (és NINCS verziókezelésben)
+- [ ] Play App Signing bekapcsolva
+- [ ] `applicationIdSuffix = ".debug"` csak a debug buildre vonatkozik (ellenőrizve)
+
+### Release build kipróbálása
+
+A release build `minifyEnabled = true`. Fordítás után **próbáld ki valódi eszközön** —
+az obfuszkáció a reflexiót használó részeket (Anthropic SDK, Jackson,
+kotlinx.serialization, OkHttp) elronthatja. A keep szabályok készen vannak, de ezt látni kell.
+
+```bash
+MEALPILOT_BACKEND_URL=https://... ./gradlew :app:assembleRelease
+adb install -r app/build/outputs/apk/release/app-release.apk
+```
+
+- [ ] A release APK elindul
+- [ ] Készít tervet (tehát a backend hívás túlélte az obfuszkációt)
+- [ ] Működik a beszélgetés és a jelentés gomb
+
+---
+
+## 4. Play Console teendők
+
+### 4.1 Fiók és app
 - [ ] Google Play fejlesztői fiók (egyszeri 25 USD)
-- [ ] Új alkalmazás létrehozása, csomagnév véglegesítése (`hu.mealpilot.app`)
-- [ ] Play App Signing bekapcsolása
+- [ ] Új alkalmazás, csomagnév véglegesítve (`hu.mealpilot.app`)
+- [ ] Play App Signing bekapcsolva
 
-### 3.2 Előfizetési termék
+### 4.2 Előfizetési termék
 - [ ] Monetizálás → Előfizetések → új termék
 - [ ] **Termékazonosító pontosan:** `mealpilot_premium_monthly`
 - [ ] Alapcsomag: havi, automatikus megújulással
-- [ ] Ár beállítása (javaslat: 1 990–2 990 Ft/hó)
+- [ ] Ár (javaslat: 1 990–2 990 Ft/hó)
 - [ ] Opcionális: ingyenes próbaidőszak vagy bevezető ár
 - [ ] Termék **aktiválása** — enélkül az appban „nem elérhető" jelenik meg
 
-### 3.3 Bolti megjelenés
-- [ ] Alkalmazás neve, rövid leírás (80 karakter), teljes leírás
+### 4.3 Szolgáltatásfiók a backendhez
+- [ ] Google Cloud projekt, szolgáltatásfiók, JSON kulcs
+- [ ] A fiók meghívva a Play Console-ba (pénzügyi adatok + rendelések kezelése)
+- [ ] *Google Play Android Developer API* engedélyezve
+- [ ] `PLAY_SERVICE_ACCOUNT_JSON` beállítva a Workeren
+- [ ] Pub/Sub téma + push feliratkozás a `/v1/play/rtdn?secret=...` végpontra
+
+A jogosultság megadása után a Play oldalán **akár 24 óra**, amíg élesedik.
+
+### 4.4 Bolti megjelenés
+- [ ] Név, rövid leírás (80 karakter), teljes leírás
 - [ ] Ikon 512×512 PNG
 - [ ] Funkciógrafika 1024×500
-- [ ] Legalább 2, maximum 8 telefonos képernyőkép
+- [ ] Legalább 2, legfeljebb 8 telefonos képernyőkép
 - [ ] Kategória: Egészség és fitnesz
 - [ ] Nyelv: magyar (elsődleges)
 
-### 3.4 Kötelező nyilatkozatok
-- [ ] **Adatvédelmi tájékoztató URL.** A `privacy.html` és a `terms.html` a repó gyökerében
-      van, de **csak a `main` ágra merge után kerül ki**, mert a GitHub Pages onnan épül.
-      A repó Pages-oldala jelenleg a `hernadicsaba.hu` domainen szolgál ki, ami egy másik
-      projekthez tartozik — **kiadás előtt olyan domain kell, amit a MealPilot néven
-      birtokolsz**, és a `LegalLinks.SITE` konstanst is át kell írni
-      (`PaywallScreen.kt`).
+### 4.5 Kötelező nyilatkozatok
+- [ ] **Adatvédelmi tájékoztató URL.** A `privacy.html` és a `terms.html` a repó
+      gyökerében van, de **csak a `main` ágra merge után kerül ki**, mert a GitHub Pages
+      onnan épül. A Pages jelenleg a `hernadicsaba.hu` domainen szolgál ki, ami egy másik
+      projekthez tartozik — **kiadás előtt MealPilot néven birtokolt domain kell**, és a
+      `LegalLinks.SITE` konstanst is át kell írni (`PaywallScreen.kt`).
 - [ ] **Adatbiztonság (Data safety) űrlap.** A jelenlegi működés szerinti válaszok:
-  - Gyűjtünk adatot? **Igen** — „Egészség és fitnesz" kategória (testadatok, étkezés, mozgás)
-  - Megosztjuk harmadik féllel? **Igen** — a tervezőszolgáltatóval (Anthropic), a szolgáltatás
-    nyújtásához
+  - Gyűjtünk adatot? **Igen** — „Egészség és fitnesz" (testadatok, étkezés, mozgás)
+  - Megosztjuk harmadik féllel? **Igen** — a tervezőszolgáltatóval (Anthropic), a
+    szolgáltatás nyújtásához. A saját backend a kérést továbbítja, de nem tárolja:
+    csak tokenszám és becsült költség marad meg.
   - Titkosított továbbítás? **Igen** (HTTPS)
   - Kérhető a törlés? **Igen** — az appban egy gombbal
   - Kötelező a gyűjtés? **Igen**, a funkció működéséhez
 - [ ] **Tartalom besorolása** (IARC kérdőív)
 - [ ] **Célközönség:** 18+
-- [ ] **Kormányzati/egészségügyi app nyilatkozat:** nem egészségügyi szolgáltató
-- [ ] **Generatív AI tartalom:** az app tartalmaz generált tartalmat — jelöld be, és
-      biztosíts visszajelzési lehetőséget a problémás tervekre *(ez a funkció még hiányzik a
-      kódból, lásd 5. pont)*
+- [ ] **Egészségügyi app nyilatkozat:** nem egészségügyi szolgáltató
+- [ ] **Generatív AI tartalom:** jelöld be. A visszajelzési út **megvan a kódban**:
+      Étrend → „Hibás vagy zavaró? Jelentsd.", a fogás lapján „Jelentem ezt a fogást",
+      a beszélgetésben hosszan nyomva az üzenetre. A bejelentések a backend `reports`
+      táblájába futnak, backend nélkül e-mailre.
 
-### 3.5 Tesztelés
+### 4.6 Tesztelés
 - [ ] Belső tesztelési sáv, néhány tesztelővel
 - [ ] **Licenctesztelők** felvétele (Beállítások → Licenctesztelés) — csak így lehet a
       fizetést valódi terhelés nélkül végigpróbálni
-- [ ] A teljes vásárlási folyamat kipróbálása: vásárlás, lemondás, visszaállítás,
-      függőben lévő fizetés
+- [ ] Teljes vásárlási folyamat: vásárlás, lemondás, visszaállítás, függőben lévő fizetés
+- [ ] A lemondás tényleg elveszi-e a prémiumot (RTDN → `subscriptions` tábla)
 - [ ] Zárt tesztelés legalább néhány napig, mielőtt élesbe megy
 
 ---
 
-## 4. Árazás — nagyságrendek
+## 5. Árazás — nagyságrendek
 
 Becslés a jelenlegi modellárakon, egy hét étrend ≈ 2k bemeneti + ~9k kimeneti token.
 
 | Modell | Egy heti terv | Aktív felhasználó / hó |
 |---|---|---|
-| Sonnet 5 (alapértelmezés) | ~0,10 USD | ~0,5–0,7 USD |
-| Opus 5 | ~0,30 USD | ~1,3–1,8 USD |
+| Sonnet 5 (alapértelmezés) | ~0,14 USD | ~0,5–0,7 USD |
+| Opus 5 | ~0,70 USD | ~1,3–1,8 USD |
 | Haiku 4.5 | ~0,05 USD | ~0,25 USD |
 
 1 990 Ft/hó (~5 USD) mellett, a Play 15%-os jutaléka után is **70–90% bruttó fedezet**.
-A kockázat nem az egy főre jutó költség, hanem a kvótát megkerülő visszaélés — ezért fontos
-a szerveroldali kvóta (2.1).
+A tényleges számokat ne becsüld, hanem nézd meg — a backend minden hívást könyvel:
+
+```bash
+cd backend && npx wrangler d1 execute mealpilot --remote --command \
+  "SELECT subject, sum(cost_micros)/1000000.0 AS usd, count(*) AS hivas \
+   FROM requests GROUP BY subject ORDER BY usd DESC LIMIT 20"
+```
 
 ---
 
-## 5. Ami még hiányzik a kódból
+## 6. Ami még hiányzik a kódból
 
-- [ ] **„Jelentsd ezt a tervet" gomb** — a Play a generatív AI funkcióknál elvárja a
-      visszajelzési utat, és neked is ez lesz az egyetlen jelzés arról, ha a tervező hibázik
 - [ ] Összeomlás- és hibajelentés (pl. Crashlytics vagy Sentry) — enélkül vakon repülsz
 - [ ] Alapvető termékanalitika (hány terv készül, hol morzsolódnak le a felhasználók)
-- [ ] Onboarding végén a feltételek és az adatkezelés elfogadásának rögzítése
 - [ ] Előfizetői élmény finomhangolása: emlékeztető a próbaidőszak végéről
+- [ ] Play Integrity API, ha az ingyenes sáv csapolása gonddá válik
 
 ---
 
-## 6. Sorrend, amit javaslok
+## 7. Sorrend, amit javaslok
 
-1. Backend proxy + szerveroldali kvóta és előfizetés-ellenőrzés (2.1, 2.2)
-2. Release aláírás és release build tesztelése valódi eszközön (2.3, 2.4)
-3. Play Console: termék létrehozása, licenctesztelők, a teljes vásárlás végigpróbálása
-4. Jogi szövegek felülvizsgálata és az adatkezelő adatainak kitöltése
-5. Hiányzó funkciók (5. pont), különösen a jelentés gomb
-6. Zárt teszt → éles
+1. Backend deploy + szolgáltatásfiók + RTDN (2. és 4.3 pont)
+2. Release keystore, aláírt release build kipróbálása valódi eszközön (3. pont)
+3. Saját domain a jogi oldalaknak, `LegalLinks.SITE` átírása, merge a `main` ágra
+4. Play Console: termék létrehozása, licenctesztelők, teljes vásárlás végigpróbálása
+5. Jogi szövegek felülvizsgálata és az adatkezelő adatainak kitöltése
+6. Hiányzó funkciók (6. pont)
+7. Zárt teszt → éles
 
-A jogi szövegek (`privacy.html`, `terms.html`) **tervezetek**. A működést pontosan írják le,
-de közzététel előtt nézesd át valakivel, aki ért hozzá — egészségügyi témában és
+A jogi szövegek (`privacy.html`, `terms.html`) **tervezetek**. A működést pontosan írják
+le, de közzététel előtt nézesd át valakivel, aki ért hozzá — egészségügyi témában és
 előfizetéses modellnél ez nem formalitás.

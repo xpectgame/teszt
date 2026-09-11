@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
@@ -23,7 +25,34 @@ android {
             ?: "0.1.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         resourceConfigurations += listOf("hu", "en")
+
+        // A saját backend címe. Ha üres, az app a felhasználó saját API kulcsát kéri
+        // (fejlesztői út), vagy az offline tervezőt használja — tehát build nélkül is fut.
+        // Bolti kiadáshoz KÖTELEZŐ beállítani, mert egy fizető felhasználó nem szerez
+        // Anthropic-kulcsot, és a kvótát sem dönthetné el a telefon.
+        //   MEALPILOT_BACKEND_URL=https://... ./gradlew :app:assembleRelease
+        buildConfigField(
+            "String",
+            "BACKEND_URL",
+            "\"${System.getenv("MEALPILOT_BACKEND_URL")?.trim()?.trimEnd('/') ?: ""}\"",
+        )
     }
+
+    // A kiadási aláíráshoz szükséges adatok. SOHA nem kerülnek a repóba: vagy a
+    // gitignore-olt keystore.properties fájlból jönnek, vagy környezeti változókból (CI).
+    val releaseKeystore = Properties().apply {
+        val file = rootProject.file("keystore.properties")
+        if (file.exists()) file.inputStream().use { load(it) }
+    }
+    fun releaseSecret(key: String, env: String): String? =
+        (releaseKeystore.getProperty(key) ?: System.getenv(env))?.takeIf { it.isNotBlank() }
+
+    val releaseStorePath = releaseSecret("storeFile", "MEALPILOT_KEYSTORE")
+    val releaseStorePassword = releaseSecret("storePassword", "MEALPILOT_KEYSTORE_PASSWORD")
+    val releaseKeyAlias = releaseSecret("keyAlias", "MEALPILOT_KEY_ALIAS")
+    val releaseKeyPassword = releaseSecret("keyPassword", "MEALPILOT_KEY_PASSWORD")
+    val canSignRelease = releaseStorePath != null && releaseStorePassword != null &&
+        releaseKeyAlias != null && releaseKeyPassword != null && file(releaseStorePath).exists()
 
     signingConfigs {
         // Rögzített debug kulcs a repóban. Enélkül minden CI-futás új kulcsot generálna,
@@ -37,6 +66,17 @@ android {
             keyAlias = "androiddebugkey"
             keyPassword = "android"
         }
+
+        // Csak akkor jön létre, ha tényleg van mivel aláírni. Enélkül az
+        // `assembleRelease` aláíratlan APK-t ad — fordul, de a Play nem fogadja el.
+        if (canSignRelease) {
+            create("release") {
+                storeFile = file(releaseStorePath!!)
+                storePassword = releaseStorePassword
+                keyAlias = releaseKeyAlias
+                keyPassword = releaseKeyPassword
+            }
+        }
     }
 
     buildTypes {
@@ -44,6 +84,7 @@ android {
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+            if (canSignRelease) signingConfig = signingConfigs.getByName("release")
         }
         debug {
             applicationIdSuffix = ".debug"
@@ -109,6 +150,10 @@ dependencies {
 
     // Google Play Billing az előfizetéshez.
     implementation(libs.billing.ktx)
+
+    // A saját backend hívásához. Az Anthropic SDK is ezt használja, de nem hagyatkozunk
+    // a tranzitív függőségre: a verziót mi rögzítjük.
+    implementation(libs.okhttp)
 
     coreLibraryDesugaring(libs.desugar.jdk.libs)
 

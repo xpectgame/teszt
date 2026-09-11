@@ -2,6 +2,8 @@ package hu.mealpilot.app.ui.screens
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Spacer
@@ -12,8 +14,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -21,7 +25,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModel
@@ -42,6 +48,9 @@ class OnboardingViewModel(private val container: AppContainer) : ViewModel() {
 
     fun finish(profile: UserProfile) = viewModelScope.launch {
         container.settings.saveProfile(profile)
+        // A Play elvárja, hogy a feltételek és az adatkezelés elfogadása megtörténjen
+        // és utólag igazolható legyen — ezért a verziót és az időpontot is eltesszük.
+        container.settings.recordConsent(LegalLinks.VERSION)
         container.settings.setOnboardingDone(true)
     }
 }
@@ -57,6 +66,8 @@ fun OnboardingScreen(
     )
     val stored by viewModel.storedProfile.collectAsState(initial = UserProfile())
     var profile by remember { mutableStateOf<UserProfile?>(null) }
+    var consented by remember { mutableStateOf(false) }
+    val context = LocalContext.current
 
     // A mentett értékekkel indulunk, de a szerkesztés közben nem írjuk felül a felhasználót.
     LaunchedEffect(stored) {
@@ -119,9 +130,31 @@ fun OnboardingScreen(
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
 
-        Spacer(Modifier.height(20.dp))
+        Spacer(Modifier.height(16.dp))
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Checkbox(checked = consented, onCheckedChange = { consented = it })
+            Column {
+                Text(
+                    "Elfogadom a felhasználási feltételeket és az adatkezelési tájékoztatót.",
+                    style = MaterialTheme.typography.bodySmall,
+                )
+                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    TextButton(
+                        onClick = { context.openUrl(LegalLinks.TERMS) },
+                        contentPadding = PaddingValues(0.dp),
+                    ) { Text("Feltételek", style = MaterialTheme.typography.labelMedium) }
+                    TextButton(
+                        onClick = { context.openUrl(LegalLinks.PRIVACY) },
+                        contentPadding = PaddingValues(0.dp),
+                    ) { Text("Adatkezelés", style = MaterialTheme.typography.labelMedium) }
+                }
+            }
+        }
+
+        Spacer(Modifier.height(12.dp))
         Button(
             onClick = { viewModel.finish(current) },
+            enabled = consented,
             modifier = Modifier.fillMaxWidth(),
         ) { Text("Kezdjük") }
         Spacer(Modifier.height(32.dp))

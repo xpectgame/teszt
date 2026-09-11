@@ -6,12 +6,15 @@ import hu.mealpilot.app.billing.EntitlementRepository
 import hu.mealpilot.app.billing.NoBillingGateway
 import hu.mealpilot.app.billing.PlayBillingGateway
 import hu.mealpilot.app.data.ai.AnthropicMealAi
+import hu.mealpilot.app.data.ai.BackendMealAi
 import hu.mealpilot.app.data.ai.OfflineMealAi
 import hu.mealpilot.app.data.local.AppDatabase
 import hu.mealpilot.app.data.prefs.SecureKeyStore
 import hu.mealpilot.app.data.prefs.SettingsRepository
 import hu.mealpilot.app.data.repo.ChatRepository
+import hu.mealpilot.app.data.remote.BackendClient
 import hu.mealpilot.app.data.repo.PlanRepository
+import hu.mealpilot.app.data.repo.ReportRepository
 import hu.mealpilot.app.data.repo.StatsRepository
 import hu.mealpilot.app.data.repo.TrackingRepository
 import hu.mealpilot.app.work.GenerationCoordinator
@@ -95,17 +98,53 @@ class AppContainer(context: Context) {
         )
     }
 
+    /**
+     * A saját backend, ha a build tartalmazza a címét.
+     *
+     * Ez a bolti út: az Anthropic kulcs a szerveren marad, a kvótát és az előfizetést is
+     * a szerver dönti el. Cím nélküli buildben null — ilyenkor az app a saját kulcsos
+     * vagy az offline útra esik vissza, tehát fejlesztés közben is fut.
+     */
+    val backendClient: BackendClient? by lazy {
+        BuildConfig.BACKEND_URL.takeIf { it.isNotBlank() }?.let { url ->
+            BackendClient(
+                baseUrl = url,
+                installId = { secureKeyStore.installId() },
+                // A vásárlás tokenjét a bolt adja; ebből igazolja a szerver a jogosultságot.
+                purchaseToken = { billing.state.value.purchaseToken },
+                appVersion = BuildConfig.VERSION_NAME,
+            )
+        }
+    }
+
+    val reportRepository: ReportRepository by lazy { ReportRepository(backendClient) }
+
     private val anthropicAi: MealAi by lazy {
         AnthropicMealAi(secureKeyStore) { settings.currentSettings() }
     }
 
+    private val backendAi: MealAi by lazy { BackendMealAi(requireNotNull(backendClient)) }
+
     private val offlineAi: MealAi by lazy { OfflineMealAi() }
 
-    /** Ha van API kulcs, az AI tervez; ha nincs, a beépített offline sablontervező ugrik be. */
-    fun mealAi(forceOffline: Boolean = false): MealAi =
-        if (forceOffline || !secureKeyStore.hasApiKey()) offlineAi else anthropicAi
+    /**
+     * Melyik tervező szolgálja ki a kérést.
+     *
+     * A saját API kulcs előrébb van a backendnél: aki szándékosan megadta a sajátját
+     * (ez csak a rejtett fejlesztői részben lehetséges), az a saját számlájára és
+     * kvóta nélkül dolgozzon. Mindenki más a backenden megy, kulcs nélkül.
+     */
+    fun mealAi(forceOffline: Boolean = false): MealAi = when {
+        forceOffline -> offlineAi
+        secureKeyStore.hasApiKey() -> anthropicAi
+        backendClient != null -> backendAi
+        else -> offlineAi
+    }
 
     val hasApiKey: Boolean get() = secureKeyStore.hasApiKey()
+
+    /** Igaz, ha az app valódi tervezővel dolgozik (nem a beépített sablonokkal). */
+    val hasPlanner: Boolean get() = secureKeyStore.hasApiKey() || backendClient != null
 
     /**
      * Minden helyben tárolt adat törlése.

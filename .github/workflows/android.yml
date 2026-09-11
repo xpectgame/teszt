@@ -1,4 +1,4 @@
-name: Android build
+name: Build
 
 # A GitHub futtatói tartalmazzák az Android SDK-t, így itt tényleg lefordul az app,
 # és a kész debug APK letölthető a futás Artifacts szekciójából — nem kell hozzá
@@ -8,10 +8,12 @@ on:
     branches: ["main", "claude/**"]
     paths:
       - "android/**"
+      - "backend/**"
       - ".github/workflows/android.yml"
   pull_request:
     paths:
       - "android/**"
+      - "backend/**"
   workflow_dispatch:
 
 permissions:
@@ -67,3 +69,29 @@ jobs:
             android/*/build/reports
             android/*/build/test-results
           if-no-files-found: ignore
+
+  backend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Függőségek
+        run: npm ci
+
+      - name: Típusellenőrzés
+        run: npm run typecheck
+
+      - name: Tesztek
+        run: npm test

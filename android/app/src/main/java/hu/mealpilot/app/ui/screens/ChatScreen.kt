@@ -3,7 +3,9 @@ package hu.mealpilot.app.ui.screens
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.slideInVertically
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -47,6 +49,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -60,6 +63,9 @@ import hu.mealpilot.app.AppContainer
 import hu.mealpilot.app.data.local.ChatMessageEntity
 import hu.mealpilot.app.notify.ReminderRefreshWorker
 import hu.mealpilot.app.work.GenerationCoordinator
+import hu.mealpilot.app.data.ai.QuotaExceededException
+import hu.mealpilot.app.data.repo.ReportKind
+import hu.mealpilot.app.ui.components.ReportDialog
 import hu.mealpilot.app.ui.containerFactory
 import hu.mealpilot.core.ai.AiChatAction
 import hu.mealpilot.core.ai.ChatActionType
@@ -107,6 +113,11 @@ class ChatViewModel(private val container: AppContainer) : ViewModel() {
             _busy.value = ChatBusy.Thinking
             val result = container.chatRepository.send(container.mealAi(), text)
             if (result.isSuccess) container.entitlements.recordChatMessage()
+            // A helyi számláló megelőzi ezt, de a végső szó a szerveré: ha ő utasít el
+            // kvóta miatt, akkor is az előfizetést ajánljuk fel, ne hibaüzenetet.
+            (result.exceptionOrNull() as? QuotaExceededException)
+                ?.takeIf { it.upgradeOffered }
+                ?.let { container.generation.requestPaywall(it.message ?: "Elfogyott a havi keret.") }
             _busy.value = ChatBusy.Idle
         }
     }
@@ -280,7 +291,7 @@ private val STARTERS = listOf(
     "Túl gyorsan fogyok",
 )
 
-@OptIn(ExperimentalLayoutApi::class)
+@OptIn(ExperimentalLayoutApi::class, ExperimentalFoundationApi::class)
 @Composable
 fun ChatScreen(
     container: AppContainer,
@@ -293,6 +304,8 @@ fun ChatScreen(
     val actionResult by viewModel.actionResult.collectAsState()
     val locked = busy != ChatBusy.Idle || generation.running
     var draft by remember { mutableStateOf("") }
+    var reportedMessage by remember { mutableStateOf<String?>(null) }
+    val scope = rememberCoroutineScope()
     val listState = rememberLazyListState()
 
     val imeVisible = WindowInsets.isImeVisible
@@ -341,6 +354,13 @@ fun ChatScreen(
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
+                        Spacer(Modifier.height(10.dp))
+                        Text(
+                            "A válaszokat gép írja, és tévedhet. Ha valami félrement, nyomj rá " +
+                                "hosszan az üzenetre, és jelentsd.",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
                         Spacer(Modifier.height(16.dp))
                         FlowRow(
                             horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -363,6 +383,7 @@ fun ChatScreen(
                     enabled = !locked,
                     onConfirm = { viewModel.confirm(message) },
                     onDismiss = { viewModel.dismiss(message) },
+                    onReport = { reportedMessage = message.body },
                 )
             }
 
@@ -435,14 +456,26 @@ fun ChatScreen(
             }
         }
     }
+
+    reportedMessage?.let { body ->
+        ReportDialog(
+            container = container,
+            kind = ReportKind.CHAT,
+            payload = body,
+            onDismiss = { reportedMessage = null },
+            onResult = { message -> scope.launch { snackbarHostState.showSnackbar(message) } },
+        )
+    }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun MessageBubble(
     message: ChatMessageEntity,
     enabled: Boolean,
     onConfirm: () -> Unit,
     onDismiss: () -> Unit,
+    onReport: () -> Unit,
 ) {
     val fromUser = message.role == ChatTurn.Role.USER.name
 
@@ -453,6 +486,12 @@ private fun MessageBubble(
         Box(
             Modifier
                 .widthIn(max = 300.dp)
+                // A gépi válaszra hosszan nyomva lehet jelenteni. Nem teszünk minden
+                // buborék alá gombot: az ritkán kell, és minden beszélgetést elcsúfítana.
+                .then(
+                    if (fromUser) Modifier
+                    else Modifier.combinedClickable(onClick = {}, onLongClick = onReport)
+                )
                 .clip(
                     RoundedCornerShape(
                         topStart = 18.dp,

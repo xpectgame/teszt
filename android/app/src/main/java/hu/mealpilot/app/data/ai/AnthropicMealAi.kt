@@ -1,6 +1,5 @@
 package hu.mealpilot.app.data.ai
 
-import android.util.Log
 import com.anthropic.client.AnthropicClient
 import com.anthropic.client.okhttp.AnthropicOkHttpClient
 import com.anthropic.errors.AnthropicServiceException
@@ -15,39 +14,23 @@ import hu.mealpilot.app.data.prefs.AiEffort
 import hu.mealpilot.app.data.prefs.AiModel
 import hu.mealpilot.app.data.prefs.AppSettings
 import hu.mealpilot.app.data.prefs.SecureKeyStore
-import hu.mealpilot.core.ai.AiDay
-import hu.mealpilot.core.ai.AiDayResponse
-import hu.mealpilot.core.ai.AiChatResponse
-import hu.mealpilot.core.ai.AiPlanResponse
-import hu.mealpilot.core.ai.ChatContext
 import hu.mealpilot.core.ai.ChatPrompts
-import hu.mealpilot.core.ai.ChatTurn
-import hu.mealpilot.core.ai.GenerationProgress
-import hu.mealpilot.core.ai.MealAi
-import hu.mealpilot.core.ai.MealSlot
-import hu.mealpilot.core.ai.PlanChunker
-import hu.mealpilot.core.ai.PlanParser
 import hu.mealpilot.core.ai.PlanPrompts
-import hu.mealpilot.core.ai.PlanRepair
-import hu.mealpilot.core.ai.PlanRequest
-import hu.mealpilot.core.ai.PlanValidator
 import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.ensureActive
-import kotlinx.coroutines.withContext
 import kotlin.coroutines.coroutineContext
+import kotlinx.coroutines.ensureActive
 
 /**
- * A tervet a hivatalos Anthropic Java SDK-n keresztül generálja.
+ * Modellhívás a felhasználó SAJÁT Anthropic-kulcsával, a hivatalos Java SDK-n keresztül.
  *
- * A hosszú terveket [PlanChunker] szerint hetekre bontja: egy hónapnyi recept egyetlen
- * válaszban a kimeneti limitbe futna, hetenként viszont mutatható a haladás, egy hibás
- * hét külön újrakérhető, és az állandó rendszerprompt cache-elve marad a hívások között.
+ * Ez a fejlesztői és a saját használatú út. Fizető felhasználó nem fog API kulcsot
+ * szerezni, ezért a bolti buildben a [BackendMealAi] a valódi kiszolgáló — ott a kulcs
+ * a szerveren marad, és a kvótát sem a telefon számolja.
  */
 class AnthropicMealAi(
     private val keyStore: SecureKeyStore,
     private val settingsProvider: suspend () -> AppSettings,
-) : MealAi {
+) : StreamingMealAi() {
 
     override val isConfigured: Boolean get() = keyStore.hasApiKey()
 
@@ -62,233 +45,27 @@ class AnthropicMealAi(
         }
     }
 
-    override suspend fun generatePlan(
-        request: PlanRequest,
-        onProgress: (GenerationProgress) -> Unit,
-        onChunk: suspend (AiPlanResponse) -> Unit,
-    ): Result<AiPlanResponse> = withContext(Dispatchers.IO) {
-        val apiKey = keyStore.apiKey()
-            ?: return@withContext Result.failure(MissingApiKeyException())
-
-        try {
-            val settings = settingsProvider()
-            val client = client(apiKey)
-            val chunks = PlanChunker.chunks(request.days)
-
-            val allDays = mutableListOf<AiDay>()
-            val coachNotes = mutableListOf<String>()
-            val usedNames = request.avoidRecipes.toMutableList()
-            var title = ""
-            var summary = ""
-
-            for (chunk in chunks) {
-                coroutineContext.ensureActive()
-                onProgress(
-                    GenerationProgress(
-                        stage = GenerationProgress.Stage.PREPARING,
-                        currentChunk = chunk.index,
-                        totalChunks = chunk.total,
-                        message = if (chunk.total > 1) "${chunk.index + 1}. hét összeállítása…" else "Terv összeállítása…",
-                    )
-                )
-
-                val chunkRequest = request.copy(
-                    days = chunk.days,
-                    startDayIndex = request.startDayIndex + chunk.startDayIndex,
-                    totalDays = request.days,
-                    avoidRecipes = usedNames.toList(),
-                )
-
-                val chunkPlan = generateChunk(client, settings, chunkRequest, chunk, onProgress)
-                allDays += chunkPlan.days
-                coachNotes += chunkPlan.coachNotes
-                usedNames += chunkPlan.days.flatMap { day -> day.meals.map { it.name } }
-                if (title.isBlank()) title = chunkPlan.planTitle
-                if (summary.isBlank()) summary = chunkPlan.summary
-
-                // A kész szakaszt azonnal kiadjuk, hogy a felhasználó már használhassa,
-                // miközben a többi nap még készül.
-                onChunk(chunkPlan)
-                onProgress(
-                    GenerationProgress(
-                        stage = GenerationProgress.Stage.STREAMING,
-                        currentChunk = chunk.index + 1,
-                        totalChunks = chunk.total,
-                        daysReady = allDays.size,
-                        message = if (chunk.index + 1 < chunk.total) {
-                            "${allDays.size} nap kész, a többi töltődik…"
-                        } else {
-                            "Kész."
-                        },
-                    )
-                )
-            }
-
-            onProgress(
-                GenerationProgress(
-                    stage = GenerationProgress.Stage.DONE,
-                    currentChunk = chunks.size,
-                    totalChunks = chunks.size,
-                    daysReady = allDays.size,
-                    message = "Kész.",
-                )
-            )
-
-            Result.success(
-                AiPlanResponse(
-                    planTitle = title.ifBlank { "Étrend" },
-                    summary = summary,
-                    days = allDays.sortedBy { it.dayIndex },
-                    coachNotes = coachNotes.distinct().take(6),
-                )
-            )
-        } catch (cancelled: CancellationException) {
-            throw cancelled
-        } catch (error: Throwable) {
-            Result.failure(translate(error))
-        }
-    }
-
-    /** Egy hét legenerálása, szükség esetén egy javító körrel. */
-    private suspend fun generateChunk(
-        client: AnthropicClient,
-        settings: AppSettings,
-        chunkRequest: PlanRequest,
-        chunk: PlanChunker.Chunk,
-        onProgress: (GenerationProgress) -> Unit,
-    ): AiPlanResponse {
-        val basePrompt = PlanPrompts.userPrompt(chunkRequest)
-        val expectedMeals = MealSlot.forMealsPerDay(chunkRequest.profile.mealsPerDay).size
-
-        var prompt = basePrompt
-        var lastProblems: List<String> = emptyList()
-
-        repeat(MAX_ATTEMPTS) { attempt ->
-            coroutineContext.ensureActive()
-            val stage = if (attempt == 0) GenerationProgress.Stage.STREAMING else GenerationProgress.Stage.REPAIRING
-            val label = if (attempt == 0) "Receptek írása…" else "A kalóriakeret finomhangolása…"
-
-            fun report(chars: Int) = onProgress(
-                GenerationProgress(
-                    stage = stage,
-                    currentChunk = chunk.index,
-                    totalChunks = chunk.total,
-                    receivedChars = chars,
-                    message = label,
-                )
-            )
-
-            // A jelzést a hívás ELŐTT is kiadjuk. A modell a válasz első karaktere előtt
-            // hosszan gondolkodhat, és addig a korábbi üzenet ragadna kint — pont az kelti
-            // azt a benyomást, hogy az app megállt.
-            report(0)
-            val raw = callModel(client, settings, prompt) { chars -> report(chars) }
-
-            onProgress(
-                GenerationProgress(
-                    stage = GenerationProgress.Stage.VALIDATING,
-                    currentChunk = chunk.index,
-                    totalChunks = chunk.total,
-                    message = "Ellenőrzés…",
-                )
-            )
-
-            val parsed = PlanParser.parsePlan(raw)
-            val rawPlan = parsed.getOrElse { error ->
-                lastProblems = listOf(error.message ?: "A válasz nem volt értelmezhető JSON.")
-                prompt = basePrompt + "\n\n" + PlanPrompts.repairPrompt(lastProblems)
-                return@repeat
-            }
-
-            // Az arányos kalóriaeltérést kiszámoljuk, nem újrakérjük. Egy 10%-kal elcsúszott
-            // nap miatt az egész hetet újragenerálni percekbe és pénzbe kerülne, miközben az
-            // adagok arányos igazítása ugyanazt az eredményt adja azonnal.
-            val repaired = PlanRepair.normalize(rawPlan, chunkRequest.budget.target)
-            if (repaired.adjusted.isNotEmpty()) {
-                Log.i(TAG, "Adagok igazítva a kerethez: ${repaired.adjusted}")
-            }
-            val plan = repaired.plan
-
-            val problems = PlanValidator.validate(
-                plan = plan,
-                target = chunkRequest.budget.target,
-                expectedDays = chunkRequest.days,
-                expectedMealsPerDay = expectedMeals,
-                restrictions = chunkRequest.profile.effectiveRestrictions,
-            )
-            if (problems.isEmpty()) return plan
-
-            Log.i(TAG, "A(z) ${chunk.index + 1}. hét nem ment át az ellenőrzésen: $problems")
-            lastProblems = problems
-            prompt = basePrompt + "\n\n" + PlanPrompts.repairPrompt(problems)
-        }
-
-        throw PlanQualityException(lastProblems)
-    }
-
-    override suspend fun refineDay(
-        request: PlanRequest,
-        currentDayJson: String,
-        instruction: String,
-    ): Result<AiDayResponse> = withContext(Dispatchers.IO) {
-        val apiKey = keyStore.apiKey() ?: return@withContext Result.failure(MissingApiKeyException())
-        try {
-            val raw = callModel(
-                client = client(apiKey),
-                settings = settingsProvider(),
-                userText = PlanPrompts.refineDayPrompt(request, currentDayJson, instruction),
-                onChars = {},
-            )
-            Result.success(PlanParser.parseDay(raw).getOrThrow())
-        } catch (cancelled: CancellationException) {
-            throw cancelled
-        } catch (error: Throwable) {
-            Result.failure(translate(error))
-        }
-    }
-
-    override suspend fun chat(
-        context: ChatContext,
-        history: List<ChatTurn>,
-        message: String,
-    ): Result<AiChatResponse> = withContext(Dispatchers.IO) {
-        val apiKey = keyStore.apiKey() ?: return@withContext Result.failure(MissingApiKeyException())
-        try {
-            val raw = callModel(
-                client = client(apiKey),
-                settings = settingsProvider(),
-                userText = ChatPrompts.userPrompt(context, history, message),
-                systemPrompt = ChatPrompts.SYSTEM,
-                maxTokens = CHAT_MAX_TOKENS,
-                onChars = {},
-            )
-            Result.success(PlanParser.parseChat(raw).getOrThrow())
-        } catch (cancelled: CancellationException) {
-            throw cancelled
-        } catch (error: Throwable) {
-            Result.failure(translate(error))
-        }
-    }
-
     /**
      * Egy hívás a Messages API-ra, streamelve. A streamelés itt nem kényelmi kérdés:
      * nagy max_tokens mellett a nem streamelt kérés a HTTP időkorlátba futna.
      */
-    private suspend fun callModel(
-        client: AnthropicClient,
-        settings: AppSettings,
+    override suspend fun call(
+        task: AiTask,
         userText: String,
-        systemPrompt: String = PlanPrompts.SYSTEM,
-        maxTokens: Long = MAX_OUTPUT_TOKENS,
+        planDays: Int,
+        chunkIndex: Int,
         onChars: (Int) -> Unit,
     ): String {
+        val apiKey = keyStore.apiKey() ?: throw MissingApiKeyException()
+        val settings = settingsProvider()
+
         val builder = MessageCreateParams.builder()
             .model(settings.model.id)
-            .maxTokens(maxTokens)
+            .maxTokens(task.maxOutputTokens)
             .systemOfTextBlockParams(
                 listOf(
                     TextBlockParam.builder()
-                        .text(systemPrompt)
+                        .text(if (task == AiTask.CHAT) ChatPrompts.SYSTEM else PlanPrompts.SYSTEM)
                         // A rendszerprompt minden hívásnál azonos, ezért cache-elhető:
                         // a heti darabok és a javító körök után is olcsóbb lesz.
                         .cacheControl(CacheControlEphemeral.builder().build())
@@ -305,7 +82,7 @@ class AnthropicMealAi(
         }
 
         val text = StringBuilder()
-        client.messages().createStreaming(builder.build()).use { response ->
+        client(apiKey).messages().createStreaming(builder.build()).use { response ->
             // Optional.stream() csak Java 9-től van; Androidon iterátorral és orElse(null)-lal
             // maradunk a Java 8-as felületen, amit a desugaring biztosan lefed.
             val events = response.stream().iterator()
@@ -327,8 +104,7 @@ class AnthropicMealAi(
         AiEffort.HIGH -> OutputConfig.Effort.HIGH
     }
 
-    /** A nyers kivételekből a felületen megjeleníthető, magyar üzenetű hibát csinál. */
-    private fun translate(error: Throwable): Throwable = when (error) {
+    override fun translate(error: Throwable): Throwable = when (error) {
         is CancellationException -> error
         is MealAiException -> error
         is UnauthorizedException -> MealAiException(
@@ -350,34 +126,4 @@ class AnthropicMealAi(
         )
         else -> MealAiException(error.message ?: "Ismeretlen hiba a terv készítése közben.", error)
     }
-
-    private companion object {
-        const val TAG = "AnthropicMealAi"
-        const val MAX_OUTPUT_TOKENS = 24_000L
-
-        /** A beszélgetés rövid válaszokat ad, itt nincs szükség nagy keretre. */
-        const val CHAT_MAX_TOKENS = 2_000L
-
-        /** Egy első próbálkozás + egy javító kör. Több kör már csak pénzt égetne. */
-        const val MAX_ATTEMPTS = 2
-    }
 }
-
-open class MealAiException(message: String, cause: Throwable? = null) : Exception(message, cause)
-
-class MissingApiKeyException : MealAiException(
-    "Nincs beállítva API kulcs. A Beállításokban add meg az Anthropic kulcsodat, " +
-        "vagy használd a beépített offline tervezőt."
-)
-
-class EmptyResponseException : MealAiException("Az AI üres választ küldött. Próbáld újra.")
-
-class PlanQualityException(val problems: List<String>) : MealAiException(
-    buildString {
-        append("A terv kétszer sem felelt meg a céloknak. ")
-        if (problems.isNotEmpty()) {
-            append("Az utolsó hibák: ")
-            append(problems.take(3).joinToString("; "))
-        }
-    }
-)

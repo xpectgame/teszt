@@ -73,14 +73,37 @@ a felhőmentésből kizárva marad.
 Ha a tervezőszolgáltatás nem érhető el, a beépített **sablontervező** ugrik be, és a napi
 kerethez méretezett étrendet ad — csak a szabad szöveges kéréseket nem veszi figyelembe.
 
-**Költség.** Alapértelmezés a `claude-opus-5` (a legpontosabban tartja a kalóriakeretet).
-Egy hét étrend nagyjából egy hívás; egy hónapos terv 5 hívásra bomlik. Ha olcsóbb kell,
-a Beállításokban átválthatsz Sonnet 5-re vagy Haiku 4.5-re, illetve lejjebb veheted az
-„Alaposság” szintet.
+**Költség.** Alapértelmezés a `claude-sonnet-5` — ez tartja jól a kalóriakeretet elfogadható
+áron. Egy hét étrend nagyjából egy hívás (~0,14 USD); egy hónapos terv 5 hívásra bomlik.
+Saját kulcs mellett a fejlesztői részben átválthatsz Opusra vagy Haikura, illetve
+állíthatod az „Alaposság” szintet. Backenden a modellt a szerver választja
+(`wrangler.toml` → `PLAN_MODEL`), a kliens nem szólhat bele.
 
-> ⚠️ Nyilvános kiadásnál az API kulcs **nem** kerülhet az appba. Erre a `MealAi` interfész
-> készült elő: ma az `AnthropicMealAi` a felhasználó kulcsával hív, előfizetéses modellhez
-> ugyanez mögé egy saját backend proxy tehető, a felület és az üzleti logika érintése nélkül.
+### A bolti út: saját backend
+
+Nyilvános kiadásnál az API kulcs nem kerülhet az appba — egy fizető felhasználó nem fog
+kulcsot szerezni, és amíg a jogosultságot a kliens dönti el, egy módosított app hazudhat
+róla. Ezért a `MealAi` mögött két megvalósítás van:
+
+| | mikor fut | kulcs | kvóta |
+|---|---|---|---|
+| `BackendMealAi` | ha a build tartalmaz backend címet | a szerveren | a szerver dönti el |
+| `AnthropicMealAi` | ha megadtál saját kulcsot (fejlesztői rész) | a telefonon | nincs |
+| `OfflineMealAi` | ha egyik sincs | — | — |
+
+A sorrend: **saját kulcs → backend → offline**. Aki szándékosan megadta a sajátját, a
+saját számlájára és kvóta nélkül dolgozzon; mindenki más a backenden megy.
+
+A backend címe fordításkor kerül a buildbe:
+
+```bash
+MEALPILOT_BACKEND_URL=https://mealpilot-backend.pelda.workers.dev ./gradlew :app:assembleRelease
+```
+
+A darabolás, a tápérték-ellenőrzés, az adagok igazítása és a javító kör mindkét úton a
+telefonon fut (`StreamingMealAi`) — azokhoz nem kell szerver. A backend csak azt teszi
+hozzá, amit a kliens nem tud hitelesen: a kulcsot, a rendszerpromptot, az
+előfizetés-ellenőrzést és a kvótát. Részletek: [`../backend/README.md`](../backend/README.md).
 
 ---
 
@@ -97,7 +120,8 @@ android/
 └── app/                        Android: Compose UI, Room, WorkManager, Anthropic SDK
     ├── data/local/             Room entitások, DAO-k
     ├── data/prefs/             DataStore + titkosított kulcstároló
-    ├── data/ai/                Anthropic SDK hívás + offline tartalék
+    ├── data/ai/                tervezés menete, Anthropic SDK, backend és offline tartalék
+    ├── data/remote/            a saját backend HTTP kliense
     ├── data/repo/              terv-, napló- és statisztika-repository
     ├── notify/                 ébresztések, értesítések, háttérmunka
     └── ui/                     Compose képernyők + ViewModelek
@@ -167,7 +191,8 @@ megnyitása nélkül. Ha a naplózás nem egy koppintás, senki nem csinálja k�
 - Health Connect integráció (lépésszám, edzések automatikus behúzása)
 - Terv exportálása PDF-be, bevásárlólista megosztása
 - Widget és Wear OS emlékeztető
-- Backend proxy + előfizetés (a `MealAi` interfész készen áll rá)
+- Összeomlás-jelentés és termékanalitika
+- Play Integrity API, ha az ingyenes sáv csapolása gonddá válik
 - Instrumentált UI tesztek
 
 ---

@@ -2,6 +2,7 @@ package hu.mealpilot.app.work
 
 import android.util.Log
 import hu.mealpilot.app.AppContainer
+import hu.mealpilot.app.data.ai.QuotaExceededException
 import hu.mealpilot.app.data.repo.PlanGenerationOutcome
 import hu.mealpilot.app.notify.ReminderRefreshWorker
 import hu.mealpilot.core.ai.GenerationProgress
@@ -60,6 +61,17 @@ class GenerationCoordinator(private val container: AppContainer) {
 
     fun consumePaywallPrompt() { _paywallPrompt.value = null }
 
+    /**
+     * A szerver kvóta miatti elutasítása nem hiba, hanem korlát: ilyenkor a paywallt
+     * nyitjuk meg, nem egy piros üzenetet mutatunk. A helyi ellenőrzés ezt legtöbbször
+     * megelőzi, de a döntés a szerveré — ez az ág az, ami tényleg érvényes.
+     */
+    private fun offerUpgradeIfQuota(error: Throwable?): Boolean {
+        val quota = error as? QuotaExceededException ?: return false
+        if (quota.upgradeOffered) requestPaywall(quota.message ?: "Elfogyott a havi keret.")
+        return quota.upgradeOffered
+    }
+
     private var job: Job? = null
 
     val isBusy: Boolean get() = job?.isActive == true
@@ -94,9 +106,11 @@ class GenerationCoordinator(private val container: AppContainer) {
                     // Csak a ténylegesen elkészült terv fogyasztja a keretet.
                     container.entitlements.recordPlanGenerated()
                 }
+                result.onFailure { error -> offerUpgradeIfQuota(error) }
                 _lastOutcome.value = result
             } catch (error: Throwable) {
                 Log.e(TAG, "A tervezés megszakadt.", error)
+                offerUpgradeIfQuota(error)
                 _lastOutcome.value = Result.failure(error)
             } finally {
                 end()
@@ -117,6 +131,7 @@ class GenerationCoordinator(private val container: AppContainer) {
                 _actionResult.value = message
             } catch (error: Throwable) {
                 Log.e(TAG, "A művelet megszakadt.", error)
+                offerUpgradeIfQuota(error)
                 _actionResult.value = error.message ?: "Nem sikerült."
             } finally {
                 end()

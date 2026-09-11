@@ -7,6 +7,7 @@ import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.doublePreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.intPreferencesKey
+import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.core.stringSetPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
@@ -60,6 +61,13 @@ data class AppSettings(
      * jelennek meg, ha ezt a kapcsolót valaki szándékosan bekapcsolja.
      */
     val developerMode: Boolean = false,
+    /**
+     * A felhasználó által elfogadott jogi szövegek verziója, üres ha még nem fogadta el.
+     * A Play elvárja, hogy az elfogadás megtörténjen és nyomon követhető legyen; ha a
+     * feltételek változnak, a verzió emelésével újra rá lehet kérdezni.
+     */
+    val acceptedTermsVersion: String = "",
+    val acceptedTermsAtMillis: Long = 0L,
 )
 
 class SettingsRepository(context: Context) {
@@ -123,6 +131,14 @@ class SettingsRepository(context: Context) {
         store.edit { it[K_ONBOARDING] = done }
     }
 
+    /** A feltételek és az adatkezelési tájékoztató elfogadásának rögzítése. */
+    suspend fun recordConsent(version: String, atMillis: Long = System.currentTimeMillis()) {
+        store.edit {
+            it[K_TERMS_VERSION] = version
+            it[K_TERMS_AT] = atMillis
+        }
+    }
+
     private fun Preferences.toProfile() = UserProfile(
         name = this[K_NAME] ?: "",
         sex = runCatching { Sex.valueOf(this[K_SEX] ?: "MALE") }.getOrDefault(Sex.MALE),
@@ -158,6 +174,8 @@ class SettingsRepository(context: Context) {
         model = AiModel.fromId(this[K_MODEL]),
         effort = AiEffort.fromValue(this[K_EFFORT]),
         developerMode = this[K_DEVELOPER] ?: false,
+        acceptedTermsVersion = this[K_TERMS_VERSION] ?: "",
+        acceptedTermsAtMillis = this[K_TERMS_AT] ?: 0L,
     )
 
     private companion object {
@@ -186,5 +204,7 @@ class SettingsRepository(context: Context) {
         val K_MODEL = stringPreferencesKey("ai_model")
         val K_EFFORT = stringPreferencesKey("ai_effort")
         val K_DEVELOPER = booleanPreferencesKey("developer_mode")
+        val K_TERMS_VERSION = stringPreferencesKey("accepted_terms_version")
+        val K_TERMS_AT = longPreferencesKey("accepted_terms_at")
     }
 }

@@ -154,6 +154,7 @@ class PlayBillingGateway(
         _state.value = _state.value.copy(
             subscribed = active != null,
             pending = pending,
+            purchaseToken = active?.purchaseToken,
             error = null,
         )
         onEntitlementChanged(active != null, pending, null)

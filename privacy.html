@@ -57,15 +57,29 @@ különleges kategóriájú adatnak minősülnek. Ezeket kizárólag a te kifeje
 alapján kezeljük, az étrend összeállítása céljából.</p>
 
 <h2>3. Hol tároljuk</h2>
-<p>Minden fent felsorolt adat a készüléked helyi adatbázisában tárolódik. Nem üzemeltetünk
-felhasználói adatbázist, és nem készítünk róla szerveroldali másolatot. Ha a készülék
-biztonsági mentése be van kapcsolva, az adatok a saját Google-fiókod mentésébe kerülhetnek —
-ez a te beállításod, nem a miénk.</p>
+<p>Minden fent felsorolt adat a készüléked helyi adatbázisában tárolódik. Az étrendedről,
+a naplóidról és a testadataidról <strong>nem készítünk szerveroldali másolatot</strong>, és
+nem vezetünk felhasználói fiókot: nincs regisztráció, nincs jelszó, nincs e-mail-cím. Ha a
+készülék biztonsági mentése be van kapcsolva, az adatok a saját Google-fiókod mentésébe
+kerülhetnek — ez a te beállításod, nem a miénk.</p>
+<p>A tervezést egy saját kiszolgálónk közvetíti (lásd 4. pont). Ez a kiszolgáló a következőket
+tárolja, kizárólag a visszaélés megelőzése és a számlázás ellenőrzése céljából:</p>
+<ul>
+  <li>a telepítés véletlen azonosítójának egyirányú lenyomata (nem azonosít téged, és az
+    adatok törlésekor vagy az app eltávolításakor újat kap);</li>
+  <li>a Google Play vásárlási tokenjének egyirányú lenyomata és az előfizetés állapota;</li>
+  <li>hívásonként az időpont, a feladat típusa és a felhasznált tokenek száma;</li>
+  <li>havi összesítés a felhasznált keretről.</li>
+</ul>
+<p><strong>A kérés szövegét — tehát az étrendedet, az adataidat és az üzeneteidet — a
+kiszolgáló nem írja le.</strong> Kivétel, ha te magad küldesz be bejelentést a „jelentés"
+gombbal: ilyenkor a kifogásolt terv vagy fogás szövege is elmentésre kerül, hogy meg tudjuk
+nézni, mi ment félre.</p>
 
 <h2>4. Mi hagyja el a készüléket</h2>
-<p>Étrend készítésekor és a beszélgetés használatakor a következő adatok kimennek a tervezést
-végző szolgáltatóhoz (<strong>Anthropic PBC</strong>, Egyesült Államok), hogy a terv
-elkészülhessen:</p>
+<p>Étrend készítésekor és a beszélgetés használatakor a következő adatok kimennek a saját
+kiszolgálónkon keresztül a tervezést végző szolgáltatóhoz (<strong>Anthropic PBC</strong>,
+Egyesült Államok), hogy a terv elkészülhessen:</p>
 <ul>
   <li>biológiai nem, életkor, testmagasság, testsúly, testzsírszázalék, célsúly, mozgásszint;</li>
   <li>a kiszámított kalória- és makrócélok;</li>
@@ -83,8 +97,9 @@ kategóriájú adatok esetén a kifejezett hozzájárulásod.</p>
 
 <h2>5. Fizetés</h2>
 <p>Az előfizetést a Google Play kezeli. Bankkártya- és fizetési adatokhoz nem férünk hozzá,
-azokat nem tároljuk. A Google Playtől azt az információt kapjuk meg, hogy van-e érvényes
-előfizetésed. A Google adatkezeléséről:
+azokat nem tároljuk. A kiszolgálónk a Google Play fejlesztői felületén keresztül azt az
+információt kérdezi le, hogy az adott vásárlás érvényes-e, és ezt az állapotot tárolja
+(lásd 3. pont). A Google adatkezeléséről:
   <a href="https://policies.google.com/privacy">policies.google.com/privacy</a>.</p>
 
 <h2>6. Értesítések</h2>

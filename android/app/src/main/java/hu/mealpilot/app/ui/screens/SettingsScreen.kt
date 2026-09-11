@@ -80,6 +80,11 @@ class SettingsViewModel(private val container: AppContainer) : ViewModel() {
         ReminderRefreshWorker.refreshNow(container.appContext)
     }
 
+    /** A frissített jogi szövegek elfogadása a beállításokból. */
+    fun acceptTerms() = viewModelScope.launch {
+        container.settings.recordConsent(LegalLinks.VERSION)
+    }
+
     val entitlement = container.entitlements.entitlement
 
     fun setDeveloperPremium(enabled: Boolean) = viewModelScope.launch {
@@ -175,6 +180,23 @@ fun SettingsScreen(
         // hétszeri megérintésével előhozható fejlesztői részbe kerültek.
         if (current.developerMode) {
             SectionCard(title = "Fejlesztői beállítások") {
+                // Melyik úton mennek ki a hívások. Ez a leggyakoribb félreértés forrása
+                // tesztelés közben: a saját kulcs megelőzi a backendet.
+                Text(
+                    when {
+                        maskedKey != null ->
+                            "Tervező: saját Anthropic kulcs (a backendet megelőzi, kvóta nélkül)."
+
+                        container.backendClient != null ->
+                            "Tervező: saját backend — ${BuildConfig.BACKEND_URL}"
+
+                        else ->
+                            "Tervező: beépített offline sablonok. Nincs backend a buildben " +
+                                "(MEALPILOT_BACKEND_URL) és nincs megadott kulcs sem."
+                    },
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+                Spacer(Modifier.height(12.dp))
                 Text(
                     "Saját Anthropic hozzáférési kulcs. A kulcs a telefonon marad, titkosítva, " +
                         "és nem kerül felhőmentésbe. Éles kiadásban ezt a saját backend váltja ki.",
@@ -395,6 +417,27 @@ fun SettingsScreen(
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
+            Spacer(Modifier.height(12.dp))
+            // Az elfogadás tényét a Play is elvárja, és vita esetén ez az egyetlen
+            // nyoma annak, hogy a felhasználó mikor és melyik szöveget fogadta el.
+            if (current.acceptedTermsVersion == LegalLinks.VERSION) {
+                Text(
+                    "Elfogadva: " + java.time.Instant.ofEpochMilli(current.acceptedTermsAtMillis)
+                        .atZone(java.time.ZoneId.systemDefault())
+                        .toLocalDate(),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            } else {
+                Text(
+                    "A feltételek frissültek. Kérünk, nézd át és fogadd el.",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.error,
+                )
+                Spacer(Modifier.height(6.dp))
+                Button(onClick = { viewModel.acceptTerms() }) { Text("Elfogadom") }
+            }
+
             Spacer(Modifier.height(12.dp))
             OutlinedButton(onClick = { confirmWipe = true }) { Text("Minden adat törlése") }
         }

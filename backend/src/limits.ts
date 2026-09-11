@@ -1,0 +1,143 @@
+/**
+ * Csomagok, korlátok, kvóta. Szándékosan függőség nélküli, hogy tesztelhető legyen.
+ *
+ * FONTOS: ezeknek a számoknak egyezniük kell a kliens `core/billing/Tiers.kt`
+ * értékeivel. A kliens csak a felület miatt ismeri őket (mit írjon ki), a döntést
+ * mindig ez a fájl hozza — egy módosított app a saját számlálóját átírhatja, ezt nem.
+ */
+
+export type Tier = 'FREE' | 'PREMIUM'
+export type Task = 'PLAN' | 'DAY' | 'CHAT'
+
+export interface TierLimits {
+  /** -1 = korlátlan */
+  aiPlansPerMonth: number
+  chatMessagesPerMonth: number
+  maxPlanDays: number
+  canRefineDays: boolean
+  /** Havi kimeneti token plafon — ez a kemény, megkerülhetetlen korlát. */
+  outputTokenCap: number
+}
+
+export const DEFAULT_LIMITS: Record<Tier, TierLimits> = {
+  FREE: {
+    aiPlansPerMonth: 1,
+    chatMessagesPerMonth: 10,
+    maxPlanDays: 3,
+    canRefineDays: false,
+    outputTokenCap: 80_000,
+  },
+  PREMIUM: {
+    aiPlansPerMonth: -1,
+    chatMessagesPerMonth: -1,
+    maxPlanDays: 30,
+    canRefineDays: true,
+    outputTokenCap: 3_000_000,
+  },
+}
+
+export interface UsageRow {
+  plans: number
+  messages: number
+  inputTokens: number
+  outputTokens: number
+}
+
+export const EMPTY_USAGE: UsageRow = { plans: 0, messages: 0, inputTokens: 0, outputTokens: 0 }
+
+/** Naptári hónap kulcsa, UTC szerint. A kliens `BillingPeriod.keyFor` ugyanezt adja. */
+export function periodKey(at: Date = new Date()): string {
+  const year = at.getUTCFullYear()
+  const month = `${at.getUTCMonth() + 1}`.padStart(2, '0')
+  return `${year}-${month}`
+}
+
+export type DenyCode =
+  | 'PLAN_QUOTA'
+  | 'MESSAGE_QUOTA'
+  | 'TOKEN_CAP'
+  | 'PREMIUM_ONLY'
+  | 'PLAN_TOO_LONG'
+
+export interface Decision {
+  allowed: boolean
+  code?: DenyCode
+  message?: string
+  /** Hány napot enged ebből a kérésből — a kliens ennél többet nem kap. */
+  allowedDays?: number
+}
+
+const ALLOW: Decision = { allowed: true }
+
+export interface CheckInput {
+  tier: Tier
+  limits: TierLimits
+  usage: UsageRow
+  task: Task
+  /** Hány napot kér ez a hívás (csak PLAN-nél számít). */
+  requestedDays: number
+  /** A tervdarabolás miatt csak az első darab számít új tervnek. */
+  chunkIndex: number
+}
+
+/**
+ * Eldönti, kiszolgálható-e a kérés.
+ *
+ * A tokenplafon minden más előtt jön: ez az egyetlen korlát, amit a hívó semmilyen
+ * paraméterrel nem tud megkerülni, mert a tényleges fogyasztásból számoljuk.
+ */
+export function checkQuota(input: CheckInput): Decision {
+  const { tier, limits, usage, task, requestedDays, chunkIndex } = input
+
+  if (usage.outputTokens >= limits.outputTokenCap) {
+    return {
+      allowed: false,
+      code: 'TOKEN_CAP',
+      message:
+        tier === 'PREMIUM'
+          ? 'Ebben a hónapban szokatlanul sok kérés futott le erről a fiókról. Írj nekünk, ha ez tévedés.'
+          : 'Elfogyott a havi ingyenes keret. Az előfizetéssel újra tudsz tervezni.',
+    }
+  }
+
+  if (task === 'DAY' && !limits.canRefineDays) {
+    return {
+      allowed: false,
+      code: 'PREMIUM_ONLY',
+      message: 'Egy nap átírása a teljes csomag része.',
+    }
+  }
+
+  if (task === 'CHAT') {
+    if (limits.chatMessagesPerMonth >= 0 && usage.messages >= limits.chatMessagesPerMonth) {
+      return {
+        allowed: false,
+        code: 'MESSAGE_QUOTA',
+        message: `Elfogyott a havi ${limits.chatMessagesPerMonth} üzenet. Az előfizetéssel korlátlanul beszélgethetsz.`,
+      }
+    }
+    return ALLOW
+  }
+
+  if (task === 'PLAN') {
+    const isNewPlan = chunkIndex <= 0
+    if (isNewPlan && limits.aiPlansPerMonth >= 0 && usage.plans >= limits.aiPlansPerMonth) {
+      return {
+        allowed: false,
+        code: 'PLAN_QUOTA',
+        message: `Ebben a hónapban elhasználtad az ingyenes tervet (${limits.aiPlansPerMonth} db). Az előfizetéssel korlátlanul tervezhetsz.`,
+      }
+    }
+    const allowedDays = Math.min(Math.max(requestedDays, 1), limits.maxPlanDays)
+    return { allowed: true, allowedDays }
+  }
+
+  return ALLOW
+}
+
+/** A hívás után mit kell növelni a számlálókon. */
+export function usageDelta(task: Task, chunkIndex: number): { plans: number; messages: number } {
+  if (task === 'PLAN' && chunkIndex <= 0) return { plans: 1, messages: 0 }
+  if (task === 'CHAT') return { plans: 0, messages: 1 }
+  return { plans: 0, messages: 0 }
+}

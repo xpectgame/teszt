@@ -56,6 +56,12 @@ object LegalLinks {
     const val TERMS = "$SITE/terms.html"
     const val SUPPORT_EMAIL = "mate.teke@gmail.com"
 
+    /**
+     * A jogi szövegek aktuális verziója. Ha érdemben változik a feltétel vagy az
+     * adatkezelés, ezt emeld — a felhasználótól így újra elfogadást kér az app.
+     */
+    const val VERSION = "2026-09-11"
+
     fun manageSubscription(packageName: String) =
         "https://play.google.com/store/account/subscriptions" +
             "?sku=$PREMIUM_SUBSCRIPTION_ID&package=$packageName"

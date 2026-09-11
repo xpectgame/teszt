@@ -34,6 +34,12 @@ data class BillingState(
     val subscribed: Boolean = false,
     /** Igaz, ha a fizetés folyamatban van (pl. banki jóváhagyásra vár). */
     val pending: Boolean = false,
+    /**
+     * Az aktív vásárlás tokenje. Ezt küldi az app a saját backendnek: a szerver ebből
+     * kérdezi meg a Google-től, hogy tényleg van-e előfizetés — a kliens állítását
+     * magában nem fogadja el.
+     */
+    val purchaseToken: String? = null,
     val error: String? = null,
 ) {
     companion object {

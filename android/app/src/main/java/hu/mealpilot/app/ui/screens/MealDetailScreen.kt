@@ -20,6 +20,10 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -30,6 +34,8 @@ import hu.mealpilot.app.AppContainer
 import hu.mealpilot.app.data.local.LogStatus
 import hu.mealpilot.app.data.local.MealWithIngredients
 import hu.mealpilot.app.data.repo.PlanRepository
+import hu.mealpilot.app.data.repo.ReportKind
+import hu.mealpilot.app.ui.components.ReportDialog
 import hu.mealpilot.app.ui.components.SectionCard
 import hu.mealpilot.app.ui.components.StatChip
 import hu.mealpilot.app.ui.containerFactory
@@ -68,6 +74,8 @@ fun MealDetailScreen(
         factory = containerFactory(container) { MealDetailViewModel(it, mealId) },
     )
     val mealWithIngredients by viewModel.meal.collectAsState()
+    val scope = rememberCoroutineScope()
+    var reporting by remember { mutableStateOf(false) }
 
     Column(
         Modifier
@@ -169,7 +177,41 @@ fun MealDetailScreen(
                 modifier = Modifier.weight(1f),
             ) { Text("Kihagytam") }
         }
+
+        Spacer(Modifier.height(16.dp))
+        Text(
+            "Ezt a fogást gépi tervező írta. Tájékoztató jellegű, nem orvosi tanács.",
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        TextButton(onClick = { reporting = true }) { Text("Jelentem ezt a fogást") }
         Spacer(Modifier.height(24.dp))
+    }
+
+    if (reporting) {
+        ReportDialog(
+            container = container,
+            kind = ReportKind.MEAL,
+            payload = mealWithIngredients?.let(::mealReportPayload),
+            onDismiss = { reporting = false },
+            onResult = { message -> scope.launch { snackbarHostState.showSnackbar(message) } },
+        )
+    }
+}
+
+/** Csak a fogás maga megy el a bejelentéssel — napló és testadat nem. */
+private fun mealReportPayload(data: MealWithIngredients): String = buildString {
+    val meal = data.meal
+    val n = meal.nutrients
+    appendLine("${meal.name} (${MealSlot.fromRaw(meal.slot).hu})")
+    appendLine(
+        "kcal ${n.kcal.roundToInt()} · F ${n.proteinG.roundToInt()} g · " +
+            "Sz ${n.carbsG.roundToInt()} g · Zs ${n.fatG.roundToInt()} g",
+    )
+    if (meal.description.isNotBlank()) appendLine(meal.description)
+    appendLine("Hozzávalók:")
+    data.ingredients.forEach { item ->
+        appendLine("  - ${item.name} ${item.quantity} ${item.unit}")
     }
 }
 
