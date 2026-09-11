@@ -178,8 +178,15 @@ fun PlanScreen(
         snackbarHostState.showSnackbar(
             current.fold(
                 onSuccess = {
-                    if (it.isComplete) "Kész az étrended!"
-                    else "${it.daysSaved} nap készült el a(z) ${it.requestedDays}-ból."
+                    when {
+                        // A sablonos terv is terv, de a felhasználónak joga van tudni,
+                        // hogy nem azt kapta, amit kért.
+                        it.usedFallback ->
+                            "Az étrend elkészült, de a tervező nem volt elérhető — " +
+                                "a hiányzó napok sablonból készültek."
+                        it.isComplete -> "Kész az étrended!"
+                        else -> "${it.daysSaved} nap készült el a(z) ${it.requestedDays}-ból."
+                    }
                 },
                 onFailure = { it.message ?: "Nem sikerült elkészíteni a tervet." },
             )

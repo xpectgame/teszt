@@ -208,9 +208,13 @@ Sorrendben, a legkevésbé fájdalmastól:
 2. **Az ingyenes tokenplafon csökkentése** — pl. 80 000 helyett 40 000.
 3. **Az ingyenes sáv szűkítése** — pl. az első terv 3 nap helyett 2, vagy a
    beszélgetés csak előfizetőknek.
-4. **A kredit kifogyása** — ez a végső fék. Ilyenkor a tervezés hibaüzenettel elakad;
-   az app többi része (naplózás, bevásárlólista, meglévő tervek, statisztika) **továbbra
-   is működik**, mert minden adat a telefonon van.
+4. **A kredit kifogyása** — ez a végső fék, és nem töri el az appot: a tervezés
+   automatikusan a **beépített receptbankra esik vissza** (`FallbackMealAi`). A
+   felhasználó kap egy tervet, ami a kalóriakeretét pontosan tartja, és egy
+   megjegyzést arról, hogy ez sablonból készült. A napló, a bevásárlólista, a meglévő
+   tervek és a statisztika érintetlenül működnek, mert minden adat a telefonon van.
+   Egy végig sablonból kirakott terv ráadásul **nem fogyasztja a felhasználó havi
+   keretét** — nem fizettethetjük meg vele a mi kimaradásunkat.
 
 Egyik lépéshez sem kell app-kiadás, és egyik sem visszafordíthatatlan.
 
@@ -231,10 +235,5 @@ Egyik lépéshez sem kell app-kiadás, és egyik sem visszafordíthatatlan.
 
 ## 7. Ami még hiányzik, és ide tartozik
 
-- **Automatikus visszaesés a beépített tervezőre.** Ma az offline tervező csak akkor
-  lép be, ha nincs backend beállítva (`AppContainer.mealAi()`). Ha a backend elérhető,
-  de a hívás hibára fut — elfogyott a kredit, kiesik a hálózat —, a tervezés
-  hibaüzenettel elakad ahelyett, hogy a sablonos tervre esne vissza. Nem hiba, de egy
-  kifogyott keret így rosszabbul néz ki, mint kellene. Ha akarod, megcsinálom.
 - **Próbaidőszak.** A Play tud ingyenes próbát és bevezető árat; ma egyik sincs
   beállítva. A próba növeli a konverziót, de az ingyenes sáv költségét is.

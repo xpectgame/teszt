@@ -98,8 +98,11 @@ class GenerationCoordinator(private val container: AppContainer) {
             try {
                 val profile = container.settings.currentProfile()
                 val budget = EnergyCalculator.budget(profile)
-                val result = container.planRepository.generateAndSave(
-                    ai = container.mealAi(),
+                // -1 = nem volt visszaesés; 0 vagy több = ennyi nap jött a szolgáltatástól,
+                // mielőtt a beépített tervező átvette.
+                var daysFromService = -1
+                val raw = container.planRepository.generateAndSave(
+                    ai = container.mealAi(onFallback = { daysFromService = it }),
                     profile = profile,
                     budget = budget,
                     startDate = if (startTomorrow) LocalDate.now().plusDays(1) else LocalDate.now(),
@@ -107,11 +110,16 @@ class GenerationCoordinator(private val container: AppContainer) {
                     freeText = freeText,
                     onProgress = { progress -> publish(progress, allowedDays) },
                 )
+                val result = raw.map { it.copy(usedFallback = daysFromService >= 0) }
                 result.onSuccess {
                     ReminderRefreshWorker.refreshNow(container.appContext)
-                    // Csak a ténylegesen elkészült terv fogyasztja a keretet.
-                    container.entitlements.recordPlanGenerated()
-                    container.telemetry.record(TelemetryEvent.PLAN_GENERATED)
+                    // A keretből csak az fogy, amiért a szolgáltatás tényleg dolgozott.
+                    // Egy végig sablonból kirakott terv nem viheti el valakinek a havi
+                    // egyetlen tervét — a szerver sem számolta el, mert oda el sem jutott.
+                    if (daysFromService != 0) {
+                        container.entitlements.recordPlanGenerated()
+                        container.telemetry.record(TelemetryEvent.PLAN_GENERATED)
+                    }
                 }
                 result.onFailure { error ->
                     container.telemetry.record(TelemetryEvent.PLAN_FAILED)

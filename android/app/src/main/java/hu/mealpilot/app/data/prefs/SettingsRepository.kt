@@ -26,7 +26,7 @@ private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(na
 /** Melyik modellel dolgozzon az app. A drágább modell pontosabban tartja a kalóriakereteket. */
 enum class AiModel(val id: String, val label: String, val note: String) {
     SONNET("claude-sonnet-5", "Claude Sonnet 5", "Alapértelmezett: gyors és pontosan tartja a keretet"),
-    OPUS("claude-opus-5", "Claude Opus 5", "Alaposabb, de lassabb és nagyságrenddel drágább"),
+    OPUS("claude-opus-5", "Claude Opus 5", "Alaposabb, de lassabb és ~2,5-szer drágább"),
     HAIKU("claude-haiku-4-5", "Claude Haiku 4.5", "Leggyorsabb és legolcsóbb, pontatlanabb");
 
     companion object {

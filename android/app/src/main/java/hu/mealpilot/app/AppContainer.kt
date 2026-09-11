@@ -8,6 +8,7 @@ import hu.mealpilot.app.billing.PlayBillingGateway
 import hu.mealpilot.app.data.ai.AnthropicMealAi
 import hu.mealpilot.app.data.ai.BackendMealAi
 import hu.mealpilot.app.data.ai.OfflineMealAi
+import hu.mealpilot.app.data.ai.QuotaExceededException
 import hu.mealpilot.app.data.local.AppDatabase
 import hu.mealpilot.app.data.prefs.SecureKeyStore
 import hu.mealpilot.app.data.prefs.SettingsRepository
@@ -17,10 +18,12 @@ import hu.mealpilot.app.data.repo.PlanRepository
 import hu.mealpilot.app.data.repo.ReportRepository
 import hu.mealpilot.app.data.telemetry.CrashReporter
 import hu.mealpilot.app.data.telemetry.Telemetry
+import hu.mealpilot.app.data.telemetry.TelemetryEvent
 import hu.mealpilot.app.i18n.LanguageStore
 import hu.mealpilot.app.data.repo.StatsRepository
 import hu.mealpilot.app.data.repo.TrackingRepository
 import hu.mealpilot.app.work.GenerationCoordinator
+import hu.mealpilot.core.ai.FallbackMealAi
 import hu.mealpilot.core.ai.MealAi
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -162,12 +165,67 @@ class AppContainer(context: Context) {
      * A saját API kulcs előrébb van a backendnél: aki szándékosan megadta a sajátját
      * (ez csak a rejtett fejlesztői részben lehetséges), az a saját számlájára és
      * kvóta nélkül dolgozzon. Mindenki más a backenden megy, kulcs nélkül.
+     *
+     * Mindkettő mögé beáll a beépített tervező. Ha a szolgáltatás elérhetetlen vagy
+     * elfogyott a keret, a felhasználó ne egy perc várakozás után kapjon piros hibát:
+     * a sablonos terv a kalóriakeretet pontosan tartja, és azonnal kész.
      */
-    fun mealAi(forceOffline: Boolean = false): MealAi = when {
+    fun mealAi(
+        forceOffline: Boolean = false,
+        /** Lefut, ha a beépített tervező vette át; a paraméter a szolgáltatástól kapott napok száma. */
+        onFallback: (daysFromService: Int) -> Unit = {},
+    ): MealAi = when {
         forceOffline -> offlineAi
-        secureKeyStore.hasApiKey() -> anthropicAi
-        backendClient != null -> backendAi
+        secureKeyStore.hasApiKey() -> withFallback(anthropicAi, onFallback)
+        backendClient != null -> withFallback(backendAi, onFallback)
         else -> offlineAi
+    }
+
+    /**
+     * A tervezőt a beépített tartalék mögé kötve adja vissza.
+     *
+     * A kvótás elutasítás szándékosan NEM esik vissza: ott az előfizetést kell
+     * felajánlani, nem sablontervvel elfedni a korlátot. Minden más hiba — hálózat,
+     * szerverhiba, elfogyott API keret, kétszer sem sikerült terv — visszaesik.
+     */
+    private fun withFallback(primary: MealAi, notify: (Int) -> Unit): MealAi {
+        val english = language == hu.mealpilot.core.i18n.AppLanguage.EN
+        return FallbackMealAi(
+            primary = primary,
+            fallback = offlineAi,
+            isRecoverable = { error -> error !is QuotaExceededException },
+            switchMessage = if (english) {
+                "Switching to the built-in planner…"
+            } else {
+                "Átváltás a beépített tervezőre…"
+            },
+            fallbackNote = if (english) {
+                "Some days came from the built-in recipe bank because the planning " +
+                    "service was unavailable. Regenerate the plan later for a more personal one."
+            } else {
+                "A terv egy része a beépített receptbankból készült, mert a tervezőszolgáltatás " +
+                    "nem volt elérhető. Később újragenerálva személyre szabottabb tervet kapsz."
+            },
+            fallbackSummary = if (english) {
+                "The planning service could not be reached, so this plan was built from the " +
+                    "app's own recipe bank. Your daily calories and macros are still on target, " +
+                    "but your free-text request was not taken into account."
+            } else {
+                "A tervezőszolgáltatás nem volt elérhető, ezért ez a terv az app beépített " +
+                    "receptbankjából készült. A napi kalória és a makrók így is a te célodhoz " +
+                    "vannak méretezve, de a szabad szöveges kérésedet ez a változat nem vette " +
+                    "figyelembe."
+            },
+            onFallback = { error, daysFromService ->
+                android.util.Log.w(
+                    "MealAi",
+                    "A tervezőszolgáltatás elakadt, a beépített tervező veszi át.",
+                    error,
+                )
+                telemetry.record(TelemetryEvent.PLANNER_FALLBACK)
+                notify(daysFromService)
+            },
+        )
     }
 
     val hasApiKey: Boolean get() = secureKeyStore.hasApiKey()

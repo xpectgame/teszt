@@ -39,6 +39,9 @@ enum class TelemetryEvent(val key: String) {
     SUBSCRIBED("subscribed"),
     REPORT_SENT("report_sent"),
     QUOTA_BLOCKED("quota_blocked"),
+
+    /** A tervezőszolgáltatás elakadt, és a beépített tervező fejezte be a tervet. */
+    PLANNER_FALLBACK("planner_fallback"),
 }
 
 /** Egy feltöltésnyi adag. */

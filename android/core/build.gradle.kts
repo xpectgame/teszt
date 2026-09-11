@@ -10,4 +10,6 @@ kotlin {
 dependencies {
     implementation(libs.kotlinx.serialization.json)
     testImplementation(libs.junit)
+    // A tervezők felfüggesztő függvények — a teszteléshez kell egy futtató.
+    testImplementation(libs.kotlinx.coroutines.test)
 }

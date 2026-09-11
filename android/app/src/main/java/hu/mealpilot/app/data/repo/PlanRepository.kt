@@ -39,6 +39,8 @@ data class PlanGenerationOutcome(
     val daysSaved: Int,
     val requestedDays: Int,
     val error: Throwable? = null,
+    /** Igaz, ha a terv egészét vagy egy részét a beépített tervező rakta ki. */
+    val usedFallback: Boolean = false,
 ) {
     val isComplete: Boolean get() = error == null && daysSaved >= requestedDays
 }
