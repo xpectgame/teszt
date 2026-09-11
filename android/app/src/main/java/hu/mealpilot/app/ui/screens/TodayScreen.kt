@@ -42,6 +42,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
@@ -50,6 +51,9 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import hu.mealpilot.app.AppContainer
+import hu.mealpilot.app.R
+import hu.mealpilot.app.i18n.LocalAppLanguage
+import hu.mealpilot.app.ui.dayLabel
 import hu.mealpilot.app.data.telemetry.TelemetryEvent
 import hu.mealpilot.app.data.local.LogStatus
 import hu.mealpilot.app.data.local.MealLogEntity
@@ -62,6 +66,7 @@ import hu.mealpilot.app.ui.components.MacroBar
 import hu.mealpilot.app.ui.components.SectionCard
 import hu.mealpilot.app.ui.containerFactory
 import hu.mealpilot.core.ai.MealSlot
+import hu.mealpilot.core.i18n.label
 import hu.mealpilot.core.model.Nutrients
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -183,11 +188,11 @@ fun TodayScreen(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 IconButton(onClick = { viewModel.shiftDay(-1) }) {
-                    Icon(Icons.Filled.ChevronLeft, contentDescription = "Előző nap")
+                    Icon(Icons.Filled.ChevronLeft, contentDescription = stringResource(R.string.today_prev_day))
                 }
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(
-                        state.date.hungarianLabel(),
+                        state.date.dayLabel(),
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.SemiBold,
                     )
@@ -196,7 +201,7 @@ fun TodayScreen(
                     }
                 }
                 IconButton(onClick = { viewModel.shiftDay(1) }) {
-                    Icon(Icons.Filled.ChevronRight, contentDescription = "Következő nap")
+                    Icon(Icons.Filled.ChevronRight, contentDescription = stringResource(R.string.today_next_day))
                 }
             }
         }
@@ -204,9 +209,9 @@ fun TodayScreen(
         if (state.plan == null) {
             item {
                 EmptyState(
-                    title = "Még nincs étrended",
-                    message = "Készíts egyet pár másodperc alatt — megadhatod, mit szeretsz, mire van időd, mit nem eszel meg.",
-                    action = { Button(onClick = onCreatePlan) { Text("Terv készítése") } },
+                    title = stringResource(R.string.today_no_plan_title),
+                    message = stringResource(R.string.today_no_plan_message),
+                    action = { Button(onClick = onCreatePlan) { Text(stringResource(R.string.today_create_plan)) } },
                 )
             }
             return@LazyColumn
@@ -221,11 +226,11 @@ fun TodayScreen(
                     )
                 }
                 Spacer(Modifier.height(16.dp))
-                MacroBar("Fehérje", consumed.proteinG, state.plan!!.targetProteinG, Color(0xFF00897B))
+                MacroBar(stringResource(R.string.macro_protein), consumed.proteinG, state.plan!!.targetProteinG, Color(0xFF00897B))
                 Spacer(Modifier.height(8.dp))
-                MacroBar("Szénhidrát", consumed.carbsG, state.plan!!.targetCarbsG, Color(0xFF7CB342))
+                MacroBar(stringResource(R.string.macro_carbs), consumed.carbsG, state.plan!!.targetCarbsG, Color(0xFF7CB342))
                 Spacer(Modifier.height(8.dp))
-                MacroBar("Zsír", consumed.fatG, state.plan!!.targetFatG, Color(0xFFFB8C00))
+                MacroBar(stringResource(R.string.macro_fat), consumed.fatG, state.plan!!.targetFatG, Color(0xFFFB8C00))
                 Spacer(Modifier.height(8.dp))
                 MacroBar("Rost", consumed.fiberG, state.plan!!.targetFiberG, Color(0xFF8D6E63))
             }
@@ -234,8 +239,8 @@ fun TodayScreen(
         if (state.meals.isEmpty()) {
             item {
                 EmptyState(
-                    title = "Erre a napra nincs étkezés",
-                    message = "A terv nem fedi le ezt a napot. Lépj vissza egy napot, vagy készíts új tervet.",
+                    title = stringResource(R.string.today_no_meals_title),
+                    message = stringResource(R.string.today_no_meals_message),
                 )
             }
         }
@@ -265,7 +270,7 @@ fun TodayScreen(
             ) {
                 Icon(Icons.Filled.Add, contentDescription = null, modifier = Modifier.size(18.dp))
                 Spacer(Modifier.size(8.dp))
-                Text("Egyéb étkezés hozzáadása")
+                Text(stringResource(R.string.today_add_extra))
             }
             Spacer(Modifier.height(24.dp))
         }
@@ -273,10 +278,10 @@ fun TodayScreen(
 
     replacing?.let { target ->
         MealEntrySheet(
-            title = "Mást ettél?",
+            title = stringResource(R.string.today_ate_something_else),
             initialName = target.meal.name,
             initialNutrients = target.meal.nutrients.toNutrients(),
-            confirmLabel = "Ezt ettem",
+            confirmLabel = stringResource(R.string.today_i_ate_this),
             onDismiss = { replacing = null },
             onSave = { name, nutrients ->
                 viewModel.logReplaced(target.meal.id, name, nutrients)
@@ -287,8 +292,8 @@ fun TodayScreen(
 
     if (addingExtra) {
         MealEntrySheet(
-            title = "Egyéb étkezés",
-            confirmLabel = "Hozzáadom",
+            title = stringResource(R.string.today_extra_meal),
+            confirmLabel = stringResource(R.string.today_add),
             onDismiss = { addingExtra = false },
             onSave = { name, nutrients ->
                 viewModel.logExtra(name, nutrients)
@@ -317,17 +322,22 @@ private fun ExtraRow(log: MealLogEntity, onDelete: () -> Unit) {
             )
             Spacer(Modifier.size(12.dp))
             Column(Modifier.weight(1f)) {
-                Text("Terven kívül", style = MaterialTheme.typography.labelSmall)
+                Text(stringResource(R.string.today_off_plan), style = MaterialTheme.typography.labelSmall)
                 Text(log.name, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
                 Text(
-                    "${n.kcal.roundToInt()} kcal · F ${n.proteinG.roundToInt()} g · " +
-                        "Sz ${n.carbsG.roundToInt()} g · Zs ${n.fatG.roundToInt()} g",
+                    stringResource(
+                        R.string.macro_line,
+                        n.kcal.roundToInt(),
+                        n.proteinG.roundToInt(),
+                        n.carbsG.roundToInt(),
+                        n.fatG.roundToInt(),
+                    ),
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
             IconButton(onClick = onDelete) {
-                Icon(Icons.Filled.Close, contentDescription = "Törlés")
+                Icon(Icons.Filled.Close, contentDescription = stringResource(R.string.action_delete))
             }
         }
     }
@@ -344,7 +354,7 @@ private fun MealRow(
     onReplace: () -> Unit,
     onUndo: () -> Unit,
 ) {
-    val slot = MealSlot.fromRaw(meal.meal.slot)
+    val slot = MealSlot.fromRaw(meal.meal.slot).label(LocalAppLanguage.current)
     val replaced = status == LogStatus.REPLACED
     // Felülírásnál azt mutatjuk, amit tényleg megevett — nem azt, amit terveztünk.
     val shownName = if (replaced) log?.name.orEmpty().ifBlank { meal.meal.name } else meal.meal.name
@@ -380,7 +390,7 @@ private fun MealRow(
             Spacer(Modifier.size(12.dp))
             Column(Modifier.weight(1f)) {
                 Text(
-                    if (replaced) "${slot.hu} · helyette" else slot.hu,
+                    if (replaced) stringResource(R.string.today_slot_replaced, slot) else slot,
                     style = MaterialTheme.typography.labelSmall,
                 )
                 Text(
@@ -390,52 +400,42 @@ private fun MealRow(
                     textDecoration = if (status == LogStatus.SKIPPED) TextDecoration.LineThrough else null,
                 )
                 Text(
-                    "${n.kcal.roundToInt()} kcal · F ${n.proteinG.roundToInt()} g · " +
-                        "Sz ${n.carbsG.roundToInt()} g · Zs ${n.fatG.roundToInt()} g",
+                    stringResource(
+                        R.string.macro_line,
+                        n.kcal.roundToInt(),
+                        n.proteinG.roundToInt(),
+                        n.carbsG.roundToInt(),
+                        n.fatG.roundToInt(),
+                    ),
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
             if (status == null) {
                 FilledTonalIconButton(onClick = onAte) {
-                    Icon(Icons.Filled.Check, contentDescription = "Megettem")
+                    Icon(Icons.Filled.Check, contentDescription = stringResource(R.string.today_ate_it))
                 }
                 Box {
                     IconButton(onClick = { menuOpen = true }) {
-                        Icon(Icons.Filled.MoreVert, contentDescription = "További lehetőségek")
+                        Icon(Icons.Filled.MoreVert, contentDescription = stringResource(R.string.action_more))
                     }
                     DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
                         DropdownMenuItem(
-                            text = { Text("Mást ettem") },
+                            text = { Text(stringResource(R.string.today_ate_other)) },
                             onClick = { menuOpen = false; onReplace() },
                             leadingIcon = { Icon(Icons.Filled.Edit, contentDescription = null) },
                         )
                         DropdownMenuItem(
-                            text = { Text("Kihagytam") },
+                            text = { Text(stringResource(R.string.today_skipped)) },
                             onClick = { menuOpen = false; onSkip() },
                             leadingIcon = { Icon(Icons.Filled.Close, contentDescription = null) },
                         )
                     }
                 }
             } else {
-                androidx.compose.material3.TextButton(onClick = onUndo) { Text("Vissza") }
+                androidx.compose.material3.TextButton(onClick = onUndo) { Text(stringResource(R.string.action_undo)) }
             }
         }
     }
 }
 
-/** "2026. szeptember 9., szerda" alakú, magyar dátumfelirat. */
-fun LocalDate.hungarianLabel(): String {
-    val months = listOf(
-        "január", "február", "március", "április", "május", "június",
-        "július", "augusztus", "szeptember", "október", "november", "december",
-    )
-    val days = listOf("hétfő", "kedd", "szerda", "csütörtök", "péntek", "szombat", "vasárnap")
-    val prefix = when (this) {
-        LocalDate.now() -> "Ma · "
-        LocalDate.now().plusDays(1) -> "Holnap · "
-        LocalDate.now().minusDays(1) -> "Tegnap · "
-        else -> ""
-    }
-    return "$prefix${monthValue.let { months[it - 1] }} $dayOfMonth., ${days[dayOfWeek.value - 1]}"
-}

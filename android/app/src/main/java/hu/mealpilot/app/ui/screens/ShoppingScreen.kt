@@ -22,19 +22,24 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.annotation.StringRes
 import hu.mealpilot.app.AppContainer
+import hu.mealpilot.app.R
+import hu.mealpilot.app.i18n.LocalAppLanguage
 import hu.mealpilot.app.data.telemetry.TelemetryEvent
 import hu.mealpilot.app.data.local.ShoppingItemEntity
 import hu.mealpilot.app.data.local.endEpochDay
 import hu.mealpilot.app.ui.components.EmptyState
 import hu.mealpilot.app.ui.containerFactory
 import hu.mealpilot.core.ai.Aisle
+import hu.mealpilot.core.i18n.label
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -48,9 +53,9 @@ import kotlinx.coroutines.launch
 import java.time.LocalDate
 
 /** Melyik időszakra kérjük a bevásárlólistát. */
-enum class ShoppingRange(val label: String) {
-    WEEK("Következő 7 nap"),
-    ALL("Teljes terv"),
+enum class ShoppingRange(@StringRes val label: Int) {
+    WEEK(R.string.shopping_range_week),
+    ALL(R.string.shopping_range_all),
 }
 
 data class ShoppingUiState(
@@ -141,6 +146,7 @@ fun ShoppingScreen(
 ) {
     val viewModel: ShoppingViewModel = viewModel(factory = containerFactory(container) { ShoppingViewModel(it) })
     val state by viewModel.state.collectAsState()
+    val language = LocalAppLanguage.current
 
     LaunchedEffect(Unit) { container.telemetry.record(TelemetryEvent.SHOPPING_OPENED) }
 
@@ -149,14 +155,18 @@ fun ShoppingScreen(
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         item {
-            Text("Bevásárlólista", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+            Text(
+                stringResource(R.string.shopping_title),
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold,
+            )
         }
 
         if (!state.hasPlan) {
             item {
                 EmptyState(
-                    title = "Nincs aktív terv",
-                    message = "A bevásárlólista a tervezett ételek hozzávalóiból áll össze — előbb készíts étrendet.",
+                    title = stringResource(R.string.shopping_empty_title),
+                    message = stringResource(R.string.shopping_empty_message),
                 )
             }
             return@LazyColumn
@@ -168,7 +178,7 @@ fun ShoppingScreen(
                     FilterChip(
                         selected = state.range == option,
                         onClick = { viewModel.setRange(option) },
-                        label = { Text(option.label) },
+                        label = { Text(stringResource(option.label)) },
                     )
                 }
             }
@@ -177,7 +187,12 @@ fun ShoppingScreen(
         item {
             Column {
                 Text(
-                    "${state.checkedCount} / ${state.items.size} megvan · ${state.rangeLabel}",
+                    stringResource(
+                        R.string.shopping_progress,
+                        state.checkedCount,
+                        state.items.size,
+                        state.rangeLabel,
+                    ),
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -195,7 +210,7 @@ fun ShoppingScreen(
         state.grouped.forEach { (aisle, aisleItems) ->
             item(key = "aisle-${aisle.name}") {
                 Text(
-                    aisle.hu,
+                    aisle.label(language),
                     style = MaterialTheme.typography.titleSmall,
                     color = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.padding(top = 8.dp),
@@ -228,7 +243,9 @@ fun ShoppingScreen(
 
         item {
             Spacer(Modifier.height(12.dp))
-            TextButton(onClick = { viewModel.uncheckAll() }) { Text("Pipák törlése") }
+            TextButton(onClick = { viewModel.uncheckAll() }) {
+                Text(stringResource(R.string.shopping_clear_checks))
+            }
         }
     }
 }

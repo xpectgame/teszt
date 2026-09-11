@@ -42,12 +42,17 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import hu.mealpilot.app.AppContainer
+import hu.mealpilot.app.R
+import hu.mealpilot.app.i18n.LocalAppLanguage
+import hu.mealpilot.app.ui.dayLabel
 import hu.mealpilot.app.data.local.MealWithIngredients
 import hu.mealpilot.app.data.local.PlanEntity
 import hu.mealpilot.app.data.repo.PlanGenerationOutcome
@@ -64,6 +69,7 @@ import hu.mealpilot.app.ui.containerFactory
 import hu.mealpilot.core.ai.GenerationProgress
 import hu.mealpilot.core.ai.MealSlot
 import hu.mealpilot.core.energy.EnergyCalculator
+import hu.mealpilot.core.i18n.label
 import hu.mealpilot.core.model.Nutrients
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
@@ -138,7 +144,9 @@ class PlanViewModel(private val container: AppContainer) : ViewModel() {
                 dayIndex = dayIndex,
                 instruction = instruction,
             )
-            onResult(result.getOrElse { it.message ?: "Nem sikerült módosítani." })
+            onResult(result.getOrElse {
+                it.message ?: container.appContext.getString(R.string.plan_refine_failed)
+            })
             ReminderRefreshWorker.refreshNow(container.appContext)
         }
 
@@ -161,13 +169,16 @@ fun PlanScreen(
     var reporting by remember { mutableStateOf(false) }
     val scope = androidx.compose.runtime.rememberCoroutineScope()
     var expandedDay by remember { mutableStateOf<Int?>(0) }
+    val context = LocalContext.current
 
     // Amint az első napok megvannak, elengedjük a párbeszédet: a terv már használható,
     // a többi a háttérben töltődik tovább, és a felső sávon végig látszik a haladás.
     LaunchedEffect(status.hasUsableDays, status.running) {
         if (status.running && status.hasUsableDays && showGenerator) {
             showGenerator = false
-            snackbarHostState.showSnackbar("${status.daysReady} nap kész — a többi közben töltődik.")
+            snackbarHostState.showSnackbar(
+                context.getString(R.string.plan_partial_ready, status.daysReady)
+            )
         }
     }
 
@@ -181,14 +192,12 @@ fun PlanScreen(
                     when {
                         // A sablonos terv is terv, de a felhasználónak joga van tudni,
                         // hogy nem azt kapta, amit kért.
-                        it.usedFallback ->
-                            "Az étrend elkészült, de a tervező nem volt elérhető — " +
-                                "a hiányzó napok sablonból készültek."
-                        it.isComplete -> "Kész az étrended!"
-                        else -> "${it.daysSaved} nap készült el a(z) ${it.requestedDays}-ból."
+                        it.usedFallback -> context.getString(R.string.plan_done_fallback)
+                        it.isComplete -> context.getString(R.string.plan_done)
+                        else -> context.getString(R.string.plan_partial, it.daysSaved, it.requestedDays)
                     }
                 },
-                onFailure = { it.message ?: "Nem sikerült elkészíteni a tervet." },
+                onFailure = { it.message ?: context.getString(R.string.plan_failed) },
             )
         )
     }
@@ -203,8 +212,12 @@ fun PlanScreen(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Text("Étrend", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
-                Button(onClick = { showGenerator = true }) { Text("Új terv") }
+                Text(
+                    stringResource(R.string.plan_title),
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Bold,
+                )
+                Button(onClick = { showGenerator = true }) { Text(stringResource(R.string.plan_new)) }
             }
         }
 
@@ -212,10 +225,9 @@ fun PlanScreen(
         if (plan == null) {
             item {
                 EmptyState(
-                    title = "Nincs aktív terved",
-                    message = "A testadataid és a szabad szöveges kéréseid alapján összeáll egy " +
-                        "kalóriadeficites étrend, hozzá bevásárlólista és emlékeztetők.",
-                    action = { Button(onClick = { showGenerator = true }) { Text("Terv készítése") } },
+                    title = stringResource(R.string.plan_empty_title),
+                    message = stringResource(R.string.plan_empty_message),
+                    action = { Button(onClick = { showGenerator = true }) { Text(stringResource(R.string.today_create_plan)) } },
                 )
             }
         } else {
@@ -239,15 +251,14 @@ fun PlanScreen(
                     }
                     Spacer(Modifier.height(12.dp))
                     Text(
-                        "Az étrendet gépi tervező állította össze a megadott adataid alapján. " +
-                            "Tájékoztató jellegű, nem orvosi tanács.",
+                        stringResource(R.string.plan_disclaimer),
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                     TextButton(
                         onClick = { reporting = true },
                         contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp),
-                    ) { Text("Hibás vagy zavaró? Jelentsd.") }
+                    ) { Text(stringResource(R.string.plan_report_link)) }
                 }
             }
 
@@ -318,6 +329,7 @@ private fun DayCard(
 ) {
     val total = Nutrients.sum(meals.map { it.meal.nutrients.toNutrients() })
     val date = startDate.plusDays(dayIndex.toLong())
+    val language = LocalAppLanguage.current
 
     Card(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(12.dp)) {
@@ -329,16 +341,23 @@ private fun DayCard(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Column {
-                    Text(date.hungarianLabel(), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
+                    Text(date.dayLabel(), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
                     Text(
-                        "${total.kcal.roundToInt()} / $targetKcal kcal · F ${total.proteinG.roundToInt()} g",
+                        stringResource(
+                            R.string.plan_day_totals,
+                            total.kcal.roundToInt(),
+                            targetKcal,
+                            total.proteinG.roundToInt(),
+                        ),
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
                 Icon(
                     if (expanded) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
-                    contentDescription = if (expanded) "Összecsukás" else "Kinyitás",
+                    contentDescription = stringResource(
+                        if (expanded) R.string.action_collapse else R.string.action_expand
+                    ),
                 )
             }
 
@@ -355,7 +374,7 @@ private fun DayCard(
                         ) {
                             Column(Modifier.weight(1f)) {
                                 Text(
-                                    "${mw.meal.timeText} · ${MealSlot.fromRaw(mw.meal.slot).hu}",
+                                    "${mw.meal.timeText} · ${MealSlot.fromRaw(mw.meal.slot).label(language)}",
                                     style = MaterialTheme.typography.labelSmall,
                                 )
                                 Text(mw.meal.name, style = MaterialTheme.typography.bodyMedium)
@@ -368,7 +387,7 @@ private fun DayCard(
                     }
                     if (refineEnabled) {
                         Spacer(Modifier.height(8.dp))
-                        OutlinedButton(onClick = onRefine) { Text("Írd át szavakkal") }
+                        OutlinedButton(onClick = onRefine) { Text(stringResource(R.string.plan_refine_button)) }
                     }
                 }
             }
@@ -389,10 +408,13 @@ private fun GeneratorDialog(
     var startTomorrow by remember { mutableStateOf(false) }
     var freeText by remember { mutableStateOf("") }
     val running = status.running
+    val context = LocalContext.current
 
     AlertDialog(
         onDismissRequest = { if (!running) onDismiss() },
-        title = { Text(if (running) "Készül a terved…" else "Új étrend") },
+        title = {
+            Text(stringResource(if (running) R.string.plan_building else R.string.plan_new_title))
+        },
         text = {
             Column {
                 if (running) {
@@ -409,28 +431,31 @@ private fun GeneratorDialog(
                     }
                     Spacer(Modifier.height(10.dp))
                     Text(
-                        "Nyugodtan zárd be — a háttérben tovább készül, és szólok, ha megvan.",
+                        stringResource(R.string.plan_background_hint),
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 } else {
-                    Text("Meddig tervezzek?", style = MaterialTheme.typography.labelLarge)
+                    Text(stringResource(R.string.plan_length_question), style = MaterialTheme.typography.labelLarge)
                     Spacer(Modifier.height(8.dp))
                     FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        listOf(3 to "3 nap", 7 to "1 hét", 14 to "2 hét", 30 to "1 hónap").forEach { (value, label) ->
+                        listOf(
+                            3 to R.string.plan_len_3_days,
+                            7 to R.string.plan_len_1_week,
+                            14 to R.string.plan_len_2_weeks,
+                            30 to R.string.plan_len_1_month,
+                        ).forEach { (value, label) ->
                             val locked = value > maxDays
                             FilterChip(
                                 selected = days == value && !locked,
                                 onClick = {
                                     if (locked) {
-                                        onLocked(
-                                            "Az ingyenes csomagban legfeljebb $maxDays napos terv kérhető."
-                                        )
+                                        onLocked(context.getString(R.string.plan_length_locked, maxDays))
                                     } else {
                                         days = value
                                     }
                                 },
-                                label = { Text(label) },
+                                label = { Text(stringResource(label)) },
                                 leadingIcon = if (locked) {
                                     { Icon(Icons.Filled.Lock, contentDescription = null, modifier = Modifier.size(16.dp)) }
                                 } else null,
@@ -440,23 +465,25 @@ private fun GeneratorDialog(
                     Spacer(Modifier.height(12.dp))
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Switch(checked = startTomorrow, onCheckedChange = { startTomorrow = it })
-                        Text("  Holnaptól induljon", style = MaterialTheme.typography.bodyMedium)
+                        Text(
+                            "  " + stringResource(R.string.plan_start_tomorrow),
+                            style = MaterialTheme.typography.bodyMedium,
+                        )
                     }
                     Spacer(Modifier.height(12.dp))
                     OutlinedTextField(
                         value = freeText,
                         onValueChange = { freeText = it },
-                        label = { Text("Mit vegyek figyelembe?") },
+                        label = { Text(stringResource(R.string.plan_free_text_label)) },
                         placeholder = {
-                            Text("pl. laktózérzékeny vagyok, nem eszem halat, hétköznap max 20 perc főzés, olcsó alapanyagok")
+                            Text(stringResource(R.string.plan_free_text_hint))
                         },
                         minLines = 3,
                         modifier = Modifier.fillMaxWidth(),
                     )
                     Spacer(Modifier.height(10.dp))
                     Text(
-                        "Egy hét összeállítása fél-egy perc. A terv a megadott adataid és " +
-                            "kéréseid alapján készül, tájékoztató jellegű, nem orvosi tanács.",
+                        stringResource(R.string.plan_generator_note),
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -470,12 +497,14 @@ private fun GeneratorDialog(
                 }
             } else {
                 Button(onClick = { onGenerate(days, startTomorrow, freeText) }) {
-                    Text("Generálás")
+                    Text(stringResource(R.string.plan_generate))
                 }
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text(if (running) "Háttérbe" else "Mégse") }
+            TextButton(onClick = onDismiss) {
+                Text(stringResource(if (running) R.string.action_background else R.string.action_cancel))
+            }
         },
     )
 }
@@ -489,27 +518,29 @@ private fun RefineDialog(
     var text by remember { mutableStateOf("") }
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("${dayIndex + 1}. nap átírása") },
+        title = { Text(stringResource(R.string.plan_refine_title, dayIndex + 1)) },
         text = {
             Column {
                 Text(
-                    "Írd le szavakkal, mit szeretnél másképp. A napi kalória és fehérje cél így is megmarad.",
+                    stringResource(R.string.plan_refine_body),
                     style = MaterialTheme.typography.bodySmall,
                 )
                 Spacer(Modifier.height(12.dp))
                 OutlinedTextField(
                     value = text,
                     onValueChange = { text = it },
-                    placeholder = { Text("pl. az ebéd legyen hidegen vihető, a vacsora hústalan") },
+                    placeholder = { Text(stringResource(R.string.plan_refine_hint)) },
                     minLines = 3,
                     modifier = Modifier.fillMaxWidth(),
                 )
             }
         },
         confirmButton = {
-            Button(onClick = { onSubmit(text) }, enabled = text.isNotBlank()) { Text("Átírás") }
+            Button(onClick = { onSubmit(text) }, enabled = text.isNotBlank()) {
+                Text(stringResource(R.string.plan_refine_confirm))
+            }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Mégse") } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) } },
     )
 }
 
@@ -521,9 +552,9 @@ private fun RefineDialog(
  */
 private fun planReportPayload(plan: PlanEntity, byDay: Map<Int, List<MealWithIngredients>>): String =
     buildString {
-        appendLine("${plan.title} — ${plan.dayCount} nap, cél ${plan.targetKcal} kcal/nap")
+        appendLine("${plan.title} — ${plan.dayCount} days, target ${plan.targetKcal} kcal/day")
         byDay.entries.take(7).forEach { (dayIndex, meals) ->
-            appendLine("${dayIndex + 1}. nap:")
+            appendLine("Day ${dayIndex + 1}:")
             meals.forEach { item ->
                 val meal = item.meal
                 appendLine("  - ${meal.name} (${meal.nutrients.kcal.roundToInt()} kcal)")
