@@ -22,7 +22,7 @@ Ezt kapod vele:
 - **Nem tud szétcsúszni.** A szöveg ugyanazzal a paranccsal frissül, mint a kód.
 - **Az app magától tudja a címet.** Ha megadod a `MEALPILOT_BACKEND_URL`-t, a jogi
   linkek is oda mutatnak — nem kell külön beállítani semmit.
-- **A `hernadicsaba.hu` nem kell hozzá.** A GitHub Pages akár ki is kapcsolható.
+- **Nem kell hozzá weboldal.** A repó GitHub Pages-oldala akár ki is kapcsolható.
 
 ### Hogyan működik
 
@@ -80,13 +80,16 @@ Ha valamiért mégsem a Worker szolgálná ki őket, a `mealpilot/` könyvtár �
 kész statikus oldal. A `main` ágon a repó Pages-oldala kiadja:
 
 ```
-https://hernadicsaba.hu/mealpilot/privacy.html
+https://xpectgame.github.io/teszt/mealpilot/privacy.html
 ```
 
 Ez az app **tartalék** címe is, ha se `MEALPILOT_SITE_URL`, se `MEALPILOT_BACKEND_URL`
-nincs megadva. Működik, de a domain egy másik projekthez tartozik, és egy GitHub
-Pages-oldalhoz egy egyéni domain tartozhat — tehát saját domaint ide nem lehet kötni a
-másik oldal felülírása nélkül. A Worker ezt a gondot megkerüli.
+nincs megadva. Fejlesztéshez jó, bolti kiadáshoz viszont a Workeré (vagy egy saját
+domain) a rendes válasz.
+
+A korábbi `hernadicsaba.hu` egyéni domain a `CNAME` fájllal együtt megszűnt. Ha a
+Pages-oldalt teljesen ki akarod kapcsolni: Settings → Pages → Source: *None*. Ilyenkor
+a fenti tartalék cím sem él, tehát az appot mindenképp backend címmel kell fordítani.
 
 ---
 

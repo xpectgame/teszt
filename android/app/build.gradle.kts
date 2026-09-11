@@ -6,7 +6,7 @@ import java.util.Properties
  * Rendes esetben nem ez fut: a backend maga is kiszolgálja a jogi oldalakat, tehát a
  * MEALPILOT_BACKEND_URL egyben a weboldal címe is. Lásd docs/DOMAIN.md.
  */
-val FALLBACK_SITE_URL = "https://hernadicsaba.hu/mealpilot"
+val FALLBACK_SITE_URL = "https://xpectgame.github.io/teszt/mealpilot"
 
 plugins {
     id("com.android.application")
