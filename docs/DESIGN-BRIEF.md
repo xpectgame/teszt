@@ -10,7 +10,7 @@ Ez a brief azt írja le, mit kell megtervezni és milyen keretek között.
 Kalóriadeficites étrendtervező és -követő. A felhasználó megadja a testadatait, az app
 kiszámolja a napi kalória- és makrócélját, majd összeállít egy 1–30 napos étrendet
 recepttel és tápértékkel. Emlékeztet minden étkezésre, bevásárlólistát ír a
-hozzávalókból, naplózza mit evett és mit mozgott, és követi a súlyát.
+hozzávalókból, naplózza mit evett, és követi a súlyát.
 
 A terveket gépi tervező állítja össze. **Ezt nem hangsúlyozzuk** (lásd 3. pont), de nem is
 titkoljuk: egy semleges mondat marad róla a Névjegyben és a terv fejlécében.
@@ -69,7 +69,7 @@ hogy 3 nap kész és 27 még töltődik.
 ### 4.1 Onboarding
 Első indításkor. Egy görgethető űrlap:
 - név (opcionális), biológiai nem, életkor, magasság, testsúly, célsúly, testzsír %
-- napi mozgásszint (5 fokozat, hosszú magyar címkékkel)
+- mennyit mozogsz (5 fokozat, edzésszámban: „heti 3–5 edzés")
 - fogyás üteme (csúszka, 0,1–1,0 kg/hét)
 - étrendi stílus (6 opció)
 - **allergia- és érzékenységfelmérés: 24 tétel, 6 csoportban** — ez a leghosszabb blokk,
@@ -85,11 +85,9 @@ hol tart és mennyi van hátra.
 
 ### 4.2 Ma
 - dátumváltó (előző/következő nap)
-- **napi kalóriakeret gyűrű**: bevitt / keret, a maradék nagy számmal középen,
-  alatta a mozgással szerzett többlet. A gyűrű színe vált: zöld → sárga (90% felett)
-  → piros (105% felett)
+- **napi kalóriakeret gyűrű**: bevitt / keret, a maradék nagy számmal középen.
+  A gyűrű színe vált: zöld → sárga (90% felett) → piros (105% felett)
 - 4 makrósáv: fehérje, szénhidrát, zsír, rost — mind „aktuális / cél g"
-- mozgás belépő sor (mai elégetett kcal → Mozgás képernyő)
 - étkezéslista: idő, étkezés típusa, fogás neve, kcal + 3 makró, és **két gyorsgomb:
   megettem / kihagytam**. Naplózott állapotban a sor kinézete változik (megevett /
   kihagyott / még nincs eldöntve), és „vissza" gombot kap.
@@ -129,16 +127,10 @@ Chat felület:
   + makrók + várható ütem + figyelmeztetések
 - súly: beviteli mezők, „mai súly rögzítése", egyszerű oszlopdiagram az utolsó 30 mérésről,
   és a „eddig X kg-ot fogytál" sor
-- **achievementek**: 22 darab, ikon + cím + leírás + haladás. Feloldott/zárolt állapot,
+- **achievementek**: 17 darab, ikon + cím + leírás + haladás. Feloldott/zárolt állapot,
   három fokozat (bronz / ezüst / arany). Jelenleg egyszerű lista — lehet ennél jobb.
 
-### 4.7 Mozgás
-- 3 adatcímke (ma elégetve, 7 nap perc, 7 nap kcal)
-- felvitel: keresőmező, ~45 mozgásfajta közül választás, perc, opcionális átlagpulzus
-- **élő becslés**, amint gépel: „331 kcal többlet", alatta a módszer megnevezése
-- mai mozgások listája, törléssel
-
-### 4.8 Étkezés részletei
+### 4.7 Étkezés részletei
 - fejléc: étkezés típusa + időpont, fogás neve, leírás
 - 3 adatcímke (kcal, elkészítési idő, adag)
 - részletes tápérték táblázat (7 sor + a makrókból számolt energia)
@@ -146,11 +138,12 @@ Chat felület:
 - elkészítés lépései (max 4)
 - „megettem" / „kihagytam"
 
-### 4.9 Beállítások
-Emlékeztetők (kapcsolók, két csúszka), mozgás beszámítása (csúszka), profil (a 4.1-es
-űrlap újra), Névjegy. A modellválasztás és a hozzáférési kulcs rejtett fejlesztői rész.
+### 4.8 Beállítások
+Csomag és hátralévő keret, emlékeztetők (kapcsolók, két csúszka), profil (a 4.1-es űrlap
+újra), jogi tudnivalók és „minden adat törlése", Névjegy. A modellválasztás és a
+hozzáférési kulcs rejtett fejlesztői rész.
 
-### 4.10 Értesítések
+### 4.9 Értesítések
 Ezek a rendszer felületén jelennek meg, de a szövegek és az akciógombok a miénk:
 - **étkezési emlékeztető**: „Ebéd: Grillcsirke barna rizzsel" + tápérték,
   három gomb: Megettem / Kihagytam / +15 perc

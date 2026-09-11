@@ -1,0 +1,4 @@
+
+# A design vászon összeállított kimenete — a forrás a design/*.dc.html és a canvas.json,
+# ebből bármikor újraépül. Két és fél megabájt szerkesztőkód, nem való verziókezelésbe.
+design/mealpilot-app.html

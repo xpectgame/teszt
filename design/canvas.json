@@ -1,0 +1,61 @@
+{
+  "pages": [
+    { "id": "page-1", "name": "Képernyők" },
+    { "id": "page-2", "name": "Belépés, csomag, értesítés" },
+    { "id": "page-3", "name": "Alapok és sötét" },
+    { "id": "page-4", "name": "Irányok" }
+  ],
+  "artboards": [
+    { "file": "Main.dc.html",       "page": "page-1", "x": 0,    "y": 0,    "w": 390, "h": 844, "title": "Ma" },
+    { "file": "Terv.dc.html",       "page": "page-1", "x": 470,  "y": 0,    "w": 390, "h": 844, "title": "Terv" },
+    { "file": "Bevasarlas.dc.html", "page": "page-1", "x": 940,  "y": 0,    "w": 390, "h": 844, "title": "Bevásárlás" },
+    { "file": "Beszeljunk.dc.html", "page": "page-1", "x": 1410, "y": 0,    "w": 390, "h": 844, "title": "Beszéljünk" },
+    { "file": "Etkezes.dc.html",    "page": "page-1", "x": 1880, "y": 0,    "w": 390, "h": 844, "title": "Étkezés részletei" },
+    { "file": "En.dc.html",         "page": "page-1", "x": 2350, "y": 0,    "w": 390, "h": 844, "title": "Én" },
+
+    { "file": "Allergia.dc.html",   "page": "page-2", "x": 0,    "y": 1100, "w": 390, "h": 844, "title": "Onboarding — mit nem ehetsz" },
+    { "file": "Csomag.dc.html",     "page": "page-2", "x": 470,  "y": 1100, "w": 390, "h": 844, "title": "Csomag" },
+    { "file": "Ertesitesek.dc.html","page": "page-2", "x": 940,  "y": 1100, "w": 390, "h": 844, "title": "Értesítések" },
+
+    { "file": "Alapok.dc.html",     "page": "page-3", "x": 0,    "y": 2300, "w": 880, "h": 1200, "title": "Alapok" },
+    { "file": "MaSotet.dc.html",    "page": "page-3", "x": 980,  "y": 2300, "w": 390, "h": 844,  "title": "Ma — sötét" },
+
+    { "file": "IranyB.dc.html",     "page": "page-4", "x": 0,    "y": 3700, "w": 390, "h": 844, "title": "B — Műszerfal" },
+    { "file": "IranyC.dc.html",     "page": "page-4", "x": 470,  "y": 3700, "w": 390, "h": 844, "title": "C — Tányér" }
+  ],
+  "annotations": [
+    {
+      "id": "kiindulas",
+      "page": "page-1",
+      "x": 0,
+      "y": -180,
+      "w": 560,
+      "text": "A irány — „Konyhai napló”.\nMeleg papírszín, mély erdőzöld + agyag akcent, Newsreader (címek, nagy számok) + Archivo (felület).\nA kalóriagyűrű a jelkép: nyitott gyűrű, alul réssel.\n\nAmit a brief kért és itt megvan: rögzített paletta dinamikus szín helyett, valódi hierarchia (nem minden blokk kártya), ikonok emoji helyett."
+    },
+    {
+      "id": "tartalom",
+      "page": "page-1",
+      "x": 620,
+      "y": -180,
+      "w": 500,
+      "text": "A tartalom a valódi appból jön: képernyőszerkezet, sorok, gombok, szövegek.\nAz ételek és a számok minta-adatok, de reális magyar étrendből.\n\nAmit szándékosan NEM rajzoltam: telefon állapotsáv és billentyűzet — azt a rendszer teszi a layout fölé."
+    },
+    {
+      "id": "allergia-jegyzet",
+      "page": "page-2",
+      "x": 0,
+      "y": 920,
+      "w": 500,
+      "text": "A brief szerint ez a legnehezebb blokk: 24 tétel 6 csoportban, chipek egymás alatt.\n\nJavaslat: csoportonkénti kártya, soronként kapcsoló, és a származtatott tételek (vegán → tej) zárolt kapcsolót kapnak, kiírt indokkal. Így látszik, miért nem lehet kikapcsolni."
+    },
+    {
+      "id": "irany-jegyzet",
+      "page": "page-4",
+      "x": 0,
+      "y": 3520,
+      "w": 860,
+      "text": "Két alternatíva, hogy legyen mihez mérni az A irányt — ezek szándékosan vázlatok, nem kész képernyők.\nMindkettőnél ott az indok és az ára. Ha valamelyik jobban tetszik, abból lesz a Ma képernyő, és a többi utána igazodik."
+    }
+  ],
+  "launch": { "view": "canvas", "page": "page-1" }
+}
