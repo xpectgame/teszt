@@ -186,8 +186,8 @@ code {
 <div class="card">
   <h3>A rövid válasz</h3>
   <p>Az alkalmazásban: <strong>Beállítások → Jogi tudnivalók és adatok → Minden adat
-  törlése</strong>. Ez egy lépésben törli az étrendedet, az étkezési, testsúly- és
-  mozgásnaplódat, a profilodat, a beállításaidat és a beszélgetést. Nincs visszavonás.</p>
+  törlése</strong>. Ez egy lépésben törli az étrendedet, az étkezési és testsúlynaplódat,
+  a profilodat, a beállításaidat és a beszélgetést. Nincs visszavonás.</p>
   <p>Ugyanezt éri el az alkalmazás eltávolítása is, ha a készülék biztonsági mentése nincs
   bekapcsolva.</p>
 </div>
@@ -269,7 +269,6 @@ emlékeztetőkkel és naplózással.</p>
   <li>Az étrendből bevásárlólistát ír, polcok szerint csoportosítva, a mennyiségeket
     összevonva.</li>
   <li>Emlékeztet, mikor mit egyél, és naplózza, hogy mit ettél valójában.</li>
-  <li>Felveszi a mozgásodat, és megbecsüli az elégetett kalóriát.</li>
   <li>Beszélgetve lehet módosítani rajta: étkezési időpontokat átállítani, napokat
     cserélni, allergiát hozzáadni, egy napot átíratni.</li>
 </ul>
@@ -295,7 +294,7 @@ emlékeztetőkkel és naplózással.</p>
 
 <h2>Mi ingyenes, mi fizetős</h2>
 <p>Ami a telefonodon fut, az ingyenes marad: a naplózás, a bevásárlólista, az
-emlékeztetők, a mozgáskövetés és a beépített receptekből készülő étrend. Havonta egy
+emlékeztetők és a beépített receptekből készülő étrend. Havonta egy
 tervezés és tíz üzenet is belefér.</p>
 <p>A teljes csomag előfizetéssel jár: korlátlan tervezés és beszélgetés, 30 napos tervek,
 és az egyes napok átíratása. Az előfizetést a Google Play kezeli, automatikusan megújul,
@@ -365,8 +364,8 @@ adatokat te magad adod meg, és alapértelmezetten a saját készülékeden mara
   <li><strong>Egészségügyi és testadatok:</strong> biológiai nem, életkor, testmagasság,
     testsúly, testzsírszázalék, célsúly, mozgásszint, étrendi stílus, allergiák és
     intoleranciák.</li>
-  <li><strong>Naplóadatok:</strong> elfogyasztott étkezések és azok tápértéke, testsúlymérések,
-    mozgásbejegyzések.</li>
+  <li><strong>Naplóadatok:</strong> elfogyasztott étkezések és azok tápértéke,
+    testsúlymérések.</li>
   <li><strong>Az általad írt szabad szöveg:</strong> preferenciák és a beszélgetés üzenetei.</li>
   <li><strong>Alkalmazásbeállítások:</strong> emlékeztetők, megjelenítési beállítások.</li>
 </ul>
@@ -594,8 +593,8 @@ kapcsoló. Kikapcsolva az alkalmazás nem is gyűjti ezeket.</p>
 
 <h2>1. A szolgáltatás</h2>
 <p>A MealPilot egy mobilalkalmazás, amely a megadott testadataid alapján kalóriacélt számol,
-étrendet állít össze, bevásárlólistát készít, és segít nyomon követni az étkezéseidet, a
-testsúlyodat és a mozgásodat. Szolgáltató: <em>[név, székhely, adószám]</em>.</p>
+étrendet állít össze, bevásárlólistát készít, és segít nyomon követni az étkezéseidet és
+a testsúlyodat. Szolgáltató: <em>[név, székhely, adószám]</em>.</p>
 
 <div class="warn">
   <h2 style="margin-top:0">2. Nem orvosi tanács</h2>
@@ -615,7 +614,7 @@ valóságtartalmáért te felelsz — hibás adatokból hibás kalóriacél köv
 
 <h2>4. Ingyenes és fizetős csomag</h2>
 <p>Az alkalmazás alapfunkciói ingyenesen használhatók: naplózás, bevásárlólista,
-emlékeztetők, mozgáskövetés, a beépített receptekből készülő étrend, valamint havonta
+emlékeztetők, a beépített receptekből készülő étrend, valamint havonta
 meghatározott számú tervezés és üzenet.</p>
 <p>A teljes csomag előfizetéssel érhető el, és korlátlan tervezést, korlátlan beszélgetést,
 hosszabb terveket és az egyes napok átíratását teszi lehetővé.</p>

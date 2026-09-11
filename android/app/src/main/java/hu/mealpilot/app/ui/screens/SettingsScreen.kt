@@ -362,28 +362,6 @@ fun SettingsScreen(
             }
         }
 
-        Spacer(Modifier.height(12.dp))
-        SectionCard(title = "Mozgás beszámítása") {
-            var eatBack by remember(current.eatBackRatio) { mutableStateOf(current.eatBackRatio.toFloat()) }
-            Text(
-                "Az elégetett kalória ${(eatBack * 100).toInt()}%-a írható vissza a napi keretbe.",
-                style = MaterialTheme.typography.bodyMedium,
-            )
-            Slider(
-                value = eatBack,
-                onValueChange = { eatBack = it },
-                onValueChangeFinished = {
-                    viewModel.saveSettings(current.copy(eatBackRatio = (eatBack * 20).toInt() / 20.0))
-                },
-                valueRange = 0f..1f,
-                steps = 19,
-            )
-            Text(
-                "Az edzésbecslések jellemzően felülbecsülnek, ezért az 50% biztonságos alapérték.",
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
 
         Spacer(Modifier.height(12.dp))
         SectionCard(title = "Profil") {
@@ -512,7 +490,7 @@ fun SettingsScreen(
             title = { Text("Minden adat törlése") },
             text = {
                 Text(
-                    "Törlődik az étrended, az összes naplód, a súly- és mozgásadataid, a " +
+                    "Törlődik az étrended, az összes naplód, a súlyadataid, a " +
                         "beszélgetésed és a beállításaid. Ez nem vonható vissza. " +
                         "Az előfizetésedet ez nem mondja le."
                 )

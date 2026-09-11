@@ -132,7 +132,7 @@ fun ProfileForm(
         )
         Spacer(Modifier.height(16.dp))
 
-        Text("Napi mozgás edzés nélkül", style = MaterialTheme.typography.labelLarge)
+        Text("Mennyit mozogsz?", style = MaterialTheme.typography.labelLarge)
         Spacer(Modifier.height(4.dp))
         Column {
             ActivityLevel.entries.forEach { level ->
@@ -146,7 +146,8 @@ fun ProfileForm(
             }
         }
         Text(
-            "A naplózott edzések ezen felül számítanak — így nem duplázódik a mozgás.",
+            "Az edzést is számold bele. Ebből jön a napi kalóriakereted, úgyhogy inkább " +
+                "becsüld alá, mint túl.",
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )

@@ -34,8 +34,8 @@ data class EnergyBudget(
 /**
  * Alapanyagcsere és napi kalóriakeret számítás.
  *
- * Fontos: a [ActivityLevel] szorzó az edzés NÉLKÜLI napi mozgást fedi, a naplózott
- * edzések kalóriája ezen felül, külön adódik hozzá ([ExerciseCalculator]).
+ * A napi mozgást egyetlen bemenet fedi: a profil [ActivityLevel] szorzója, ami az
+ * edzést is tartalmazza. Az app szándékosan nem vezet edzésnaplót — az étkezésről szól.
  */
 object EnergyCalculator {
 
@@ -135,14 +135,6 @@ object EnergyCalculator {
 
         return DailyTarget(kcal = targetKcal, proteinG = proteinG, carbsG = carbsG, fatG = fatG, fiberG = fiberG)
     }
-
-    /**
-     * A napi kalóriakeret az elégetett mozgás visszaszámolásával.
-     * @param eatBackRatio a naplózott edzéskalória hány százalékát írjuk jóvá (0.0–1.0).
-     *   Az alapérték 0.5, mert az edzésbecslések rendszeresen felülbecsülnek.
-     */
-    fun adjustedDailyKcal(baseTargetKcal: Int, exerciseKcalNet: Int, eatBackRatio: Double = 0.5): Int =
-        baseTargetKcal + (exerciseKcalNet * eatBackRatio.coerceIn(0.0, 1.0)).roundToInt()
 
     /** Hány nap alatt érhető el a célsúly a jelenlegi deficittel. Null, ha nincs cél vagy nincs deficit. */
     fun daysToTarget(profile: UserProfile, budget: EnergyBudget): Int? {

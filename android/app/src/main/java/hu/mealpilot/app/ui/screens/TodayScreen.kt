@@ -19,7 +19,6 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.ChevronLeft
 import androidx.compose.material.icons.filled.ChevronRight
-import androidx.compose.material.icons.filled.DirectionsRun
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.MoreVert
@@ -63,7 +62,6 @@ import hu.mealpilot.app.ui.components.MacroBar
 import hu.mealpilot.app.ui.components.SectionCard
 import hu.mealpilot.app.ui.containerFactory
 import hu.mealpilot.core.ai.MealSlot
-import hu.mealpilot.core.energy.EnergyCalculator
 import hu.mealpilot.core.model.Nutrients
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -88,20 +86,13 @@ data class TodayUiState(
     val plan: PlanEntity? = null,
     val meals: List<MealWithIngredients> = emptyList(),
     val logs: List<MealLogEntity> = emptyList(),
-    val burnedNetKcal: Int = 0,
-    val eatBackRatio: Double = 0.5,
 ) {
     val consumed: Nutrients
         get() = Nutrients.sum(
             logs.filter { it.status in CONSUMED_STATUSES }.map { it.nutrients.toNutrients() }
         )
 
-    val baseTarget: Int get() = plan?.targetKcal ?: 0
-
-    /** A mozgással megnövelt napi keret. */
-    val adjustedTarget: Int
-        get() = if (baseTarget <= 0) 0
-        else EnergyCalculator.adjustedDailyKcal(baseTarget, burnedNetKcal, eatBackRatio)
+    val targetKcal: Int get() = plan?.targetKcal ?: 0
 
     fun logFor(mealId: Long): MealLogEntity? = logs.firstOrNull { it.mealId == mealId }
 
@@ -122,17 +113,8 @@ class TodayViewModel(private val container: AppContainer) : ViewModel() {
             container.planRepository.observeActivePlan(),
             container.planRepository.observeDay(day),
             container.trackingRepository.observeMealLogs(day),
-            container.database.activityLogDao().observeNetKcal(day.toEpochDay()),
-            container.settings.settings,
-        ) { plan, meals, logs, burned, settings ->
-            TodayUiState(
-                date = day,
-                plan = plan,
-                meals = meals,
-                logs = logs,
-                burnedNetKcal = burned,
-                eatBackRatio = settings.eatBackRatio,
-            )
+        ) { plan, meals, logs ->
+            TodayUiState(date = day, plan = plan, meals = meals, logs = logs)
         }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), TodayUiState())
 
@@ -180,7 +162,6 @@ fun TodayScreen(
     snackbarHostState: SnackbarHostState,
     onOpenMeal: (Long) -> Unit,
     onCreatePlan: () -> Unit,
-    onOpenActivity: () -> Unit,
 ) {
     val viewModel: TodayViewModel = viewModel(
         factory = containerFactory(container) { TodayViewModel(it) }
@@ -236,8 +217,7 @@ fun TodayScreen(
                 Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
                     CalorieRing(
                         consumed = consumed.kcal.roundToInt(),
-                        budget = state.adjustedTarget,
-                        burned = state.burnedNetKcal,
+                        budget = state.targetKcal,
                     )
                 }
                 Spacer(Modifier.height(16.dp))
@@ -248,41 +228,6 @@ fun TodayScreen(
                 MacroBar("Zsír", consumed.fatG, state.plan!!.targetFatG, Color(0xFFFB8C00))
                 Spacer(Modifier.height(8.dp))
                 MacroBar("Rost", consumed.fiberG, state.plan!!.targetFiberG, Color(0xFF8D6E63))
-            }
-        }
-
-        item {
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable(onClick = onOpenActivity),
-            ) {
-                Row(
-                    Modifier
-                        .fillMaxWidth()
-                        .padding(14.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Icon(
-                        Icons.Filled.DirectionsRun,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary,
-                    )
-                    Spacer(Modifier.size(12.dp))
-                    Column(Modifier.weight(1f)) {
-                        Text("Mozgás", style = MaterialTheme.typography.titleSmall)
-                        Text(
-                            if (state.burnedNetKcal > 0) {
-                                "Ma ${state.burnedNetKcal} kcal többlet — ennek a fele beleszámít a keretbe."
-                            } else {
-                                "Ma még nincs naplózott mozgás."
-                            },
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                    Icon(Icons.Filled.ChevronRight, contentDescription = null)
-                }
             }
         }
 

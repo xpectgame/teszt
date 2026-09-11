@@ -47,7 +47,6 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import hu.mealpilot.app.AppContainer
-import hu.mealpilot.app.ui.screens.ActivityScreen
 import hu.mealpilot.app.ui.screens.ChatScreen
 import hu.mealpilot.app.ui.screens.MealDetailScreen
 import hu.mealpilot.app.ui.screens.OnboardingScreen
@@ -63,7 +62,6 @@ object Routes {
     const val TODAY = "today"
     const val PLAN = "plan"
     const val SHOPPING = "shopping"
-    const val ACTIVITY = "activity"
     const val CHAT = "chat"
     const val PAYWALL = "paywall"
     const val PROFILE = "profile"
@@ -75,8 +73,9 @@ object Routes {
 
 private data class Tab(val route: String, val label: String, val icon: ImageVector)
 
-// A mozgásnaplózás kikerült az alsó sávból: a napi kalóriakeret mellett a helye, a Ma
-// képernyőről nyílik. A felszabadult hely a beszélgetésé, ami sokkal gyakrabban kell.
+// Öt fül a maximum, ami egy telefon alján még olvasható marad. Mind az öt az
+// étkezésről szól — ezért került ki a mozgásnapló: fél funkció volt, és pont az
+// étrend elől vette el a helyet.
 private val tabs = listOf(
     Tab(Routes.TODAY, "Ma", Icons.Filled.RestaurantMenu),
     Tab(Routes.PLAN, "Terv", Icons.Filled.CalendarMonth),
@@ -154,7 +153,6 @@ fun AppRoot(
                         snackbarHostState = snackbarHostState,
                         onOpenMeal = { navController.navigate(Routes.meal(it)) },
                         onCreatePlan = { navController.navigate(Routes.PLAN) },
-                        onOpenActivity = { navController.navigate(Routes.ACTIVITY) },
                     )
                 }
                 composable(Routes.CHAT) {
@@ -170,19 +168,11 @@ fun AppRoot(
                 composable(Routes.SHOPPING) {
                     ShoppingScreen(container = container, snackbarHostState = snackbarHostState)
                 }
-                composable(Routes.ACTIVITY) {
-                    ActivityScreen(
-                        container = container,
-                        snackbarHostState = snackbarHostState,
-                        onBack = { navController.popBackStack() },
-                    )
-                }
                 composable(Routes.PROFILE) {
                     ProfileScreen(
                         container = container,
                         snackbarHostState = snackbarHostState,
                         onOpenSettings = { navController.navigate(Routes.SETTINGS) },
-                        onOpenActivity = { navController.navigate(Routes.ACTIVITY) },
                     )
                 }
                 composable(Routes.SETTINGS) {

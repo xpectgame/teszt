@@ -18,7 +18,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.DirectionsRun
 import androidx.compose.material.icons.filled.Egg
 import androidx.compose.material.icons.filled.EmojiEvents
 import androidx.compose.material.icons.filled.LocalFireDepartment
@@ -127,7 +126,6 @@ fun ProfileScreen(
     container: AppContainer,
     snackbarHostState: SnackbarHostState,
     onOpenSettings: () -> Unit,
-    onOpenActivity: () -> Unit,
 ) {
     val viewModel: ProfileViewModel = viewModel(factory = containerFactory(container) { ProfileViewModel(it) })
     val state by viewModel.state.collectAsState()
@@ -148,11 +146,6 @@ fun ProfileScreen(
             ) {
                 Text("Én", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedButton(onClick = onOpenActivity) {
-                        Icon(Icons.Filled.DirectionsRun, contentDescription = null, modifier = Modifier.size(18.dp))
-                        Spacer(Modifier.size(6.dp))
-                        Text("Mozgás")
-                    }
                     OutlinedButton(onClick = onOpenSettings) {
                         Icon(Icons.Filled.Settings, contentDescription = null, modifier = Modifier.size(18.dp))
                         Spacer(Modifier.size(6.dp))
@@ -319,8 +312,6 @@ private fun achievementIcon(key: String): ImageVector = when {
     key.startsWith("streak") -> Icons.Filled.LocalFireDepartment
     key.startsWith("target") -> Icons.Filled.TrackChanges
     key.startsWith("protein") -> Icons.Filled.Egg
-    key.startsWith("workout") || key.startsWith("minutes") || key == "first_workout" ->
-        Icons.Filled.DirectionsRun
     key.startsWith("lost") -> Icons.Filled.TrendingDown
     key.startsWith("weigh") -> Icons.Filled.MonitorWeight
     key.startsWith("shopping") -> Icons.Filled.ShoppingCart

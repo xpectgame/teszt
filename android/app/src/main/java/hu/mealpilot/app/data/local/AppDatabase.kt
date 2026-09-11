@@ -13,13 +13,12 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         MealEntity::class,
         IngredientEntity::class,
         MealLogEntity::class,
-        ActivityLogEntity::class,
         WeightLogEntity::class,
         ShoppingItemEntity::class,
         AchievementEntity::class,
         ChatMessageEntity::class,
     ],
-    version = 2,
+    version = 3,
     exportSchema = true,
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -27,7 +26,6 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun planDao(): PlanDao
     abstract fun mealDao(): MealDao
     abstract fun mealLogDao(): MealLogDao
-    abstract fun activityLogDao(): ActivityLogDao
     abstract fun weightLogDao(): WeightLogDao
     abstract fun shoppingDao(): ShoppingDao
     abstract fun achievementDao(): AchievementDao
@@ -37,8 +35,8 @@ abstract class AppDatabase : RoomDatabase() {
 
         /**
          * A beszélgetés táblája a 2. verzióban került be. Kézzel írt migráció kell hozzá,
-         * mert a telefonon már valódi étkezés-, súly- és mozgásnapló van — azt egy
-         * destruktív újraépítés törölné.
+         * mert a telefonon már valódi étkezés- és súlynapló van — azt egy destruktív
+         * újraépítés törölné.
          */
         private val MIGRATION_1_2 = object : Migration(1, 2) {
             override fun migrate(db: SupportSQLiteDatabase) {
@@ -58,6 +56,20 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        /**
+         * A mozgásnapló kikerült az appból: a MealPilot az étkezésről szól, és egy
+         * félig használt edzésnapló csak elvette a helyet az étrend elől.
+         *
+         * A táblát eldobjuk. A napi kalóriakeretet ettől nem éri veszteség: a mozgást
+         * mostantól a profil egyetlen mozgásszint-kérdése fedi le, ami az edzést is
+         * tartalmazza (lásd ActivityLevel).
+         */
+        private val MIGRATION_2_3 = object : Migration(2, 3) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("DROP TABLE IF EXISTS `activity_logs`")
+            }
+        }
+
         @Volatile
         private var instance: AppDatabase? = null
 
@@ -67,7 +79,7 @@ abstract class AppDatabase : RoomDatabase() {
                 AppDatabase::class.java,
                 "mealpilot.db",
             )
-                .addMigrations(MIGRATION_1_2)
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
                 .setJournalMode(RoomDatabase.JournalMode.WRITE_AHEAD_LOGGING)
                 .build()
                 .also { instance = it }

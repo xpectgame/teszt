@@ -60,7 +60,6 @@ fun SectionCard(
 fun CalorieRing(
     consumed: Int,
     budget: Int,
-    burned: Int,
     modifier: Modifier = Modifier,
     size: androidx.compose.ui.unit.Dp = 160.dp,
 ) {
@@ -121,13 +120,6 @@ fun CalorieRing(
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            if (burned > 0) {
-                Text(
-                    "🔥 $burned kcal mozgás",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = BudgetColors.burned,
-                )
-            }
         }
     }
 }

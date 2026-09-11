@@ -49,7 +49,6 @@ class AppContainer(context: Context) {
         TrackingRepository(
             mealDao = database.mealDao(),
             mealLogDao = database.mealLogDao(),
-            activityLogDao = database.activityLogDao(),
             weightLogDao = database.weightLogDao(),
         )
     }

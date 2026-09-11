@@ -30,7 +30,6 @@ enum class TelemetryEvent(val key: String) {
     PLAN_FAILED("plan_failed"),
     DAY_REFINED("day_refined"),
     MEAL_LOGGED("meal_logged"),
-    ACTIVITY_LOGGED("activity_logged"),
     WEIGHT_LOGGED("weight_logged"),
     CHAT_MESSAGE("chat_message"),
     CHAT_ACTION_CONFIRMED("chat_action_confirmed"),

@@ -100,13 +100,6 @@ class EnergyCalculatorTest {
     }
 
     @Test
-    fun `eating back exercise calories only adds the configured share`() {
-        assertEquals(2200, EnergyCalculator.adjustedDailyKcal(2000, 400, 0.5))
-        assertEquals(2000, EnergyCalculator.adjustedDailyKcal(2000, 400, 0.0))
-        assertEquals(2400, EnergyCalculator.adjustedDailyKcal(2000, 400, 1.0))
-    }
-
-    @Test
     fun `days to target is derived from the applied deficit`() {
         val profile = male.copy(targetWeightKg = 80.0)
         val budget = EnergyCalculator.budget(profile)

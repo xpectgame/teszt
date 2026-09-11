@@ -51,8 +51,6 @@ data class AppSettings(
     val reminderLeadMinutes: Int = 0,
     val dailySummaryHour: Int = 21,
     val dailySummaryEnabled: Boolean = true,
-    /** Az elégetett edzéskalória hány része írható jóvá a napi keretbe. */
-    val eatBackRatio: Double = 0.5,
     val model: AiModel = AiModel.SONNET,
     val effort: AiEffort = AiEffort.MEDIUM,
     /**
@@ -122,7 +120,6 @@ class SettingsRepository(context: Context) {
             p[K_LEAD_MINUTES] = settings.reminderLeadMinutes
             p[K_SUMMARY_HOUR] = settings.dailySummaryHour
             p[K_SUMMARY_ENABLED] = settings.dailySummaryEnabled
-            p[K_EAT_BACK] = settings.eatBackRatio
             p[K_MODEL] = settings.model.id
             p[K_EFFORT] = settings.effort.apiValue
             p[K_DEVELOPER] = settings.developerMode
@@ -178,7 +175,6 @@ class SettingsRepository(context: Context) {
         reminderLeadMinutes = this[K_LEAD_MINUTES] ?: 0,
         dailySummaryHour = this[K_SUMMARY_HOUR] ?: 21,
         dailySummaryEnabled = this[K_SUMMARY_ENABLED] ?: true,
-        eatBackRatio = this[K_EAT_BACK] ?: 0.5,
         model = AiModel.fromId(this[K_MODEL]),
         effort = AiEffort.fromValue(this[K_EFFORT]),
         developerMode = this[K_DEVELOPER] ?: false,
@@ -209,7 +205,6 @@ class SettingsRepository(context: Context) {
         val K_LEAD_MINUTES = intPreferencesKey("reminder_lead_minutes")
         val K_SUMMARY_HOUR = intPreferencesKey("summary_hour")
         val K_SUMMARY_ENABLED = booleanPreferencesKey("summary_enabled")
-        val K_EAT_BACK = doublePreferencesKey("eat_back_ratio")
         val K_MODEL = stringPreferencesKey("ai_model")
         val K_EFFORT = stringPreferencesKey("ai_effort")
         val K_DEVELOPER = booleanPreferencesKey("developer_mode")

@@ -28,7 +28,6 @@ class StatsRepository(
 
     suspend fun computeStats(targetKcal: Int, targetProteinG: Int): AchievementStats {
         val mealLogs = tracking.allMealLogs()
-        val activities = tracking.allActivityLogs()
         val weights = tracking.allWeights()
 
         val eatenByDay = mealLogs
@@ -61,9 +60,6 @@ class StatsRepository(
             daysOnTarget = onTargetDays.size,
             currentOnTargetStreak = currentStreak(onTargetDays),
             proteinGoalDays = proteinDays,
-            workouts = activities.size,
-            activeMinutes = activities.sumOf { it.minutes },
-            currentWorkoutWeekStreak = activeWeekStreak(activities.map { it.epochDay }),
             weightEntries = weights.size,
             kgLost = kgLost,
             plansGenerated = planDao.count(),
@@ -120,16 +116,4 @@ class StatsRepository(
         return best
     }
 
-    /** Hány egymást követő héten volt legalább két edzés, a mostani héttől visszafelé. */
-    private fun activeWeekStreak(activityDays: List<Long>): Int {
-        if (activityDays.isEmpty()) return 0
-        val perWeek = activityDays.groupingBy { Math.floorDiv(it + 3, 7) }.eachCount()
-        var week = Math.floorDiv(LocalDate.now().toEpochDay() + 3, 7)
-        var streak = 0
-        while ((perWeek[week] ?: 0) >= 2) {
-            streak++
-            week--
-        }
-        return streak
-    }
 }

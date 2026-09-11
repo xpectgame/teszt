@@ -131,28 +131,6 @@ interface MealLogDao {
 }
 
 @Dao
-interface ActivityLogDao {
-
-    @Insert
-    suspend fun insert(log: ActivityLogEntity): Long
-
-    @Query("DELETE FROM activity_logs WHERE id = :id")
-    suspend fun delete(id: Long)
-
-    @Query("SELECT * FROM activity_logs WHERE epochDay = :epochDay ORDER BY loggedAtMillis DESC")
-    fun observeDay(epochDay: Long): Flow<List<ActivityLogEntity>>
-
-    @Query("SELECT * FROM activity_logs WHERE epochDay BETWEEN :from AND :to ORDER BY epochDay DESC, loggedAtMillis DESC")
-    fun observeRange(from: Long, to: Long): Flow<List<ActivityLogEntity>>
-
-    @Query("SELECT COALESCE(SUM(kcalNet), 0) FROM activity_logs WHERE epochDay = :epochDay")
-    fun observeNetKcal(epochDay: Long): Flow<Int>
-
-    @Query("SELECT * FROM activity_logs ORDER BY epochDay")
-    suspend fun all(): List<ActivityLogEntity>
-}
-
-@Dao
 interface WeightLogDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)

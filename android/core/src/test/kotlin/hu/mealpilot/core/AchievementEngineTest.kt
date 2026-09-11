@@ -41,9 +41,9 @@ class AchievementEngineTest {
 
     @Test
     fun `progress is clamped to the goal`() {
-        val state = AchievementEngine.evaluate(AchievementStats(activeMinutes = 9000))
-            .first { it.achievement.key == "minutes_500" }
-        assertEquals(500, state.progress)
+        val state = AchievementEngine.evaluate(AchievementStats(distinctRecipesEaten = 900))
+            .first { it.achievement.key == "recipes_25" }
+        assertEquals(25, state.progress)
         assertEquals(1f, state.ratio, 0.0001f)
     }
 
@@ -57,9 +57,9 @@ class AchievementEngineTest {
 
     @Test
     fun `newly unlocked skips the ones already granted`() {
-        val stats = AchievementStats(plansGenerated = 1, daysLogged = 1, workouts = 1)
+        val stats = AchievementStats(plansGenerated = 1, daysLogged = 1, weightEntries = 5)
         val first = AchievementEngine.newlyUnlocked(stats, emptySet()).map { it.key }
-        assertEquals(setOf("first_plan", "first_log", "first_workout"), first.toSet())
+        assertEquals(setOf("first_plan", "first_log", "weigh_in_5"), first.toSet())
 
         val second = AchievementEngine.newlyUnlocked(stats, first.toSet())
         assertTrue(second.isEmpty())

@@ -2,7 +2,7 @@
 
 Natív Android app, ami a testadataid alapján kiszámolja a napi kalória- és makrókeretet,
 az Anthropic Claude modelljével összeállít egy tetszőleges hosszú (1 nap – 1 hónap) étrendet,
-emlékeztet minden étkezésre, bevásárlólistát ír, naplózza mit ettél és mit mozogtál,
+emlékeztet minden étkezésre, bevásárlólistát ír, naplózza mit ettél,
 és achievementekkel jutalmazza a kitartást.
 
 Az egész **magyar nyelvű**, és **szabad szöveggel testreszabható**: „laktózérzékeny vagyok,
@@ -24,7 +24,6 @@ alkalmazza, és egy már kész napot is át tudsz íratni egy mondattal.
 | Esti összefoglaló értesítés | ✅ kész |
 | Bevásárlólista (összevont mennyiségek, bolti polcok szerint) | ✅ kész, unit-tesztelt |
 | Étkezés- és súlynapló, haladáskövetés | ✅ kész |
-| Mozgásnapló MET- és pulzusalapú kalóriabecsléssel | ✅ kész, unit-tesztelt |
 | 22 achievement, értesítéssel | ✅ kész, unit-tesztelt |
 | Offline sablontervező (AI kulcs nélkül is működik) | ✅ kész |
 
@@ -113,7 +112,7 @@ előfizetés-ellenőrzést és a kvótát. Részletek: [`../backend/README.md`](
 android/
 ├── core/                       tiszta Kotlin — nincs Android függősége, tesztelhető
 │   ├── model/                  profil, tápanyagok, napi célok
-│   ├── energy/                 BMR/TDEE/deficit, MET-tábla, edzéskalória
+│   ├── energy/                 BMR/TDEE/deficit, kalóriakeret
 │   ├── ai/                     JSON séma, promptok, tűrő parser, minőség-ellenőrzés
 │   ├── shopping/               hozzávaló-összevonás, mértékegység-normalizálás
 │   └── achievements/           achievement katalógus + kiértékelő
@@ -139,16 +138,12 @@ a napi deficit nem több a TDEE 25%-ánál, és a napi cél nem megy az alapanya
 megmondja, mennyit mérsékelt és miért. Deficitben a fehérje fix testsúlyarányos küszöb,
 a szénhidrát a maradék — így az izomvesztés esélye kisebb.
 
-**A mozgás nem duplázódik.** Az aktivitási szorzó kifejezetten az *edzés nélküli* napi
-mozgást fedi, a naplózott edzések ezen felül adódnak hozzá. Alapból az elégetett kalória
-50%-a írható vissza a keretbe, mert az edzésbecslések rendszeresen felülbecsülnek
-(a Beállításokban állítható 0–100% között).
-
-**Az edzéskalória három módszerrel, pontossági sorrendben.** Ha megadsz átlagpulzust,
-a Keytel-regresszió (2005) fut. Ha nem, a MET-értéket nem a tankönyvi 3,5 ml/kg/min-hez,
-hanem a *te* alapanyagcserédhez skálázzuk — ez nehezebb vagy idősebb felhasználónál
-érdemben kevesebbet ad, mint a szokásos képlet, és közelebb van a valósághoz.
-A napi keretbe csak a nyugalmi anyagcsere fölötti *többlet* számít bele.
+**A mozgás egyetlen kérdés, nem egy napló.** Volt edzésnaplózás MET-táblával és
+pulzusalapú becsléssel; kikerült. Nem azért, mert rossz volt, hanem mert egy étrendtervező
+appban fél funkció maradt: senki nem vezet két naplót párhuzamosan, és pont az étrend elől
+vette el a helyet. Helyette a profil mozgásszint-kérdése fedi le a teljes napi mozgást, az
+edzést is beleértve — ez a klasszikus szorzós módszer, és a napi keret pontossága szempontjából
+alig marad el egy pontatlanul vezetett edzésnaplótól.
 
 **Egy allergiát nem bízunk a modell jólneveltségére.** A bekapcsoláskori felmérésben
 kipipált allergiák, intoleranciák és étrendi döntések nemcsak a promptba kerülnek be
@@ -188,7 +183,6 @@ megnyitása nélkül. Ha a naplózás nem egy koppintás, senki nem csinálja k�
 ## Mi hiányzik még
 
 - Barcode-os / adatbázisos ételkeresés terven kívüli étkezéshez (most kézi kalóriabevitel)
-- Health Connect integráció (lépésszám, edzések automatikus behúzása)
 - Terv exportálása PDF-be, bevásárlólista megosztása
 - Widget és Wear OS emlékeztető
 - Összeomlás-jelentés és termékanalitika

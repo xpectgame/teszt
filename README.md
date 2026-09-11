@@ -2,7 +2,7 @@
 
 Kalóriadeficites étrendtervező Androidra: a testadataid alapján kiszámolja a napi
 kalória- és makrócélt, összeállít egy étrendet, bevásárlólistát ír hozzá, emlékeztet az
-étkezésekre, és követi, mit ettél és mit mozogtál.
+étkezésekre, és követi, mit ettél.
 
 | Hol | Mi van benne |
 |---|---|

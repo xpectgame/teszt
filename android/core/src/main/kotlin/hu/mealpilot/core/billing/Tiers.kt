@@ -12,7 +12,7 @@ enum class PlanTier(val hu: String) {
  * Egy csomag korlátai. A −1 korlátlant jelent.
  *
  * A felosztás vezérelve: ami a telefonon fut, az ingyenes marad — naplózás, bevásárlólista,
- * mozgás, emlékeztetők, achievementek, az offline tervező. Ami külső hívásba és tényleges
+ * emlékeztetők, achievementek, az offline tervező. Ami külső hívásba és tényleges
  * pénzbe kerül (a tervezés és a beszélgetés), az a fizetős rész. Így az ingyenes app is
  * megtartja a felhasználót, a költség viszont csak ott keletkezik, ahol bevétel is van.
  */
@@ -64,7 +64,7 @@ object Tiers {
 
     /** Ami a fizetős csomag nélkül is jár — ezt is kiírjuk, hogy ne érezze csapdának. */
     val freeBenefits: List<String> = listOf(
-        "Étkezés-, súly- és mozgásnapló, korlátlanul",
+        "Étkezés- és súlynapló, korlátlanul",
         "Bevásárlólista és étkezési emlékeztetők",
         "Beépített receptekből készülő étrend, internet nélkül is",
         "Havonta egy teljes AI-étrend",

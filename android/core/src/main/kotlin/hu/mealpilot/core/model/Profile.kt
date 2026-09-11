@@ -4,15 +4,19 @@ package hu.mealpilot.core.model
 enum class Sex { MALE, FEMALE }
 
 /**
- * Napi mozgásszint EDZÉS NÉLKÜL (NEAT: munka, közlekedés, háztartás).
- * A naplózott edzések ezen felül adódnak hozzá — így nem duplázódik a mozgás.
+ * Napi mozgásszint, az edzéssel EGYÜTT.
+ *
+ * Az app nem vezet edzésnaplót, ezért ennek az egy kérdésnek kell lefednie a teljes
+ * mozgást — a munkát, a közlekedést és a sportot is. Ezek a klasszikus szorzók; a
+ * címkék szándékosan edzésszámban beszélnek, mert arra könnyebb válaszolni, mint egy
+ * elvont „közepesen aktív" besorolásra.
  */
 enum class ActivityLevel(val factor: Double, val hu: String) {
-    SEDENTARY(1.20, "Ülő (irodai munka, kevés mozgás)"),
-    LIGHT(1.375, "Enyhén aktív (napi séta, álló munka)"),
-    MODERATE(1.55, "Közepesen aktív (sokat mozog napközben)"),
-    HIGH(1.725, "Nagyon aktív (fizikai munka)"),
-    EXTREME(1.90, "Extrém aktív (nehéz fizikai munka)");
+    SEDENTARY(1.20, "Ülő életmód, alig mozgok"),
+    LIGHT(1.375, "Heti 1–3 edzés vagy sok gyaloglás"),
+    MODERATE(1.55, "Heti 3–5 edzés"),
+    HIGH(1.725, "Heti 6–7 edzés vagy fizikai munka"),
+    EXTREME(1.90, "Napi kétszeri edzés vagy nehéz fizikai munka");
 }
 
 enum class DietStyle(val hu: String) {

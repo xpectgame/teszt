@@ -134,18 +134,12 @@ class MealReminderReceiver : BroadcastReceiver() {
         val plan = container.planRepository.activePlan()
         val eaten = container.trackingRepository.allMealLogs()
             .filter { it.epochDay == today.toEpochDay() && it.status != LogStatus.SKIPPED.name }
-        val burned = container.trackingRepository.allActivityLogs()
-            .filter { it.epochDay == today.toEpochDay() }
-            .sumOf { it.kcalNet }
-
         val consumed = eaten.sumOf { it.nutrients.kcal }.roundToInt()
         val protein = eaten.sumOf { it.nutrients.proteinG }.roundToInt()
         val target = plan?.targetKcal ?: 0
-        val adjusted = target + (burned * settings.eatBackRatio).roundToInt()
 
         val text = if (target > 0) {
-            "Bevitt: $consumed kcal / $adjusted kcal keret · Fehérje: $protein g" +
-                if (burned > 0) " · Mozgás: $burned kcal" else ""
+            "Bevitt: $consumed kcal / $target kcal keret · Fehérje: $protein g"
         } else {
             "Bevitt: $consumed kcal · Fehérje: $protein g"
         }
@@ -153,8 +147,8 @@ class MealReminderReceiver : BroadcastReceiver() {
         val title = when {
             target <= 0 -> "Napi összefoglaló"
             consumed == 0 -> "Ma még nem naplóztál semmit"
-            consumed <= adjusted -> "Szép nap! A kereten belül maradtál"
-            else -> "Ma ${consumed - adjusted} kcal-lal léptél túl"
+            consumed <= target -> "Szép nap! A kereten belül maradtál"
+            else -> "Ma ${consumed - target} kcal-lal léptél túl"
         }
 
         Notifications.ensureChannels(context)

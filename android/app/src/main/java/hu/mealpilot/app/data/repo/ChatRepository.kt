@@ -137,14 +137,10 @@ class ChatRepository(
                 it.status == LogStatus.EXTRA.name
         }
         val consumed = Nutrients.sum(eaten.map { it.nutrients.toNutrients() })
-        val burned = tracking.allActivityLogs()
-            .filter { it.epochDay == today.toEpochDay() }
-            .sumOf { it.kcalNet }
 
         val todaySummary = buildString {
             append("Eddig ${consumed.kcal.roundToInt()} kcal és ${consumed.proteinG.roundToInt()} g fehérje ")
             append("${eaten.size} naplózott étkezésből.")
-            if (burned > 0) append(" Mozgással ${burned} kcal többlet.")
             if (eaten.isEmpty()) append(" Ma még nem naplózott semmit.")
         }
 

@@ -139,23 +139,6 @@ data class MealLogEntity(
     val note: String = "",
 )
 
-@Entity(tableName = "activity_logs", indices = [Index("epochDay")])
-data class ActivityLogEntity(
-    @PrimaryKey(autoGenerate = true) val id: Long = 0,
-    val epochDay: Long,
-    val loggedAtMillis: Long,
-    val exerciseKey: String,
-    val label: String,
-    val minutes: Int,
-    val met: Double,
-    val avgHeartRate: Int? = null,
-    val kcalGross: Int,
-    val kcalNet: Int,
-    /** Melyik módszer adta a becslést (pulzus / személyre szabott MET / tankönyvi MET). */
-    val method: String,
-    val note: String = "",
-)
-
 @Entity(tableName = "weight_logs")
 data class WeightLogEntity(
     @PrimaryKey val epochDay: Long,

@@ -211,7 +211,7 @@ A jogosultság megadása után a Play oldalán **akár 24 óra**, amíg élesedi
       `MEALPILOT_BACKEND_URL` be van állítva. Részletek és a domainváltás:
       [`DOMAIN.md`](DOMAIN.md).
 - [ ] **Adatbiztonság (Data safety) űrlap.** A jelenlegi működés szerinti válaszok:
-  - Gyűjtünk adatot? **Igen** — „Egészség és fitnesz" (testadatok, étkezés, mozgás)
+  - Gyűjtünk adatot? **Igen** — „Egészség és fitnesz" (testadatok, étkezés)
   - Megosztjuk harmadik féllel? **Igen** — a tervezőszolgáltatóval (Anthropic), a
     szolgáltatás nyújtásához. A saját backend a kérést továbbítja, de nem tárolja:
     csak tokenszám és becsült költség marad meg.

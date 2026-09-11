@@ -120,7 +120,7 @@ Minden mennyiség szám legyen, ne szöveg. A "day_index" a kért tartomány sze
             (p.bodyFatPercent?.let { ", testzsír: ${"%.1f".format(it)}%" } ?: ""))
         sb.appendLine("- BMI: ${"%.1f".format(p.bmi)}")
         p.targetWeightKg?.let { sb.appendLine("- Célsúly: ${"%.1f".format(it)} kg") }
-        sb.appendLine("- Napi mozgásszint edzés nélkül: ${p.activityLevel.hu}")
+        sb.appendLine("- Napi mozgásszint: ${p.activityLevel.hu}")
         sb.appendLine("- Étrendi stílus: ${p.dietStyle.hu}")
         sb.appendLine()
 

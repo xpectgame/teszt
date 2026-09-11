@@ -15,9 +15,6 @@ data class AchievementStats(
     val currentOnTargetStreak: Int = 0,
     /** Napok, ahol a fehérjecél teljesült. */
     val proteinGoalDays: Int = 0,
-    val workouts: Int = 0,
-    val activeMinutes: Int = 0,
-    val currentWorkoutWeekStreak: Int = 0,
     val weightEntries: Int = 0,
     /** Az induló súlyhoz képest ledolgozott kilók (pozitív szám). */
     val kgLost: Double = 0.0,
@@ -74,17 +71,6 @@ object AchievementCatalog {
 
         Achievement("protein_7", "Fehérjebajnok", "7 napon teljesült a fehérjecél", "🥩",
             AchievementTier.SILVER, 7) { it.proteinGoalDays },
-
-        Achievement("first_workout", "Mozgásba lendülve", "Naplózd az első edzésed", "👟",
-            AchievementTier.BRONZE, 1) { it.workouts },
-        Achievement("workouts_20", "Rendszeres", "20 naplózott edzés", "🏋️",
-            AchievementTier.SILVER, 20) { it.workouts },
-        Achievement("minutes_500", "500 perc mozgás", "Gyűjts össze 500 aktív percet", "⏱️",
-            AchievementTier.SILVER, 500) { it.activeMinutes },
-        Achievement("minutes_2000", "2000 perc mozgás", "Gyűjts össze 2000 aktív percet", "⚡",
-            AchievementTier.GOLD, 2000) { it.activeMinutes },
-        Achievement("workout_weeks_4", "Négy aktív hét", "4 egymást követő héten legalább 2 edzés", "📅",
-            AchievementTier.GOLD, 4) { it.currentWorkoutWeekStreak },
 
         Achievement("weigh_in_5", "Mérleg barátja", "5 súlymérés rögzítve", "⚖️",
             AchievementTier.BRONZE, 5) { it.weightEntries },
