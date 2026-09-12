@@ -71,7 +71,10 @@ class AnthropicMealAi(
             .systemOfTextBlockParams(
                 listOf(
                     TextBlockParam.builder()
-                        .text(if (task == AiTask.CHAT) ChatPrompts.SYSTEM else PlanPrompts.SYSTEM)
+                        .text(
+                            if (task == AiTask.CHAT) ChatPrompts.system(language)
+                            else PlanPrompts.system(language)
+                        )
                         // A rendszerprompt minden hívásnál azonos, ezért cache-elhető:
                         // a heti darabok és a javító körök után is olcsóbb lesz.
                         .cacheControl(CacheControlEphemeral.builder().build())
