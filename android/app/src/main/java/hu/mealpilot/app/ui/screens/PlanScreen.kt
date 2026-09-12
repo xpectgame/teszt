@@ -2,7 +2,9 @@ package hu.mealpilot.app.ui.screens
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -12,6 +14,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
@@ -20,13 +23,13 @@ import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
-import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.SnackbarHostState
@@ -42,6 +45,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -62,10 +66,16 @@ import hu.mealpilot.app.data.repo.PlanRepository
 import hu.mealpilot.app.notify.ReminderRefreshWorker
 import hu.mealpilot.app.data.repo.ReportKind
 import hu.mealpilot.app.data.telemetry.TelemetryEvent
+import hu.mealpilot.app.ui.components.NumberText
+import hu.mealpilot.app.ui.components.PlatePill
+import hu.mealpilot.app.ui.components.SectionHeading
 import hu.mealpilot.app.ui.components.EmptyState
 import hu.mealpilot.app.ui.components.ReportDialog
 import hu.mealpilot.app.ui.components.SectionCard
 import hu.mealpilot.app.ui.containerFactory
+import hu.mealpilot.app.ui.theme.LocalDarkTheme
+import hu.mealpilot.app.ui.theme.MealColors
+import hu.mealpilot.app.ui.theme.PlateShape
 import hu.mealpilot.core.ai.GenerationProgress
 import hu.mealpilot.core.ai.MealSlot
 import hu.mealpilot.core.energy.EnergyCalculator
@@ -204,7 +214,9 @@ fun PlanScreen(
     }
 
     LazyColumn(
-        contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp),
+        contentPadding = androidx.compose.foundation.layout.PaddingValues(
+            start = 18.dp, end = 18.dp, top = 12.dp, bottom = 24.dp,
+        ),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         item {
@@ -215,10 +227,12 @@ fun PlanScreen(
             ) {
                 Text(
                     stringResource(R.string.plan_title),
-                    style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.Bold,
+                    style = MaterialTheme.typography.headlineLarge,
                 )
-                Button(onClick = { showGenerator = true }) { Text(stringResource(R.string.plan_new)) }
+                Button(
+                    onClick = { showGenerator = true },
+                    shape = PlateShape.button,
+                ) { Text(stringResource(R.string.plan_new)) }
             }
         }
 
@@ -238,10 +252,21 @@ fun PlanScreen(
                         Text(plan.summary, style = MaterialTheme.typography.bodyMedium)
                         Spacer(Modifier.height(12.dp))
                     }
+                    // Jelvények, nem AssistChip: az kattintható elemnek látszik, holott
+                    // nem az volt — a három szám csak tájékoztat. A magyar szöveg eddig a
+                    // kódban állt, tehát angol felületen is „nap" jelent volna meg.
                     FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        AssistChip(onClick = {}, label = { Text("${plan.targetKcal} kcal/nap") })
-                        AssistChip(onClick = {}, label = { Text("${plan.dayCount} nap") })
-                        AssistChip(onClick = {}, label = { Text("F ${plan.targetProteinG} g") })
+                        PlatePill(stringResource(R.string.plan_chip_kcal, plan.targetKcal))
+                        PlatePill(
+                            stringResource(R.string.plan_chip_days, plan.dayCount),
+                            container = MaterialTheme.colorScheme.secondaryContainer,
+                            content = MaterialTheme.colorScheme.onSecondaryContainer,
+                        )
+                        PlatePill(
+                            stringResource(R.string.plan_chip_protein, plan.targetProteinG),
+                            container = MaterialTheme.colorScheme.secondaryContainer,
+                            content = MaterialTheme.colorScheme.onSecondaryContainer,
+                        )
                     }
                     val notes = viewModel.coachNotes(plan)
                     if (notes.isNotEmpty()) {
@@ -261,6 +286,11 @@ fun PlanScreen(
                         contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp),
                     ) { Text(stringResource(R.string.plan_report_link)) }
                 }
+            }
+
+            item {
+                Spacer(Modifier.height(10.dp))
+                SectionHeading(stringResource(R.string.plan_days_title))
             }
 
             items(state.byDay.entries.toList(), key = { it.key }) { (dayIndex, meals) ->
@@ -332,8 +362,13 @@ private fun DayCard(
     val date = startDate.plusDays(dayIndex.toLong())
     val language = LocalAppLanguage.current
 
-    Card(Modifier.fillMaxWidth()) {
-        Column(Modifier.padding(12.dp)) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = PlateShape.card,
+        color = MaterialTheme.colorScheme.surface,
+        shadowElevation = 2.dp,
+    ) {
+        Column(Modifier.padding(17.dp)) {
             Row(
                 Modifier
                     .fillMaxWidth()
@@ -341,16 +376,20 @@ private fun DayCard(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Column {
-                    Text(date.dayLabel(), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
+                Column(Modifier.weight(1f)) {
                     Text(
+                        date.dayLabel(),
+                        style = MaterialTheme.typography.bodyLarge,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                    NumberText(
                         stringResource(
                             R.string.plan_day_totals,
                             total.kcal.roundToInt(),
                             targetKcal,
                             total.proteinG.roundToInt(),
                         ),
-                        style = MaterialTheme.typography.labelSmall,
+                        style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
@@ -359,36 +398,56 @@ private fun DayCard(
                     contentDescription = stringResource(
                         if (expanded) R.string.action_collapse else R.string.action_expand
                     ),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
 
             AnimatedVisibility(expanded) {
                 Column {
-                    Spacer(Modifier.height(8.dp))
+                    Spacer(Modifier.height(12.dp))
                     meals.forEach { mw ->
+                        val slot = MealSlot.fromRaw(mw.meal.slot)
+                        // Ugyanaz a színkód, mint a Ma képernyő bélyegein: a reggeli itt is
+                        // narancs, az ebéd zöld. Így a két képernyő ugyanarról beszél.
+                        val accent = MealColors.of(slot.ordinal, LocalDarkTheme.current)
                         Row(
                             Modifier
                                 .fillMaxWidth()
                                 .clickable { onOpenMeal(mw.meal.id) }
-                                .padding(vertical = 6.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween,
+                                .padding(vertical = 10.dp),
+                            verticalAlignment = Alignment.CenterVertically,
                         ) {
-                            Column(Modifier.weight(1f)) {
-                                Text(
-                                    "${mw.meal.timeText} · ${MealSlot.fromRaw(mw.meal.slot).label(language)}",
-                                    style = MaterialTheme.typography.labelSmall,
-                                )
-                                Text(mw.meal.name, style = MaterialTheme.typography.bodyMedium)
-                            }
+                            Box(
+                                Modifier
+                                    .size(9.dp)
+                                    .clip(CircleShape)
+                                    .background(accent),
+                            )
+                            Spacer(Modifier.width(11.dp))
+                            NumberText(
+                                mw.meal.timeText,
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                            Spacer(Modifier.width(11.dp))
                             Text(
+                                mw.meal.name,
+                                style = MaterialTheme.typography.bodyMedium,
+                                modifier = Modifier.weight(1f),
+                            )
+                            Spacer(Modifier.width(8.dp))
+                            NumberText(
                                 "${mw.meal.nutrients.kcal.roundToInt()} kcal",
                                 style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
                         }
                     }
                     if (refineEnabled) {
                         Spacer(Modifier.height(8.dp))
-                        OutlinedButton(onClick = onRefine) { Text(stringResource(R.string.plan_refine_button)) }
+                        OutlinedButton(onClick = onRefine, shape = PlateShape.button) {
+                            Text(stringResource(R.string.plan_refine_button))
+                        }
                     }
                 }
             }
