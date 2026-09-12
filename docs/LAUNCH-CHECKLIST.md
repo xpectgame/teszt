@@ -198,9 +198,13 @@ adb install -r app/build/outputs/apk/release/app-release.apk
 A jogosultság megadása után a Play oldalán **akár 24 óra**, amíg élesedik.
 
 ### 4.4 Bolti megjelenés
-- [ ] Név, rövid leírás (80 karakter), teljes leírás
-- [ ] Ikon 512×512 PNG
-- [ ] Funkciógrafika 1024×500
+
+A szövegek és a grafikák **készen vannak**: [`STORE-LISTING.md`](STORE-LISTING.md) és
+[`../marketing/`](../marketing/). Itt már csak másolni és feltölteni kell.
+
+- [ ] Név, rövid leírás (80 karakter), teljes leírás — mindkét nyelven
+- [ ] Ikon 512×512 PNG — `marketing/icon-512.png`
+- [ ] Funkciógrafika 1024×500 — `marketing/feature-graphic-hu.png` és `-en.png`
 - [ ] Legalább 2, legfeljebb 8 telefonos képernyőkép
 - [ ] Kategória: Egészség és fitnesz
 - [ ] Nyelv: **magyar és angol**. Az app mindkettőt tudja (első indításkor kérdez,
