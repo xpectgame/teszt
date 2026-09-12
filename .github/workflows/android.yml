@@ -51,6 +51,15 @@ jobs:
           MEALPILOT_BUILD: "build ${{ github.run_number }}"
         run: ./gradlew :app:assembleDebug --stacktrace
 
+      # A lint eddig CSAK a kiadási buildben futott (lintVitalRelease), négy perccel
+      # később és szűkebb körrel — a legutóbbi három hibából az egyiket ez engedte át
+      # egészen a kiadásig. Itt a teljes ellenőrzés fut, a gyors úton.
+      #
+      # Figyelmeztetésre nem bukik el, csak hibára: a cél a valódi baj kiszűrése, nem
+      # az, hogy egy stílusészrevétel megállítsa a munkát.
+      - name: Lint
+        run: ./gradlew :app:lintDebug --stacktrace
+
       # A védelem csak kiadáskor lép működésbe, tehát pont akkor derülne ki, hogy
       # elromlott, amikor a legdrágább. A --dry-run felépíti a feladatgráfot, de nem
       # futtat semmit, így ez másodpercekbe kerül.
