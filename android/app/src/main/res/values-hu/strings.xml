@@ -185,7 +185,7 @@
     <string name="settings_about">Névjegy</string>
     <string name="settings_dev_on">Fejlesztői beállítások bekapcsolva.</string>
     <string name="settings_owner_build">Tulajdonosi build — a teljes csomag vásárlás nélkül aktív. Ezt a csomagot ne töltsd fel a Play Console-ba.</string>
-    <string name="settings_disclaimer">Az étrendeket gépi tervező állítja össze a megadott adataid alapján. Az app tájékoztató jellegű, nem orvosi tanács — betegség, terhesség vagy rendszeres gyógyszerszedés esetén beszéld át orvossal.</string>
+    <string name="settings_disclaimer">Az étrendeket gépi tervező állítja össze a megadott adataid alapján. Az app tájékoztató jellegű, nem orvosi tanács — betegség, terhesség, szoptatás, evészavar vagy rendszeres gyógyszerszedés esetén előbb beszéld át orvossal.</string>
     <string name="legal_terms_short">Feltételek</string>
     <string name="legal_privacy_short">Adatkezelés</string>
     <string name="onboarding_welcome">Üdv! 👋</string>

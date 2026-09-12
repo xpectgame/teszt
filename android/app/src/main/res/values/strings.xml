@@ -186,7 +186,7 @@
     <string name="settings_about">About</string>
     <string name="settings_dev_on">Developer settings switched on.</string>
     <string name="settings_owner_build">Owner build — the full plan is active without a purchase. Do not upload this package to the Play Console.</string>
-    <string name="settings_disclaimer">Meal plans are put together by an automated planner from the data you gave. The app is for information only, not medical advice — with an illness, in pregnancy, or on regular medication, talk it through with a doctor.</string>
+    <string name="settings_disclaimer">Meal plans are put together by an automated planner from the data you gave. The app is for information only, not medical advice — with an illness, in pregnancy, while breastfeeding, with an eating disorder or on regular medication, talk it through with a doctor first.</string>
     <string name="legal_terms_short">Terms</string>
     <string name="legal_privacy_short">Privacy</string>
     <string name="onboarding_welcome">Welcome! 👋</string>
