@@ -238,6 +238,15 @@ A szövegek és a grafikák **készen vannak**: [`STORE-LISTING.md`](STORE-LISTI
   - **Diagnosztika / alkalmazásinterakciók: Igen**, névtelen napi darabszámok
     (analitika). Nem kötelező — ugyanazzal a kapcsolóval kikapcsolható.
   - Hirdetés vagy harmadik féltől származó nyomkövető: **nincs**
+- [ ] **Pontos ébresztés (`SCHEDULE_EXACT_ALARM`).** Az app kéri ezt az engedélyt az
+      étkezési emlékeztetőkhöz, és a Play **külön nyilatkozatot** kér hozzá: meg kell
+      indokolni, miért nem elég a pontatlan ébresztés. Ez a nyilatkozat gyakori
+      elutasítási ok.
+
+      Jó hír, hogy nem vagy sarokba szorítva: **az app enélkül is működik**, csak ±10
+      percen belül szólnak az emlékeztetők (`MealAlarmScheduler`), és a Beállítások
+      képernyő ezt ki is írja. Ha nem akarsz a nyilatkozattal bajlódni, vedd ki a
+      sort az `AndroidManifest.xml`-ből — más nem változik.
 - [ ] **Tartalom besorolása** (IARC kérdőív)
 - [ ] **Célközönség:** 18+
 - [ ] **Egészségügyi app nyilatkozat:** nem egészségügyi szolgáltató
