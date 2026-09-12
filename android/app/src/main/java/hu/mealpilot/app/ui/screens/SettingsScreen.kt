@@ -428,16 +428,16 @@ fun SettingsScreen(
 
         Spacer(Modifier.height(12.dp))
         SectionCard(title = stringResource(R.string.settings_legal)) {
-            TextButton(onClick = { context.openUrl(LegalLinks.TERMS) }) {
+            TextButton(onClick = { context.openUrl(LegalLinks.terms(language)) }) {
                 Text(stringResource(R.string.settings_terms))
             }
-            TextButton(onClick = { context.openUrl(LegalLinks.PRIVACY) }) {
+            TextButton(onClick = { context.openUrl(LegalLinks.privacy(language)) }) {
                 Text(stringResource(R.string.settings_privacy))
             }
-            TextButton(onClick = { context.openUrl(LegalLinks.DELETE_DATA) }) {
+            TextButton(onClick = { context.openUrl(LegalLinks.deleteData(language)) }) {
                 Text(stringResource(R.string.settings_delete_data))
             }
-            TextButton(onClick = { context.openUrl(LegalLinks.SUPPORT) }) {
+            TextButton(onClick = { context.openUrl(LegalLinks.support(language)) }) {
                 Text(stringResource(R.string.settings_support))
             }
             TextButton(onClick = { context.openUrl("mailto:${LegalLinks.SUPPORT_EMAIL}") }) {

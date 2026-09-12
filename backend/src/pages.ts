@@ -178,6 +178,7 @@ code {
   <a href="support.html">Támogatás</a>
   <a href="privacy.html">Adatkezelés</a>
   <a href="terms.html">Feltételek</a>
+  <a href="en/delete-data.html">English</a>
 </nav>
 
 <h1>Adatok törlése</h1>
@@ -228,7 +229,535 @@ tartozik. Lemondás: Google Play → Fizetések és előfizetések → Előfizet
   <a href="privacy.html">Adatkezelési tájékoztató</a> ·
   <a href="terms.html">Felhasználási feltételek</a> ·
   <a href="support.html">Támogatás</a> ·
-  <a href="index.html">Főoldal</a>
+  <a href="index.html">Főoldal</a> ·
+  <a href="en/delete-data.html">English</a>
+</footer>
+
+</body>
+</html>
+`,
+  },
+  'en/delete-data.html': {
+    contentType: 'text/html; charset=utf-8',
+    body: `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MealPilot — Deleting your data</title>
+<link rel="stylesheet" href="../assets/site.css">
+</head>
+<body>
+
+<nav class="nav">
+  <strong>MealPilot</strong>
+  <a href="index.html">Home</a>
+  <a href="support.html">Support</a>
+  <a href="privacy.html">Privacy</a>
+  <a href="terms.html">Terms</a>
+  <a href="../delete-data.html">Magyar</a>
+</nav>
+
+<h1>Deleting your data</h1>
+<p class="meta">MealPilot mobile app</p>
+
+<div class="card">
+  <h3>The short answer</h3>
+  <p>In the app: <strong>Settings → Legal and your data → Delete all data</strong>. That
+  deletes your meal plan, your food and weight logs, your profile, your settings and your
+  chat in one step. There is no undo.</p>
+  <p>Uninstalling the app does the same, as long as your device backup is switched
+  off.</p>
+</div>
+
+<h2>What is where, and what gets deleted</h2>
+<ul>
+  <li><strong>On your device:</strong> the meal plan, the logs, your body data, your
+    settings and the chat. The button above deletes these immediately and
+    permanently.</li>
+  <li><strong>On our server:</strong> we store no meal plan, no log and no body data. Only
+    a fingerprint of the installation's random identifier, the subscription state, the
+    allowance used and crash reports are there — none of which can identify you as a
+    person. "Delete all data" also throws away the installation identifier, so the new one
+    cannot be linked to the old.</li>
+  <li><strong>What you sent us:</strong> if you used the report button, the text of that
+    report stays with us — that is the point of it. You can ask for it to be deleted by
+    email.</li>
+</ul>
+
+<h2>Retention</h2>
+<ul>
+  <li>Crash reports and usage counters: at most 12 months.</li>
+  <li>Allowance data used for billing and abuse prevention: at most 24 months.</li>
+  <li>Reports: for as long as the investigation takes, at most 24 months.</li>
+</ul>
+
+<h2>If you ask by email</h2>
+<p>Write to <a href="mailto:mate.teke@gmail.com">mate.teke@gmail.com</a>. Since we keep no
+accounts, you need to tell us what the request relates to: the confirmation you got after
+sending a report, or roughly when you sent it from the app. We answer within 30 days at the
+latest.</p>
+
+<h2>Your subscription</h2>
+<p>Deleting your data does <strong>not</strong> cancel your subscription — that belongs to
+your Google account. To cancel: Google Play → Payments and subscriptions →
+Subscriptions.</p>
+
+<footer>
+  MealPilot ·
+  <a href="privacy.html">Privacy notice</a> ·
+  <a href="terms.html">Terms of use</a> ·
+  <a href="support.html">Support</a> ·
+  <a href="index.html">Home</a> ·
+  <a href="../delete-data.html">Magyar</a>
+</footer>
+
+</body>
+</html>
+`,
+  },
+  'en/index.html': {
+    contentType: 'text/html; charset=utf-8',
+    body: `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MealPilot — calorie-deficit meal planner</title>
+<meta name="description" content="MealPilot builds a calorie-deficit meal plan from your own body data, writes the shopping list to go with it, and reminds you when to eat what.">
+<link rel="stylesheet" href="../assets/site.css">
+</head>
+<body>
+
+<nav class="nav">
+  <strong>MealPilot</strong>
+  <a href="index.html">Home</a>
+  <a href="support.html">Support</a>
+  <a href="privacy.html">Privacy</a>
+  <a href="terms.html">Terms</a>
+  <a href="../index.html">Magyar</a>
+</nav>
+
+<h1>MealPilot</h1>
+<p class="lead">A calorie-deficit meal plan built from your own body data — with a shopping
+list, reminders and a food log.</p>
+
+<h2>What it does</h2>
+<ul>
+  <li>Works out your daily calorie and macro targets from your weight, height, age and
+    activity level, and tells you how fast you'll lose weight at that rate.</li>
+  <li>Puts together a 3, 7, 14 or 30-day meal plan from real, shop-bought ingredients,
+    with full nutrition figures.</li>
+  <li>Turns the plan into a shopping list, grouped by aisle, with quantities added up.</li>
+  <li>Reminds you when to eat what, and logs what you actually ate.</li>
+  <li>Lets you change it by talking to it: move meal times, swap days, add an allergy,
+    have a single day rewritten.</li>
+</ul>
+
+<div class="card">
+  <h3>Allergies and exclusions</h3>
+  <p>On first launch you pick what you can't eat — the 14 EU allergens, gluten-, lactose-
+  and casein-free, vegetarian and vegan diets, and fructose, histamine and FODMAP
+  sensitivity are all on the list. The ingredients you rule out can't appear in your plan,
+  and the app machine-checks the finished plan for them as well.</p>
+  <p><strong>This does not replace reading the label.</strong> With a serious allergy,
+  always check what is actually in the product.</p>
+</div>
+
+<div class="warn">
+  <h2>Not medical advice</h2>
+  <p>Meal plans are put together by an automated planner from the data you give it, and
+  they can contain mistakes. The app is for information only; it is not suitable for
+  preventing, diagnosing or treating any illness. With an illness, in pregnancy, while
+  breastfeeding, with an eating disorder or on regular medication, talk your diet through
+  with a doctor. The app is made for people over 18.</p>
+</div>
+
+<h2>What's free and what isn't</h2>
+<p>What runs on your phone stays free: the food log, the shopping list, the reminders and
+the plan built from the app's own recipes. One plan and ten messages a month are included
+too.</p>
+<p>The full plan comes with a subscription: unlimited planning and chat, 30-day plans, and
+rewriting individual days. The subscription is handled by Google Play, renews
+automatically, and can be cancelled any time under Play → Subscriptions.</p>
+
+<h2>Machine planning</h2>
+<p>Meal plans and chat answers are produced by a language model. That is fast and
+flexible, but it can be wrong — which is why there's a <strong>report</strong> button on
+every plan and every dish in the app. If something went wrong, that's how it reaches us.</p>
+
+<h2>Contact</h2>
+<p>Questions, bug reports, data requests:
+<a href="mailto:mate.teke@gmail.com">mate.teke@gmail.com</a>.
+More on the <a href="support.html">support page</a>.</p>
+
+<footer>
+  MealPilot ·
+  <a href="privacy.html">Privacy notice</a> ·
+  <a href="terms.html">Terms of use</a> ·
+  <a href="delete-data.html">Deleting your data</a> ·
+  <a href="support.html">Support</a> ·
+  <a href="../index.html">Magyar</a>
+</footer>
+
+</body>
+</html>
+`,
+  },
+  'en/privacy.html': {
+    contentType: 'text/html; charset=utf-8',
+    body: `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MealPilot — Privacy notice</title>
+<link rel="stylesheet" href="../assets/site.css">
+</head>
+<body>
+
+<nav class="nav">
+  <strong>MealPilot</strong>
+  <a href="index.html">Home</a>
+  <a href="support.html">Support</a>
+  <a href="privacy.html">Privacy</a>
+  <a href="terms.html">Terms</a>
+  <a href="../privacy.html">Magyar</a>
+</nav>
+
+<h1>Privacy notice</h1>
+<p class="meta">MealPilot mobile app · In force: 11 September 2026</p>
+
+<div class="draft">
+  <strong>Draft.</strong> This text was written from how the app actually works, but it
+  needs a legal review before publication. The controller's details (name, address,
+  registration number) still have to be filled in.
+</div>
+
+<h2>1. The controller</h2>
+<p>
+  <em>[Controller's name, registered address, registration number]</em><br>
+  Contact: <a href="mailto:mate.teke@gmail.com">mate.teke@gmail.com</a>
+</p>
+
+<h2>2. What data we handle</h2>
+<p>The app asks for no registration and creates no user account. You enter the following
+data yourself, and by default it stays on your own device:</p>
+<ul>
+  <li><strong>Health and body data:</strong> biological sex, age, height, weight, body fat
+    percentage, target weight, activity level, diet style, allergies and
+    intolerances.</li>
+  <li><strong>Log data:</strong> the meals you ate and their nutrition, weight
+    readings.</li>
+  <li><strong>Free text you write:</strong> preferences and chat messages.</li>
+  <li><strong>App settings:</strong> reminders, display settings.</li>
+</ul>
+<p>Data about allergies and health counts as a special category of personal data under
+Article 9 GDPR. We handle it solely on the basis of your explicit consent, for the purpose
+of building your meal plan.</p>
+
+<h2>3. Where we store it</h2>
+<p>All the data listed above is stored in a local database on your device. We keep
+<strong>no server-side copy</strong> of your meal plan, your logs or your body data, and we
+run no user accounts: no registration, no password, no email address. If your device backup
+is switched on, the data may end up in your own Google account's backup — that is your
+setting, not ours.</p>
+<p>Planning is relayed through a server of ours (see section 4). That server stores the
+following, solely to prevent abuse and to verify billing:</p>
+<ul>
+  <li>a one-way fingerprint of the installation's random identifier (it does not identify
+    you, and it is replaced when you delete your data or uninstall the app);</li>
+  <li>a one-way fingerprint of the Google Play purchase token and the subscription
+    state;</li>
+  <li>per call: the time, the task type and the number of tokens used;</li>
+  <li>a monthly total of the allowance used;</li>
+  <li>crash reports and daily aggregated usage counters (see section 3a).</li>
+</ul>
+<p><strong>The server does not write down the text of your request — that is, your meal
+plan, your data and your messages.</strong> The one exception is when you send a report
+yourself with the "report" button: then the text of the plan or dish you objected to is
+saved as well, so that we can see what went wrong.</p>
+
+<h2>3a. Crash reports and anonymous statistics</h2>
+<p>If the app crashes, a description of the error (the exception type, the call stack, the
+app version, the Android version and the device model) is sent to our server on the next
+launch. We also count, per day, how many plans, log entries, messages and reports were
+made.</p>
+<p>These are <strong>aggregated counts</strong>, not an event log: we do not store when
+anything happened, only how many times it happened that day. Your meal plan, food log,
+weight, allergies and the contents of your chat are <strong>not</strong> included. We do
+not share this data with advertisers or analytics providers; we run no third-party
+trackers.</p>
+<p>You can <strong>switch this off any time in Settings</strong> ("Crash reports and
+anonymous statistics"). Switched off, the app does not even collect it — it doesn't merely
+stop sending. The legal basis is legitimate interest (running the service free of faults),
+which you can object to with that switch.</p>
+
+<h2>4. What leaves your device</h2>
+<p>When a meal plan is built and when you use the chat, the following data goes out through
+our own server to the provider that does the planning (<strong>Anthropic PBC</strong>,
+United States), so that the plan can be made:</p>
+<ul>
+  <li>biological sex, age, height, weight, body fat percentage, target weight, activity
+    level;</li>
+  <li>the calculated calorie and macro targets;</li>
+  <li>your dietary exclusions and your free-text requests;</li>
+  <li>chat messages and a short summary of your plan and today's log that goes with
+    them.</li>
+</ul>
+<p><strong>Your name, email address and detailed log history are not sent.</strong>
+The legal basis for the transfer is performance of the contract (providing the service),
+and for special category data your explicit consent.</p>
+<p>On Anthropic's data handling:
+  <a href="https://www.anthropic.com/legal/privacy">anthropic.com/legal/privacy</a>.
+  The transfer to the United States takes place under the EU–US Data Privacy Framework or
+  standard contractual clauses.</p>
+
+<h2>5. Payment</h2>
+<p>Subscriptions are handled by Google Play. We have no access to card or payment details
+and do not store them. Our server queries the Google Play developer interface for whether a
+given purchase is valid, and stores that state (see section 3). On Google's data handling:
+  <a href="https://policies.google.com/privacy">policies.google.com/privacy</a>.</p>
+
+<h2>6. Notifications</h2>
+<p>Meal reminders are produced on the device; they do not come from a server. Notification
+permission can be withdrawn at any time in your system settings.</p>
+
+<h2>7. How long we keep it</h2>
+<p>Data on your device stays until you delete it. Uninstalling the app deletes all local
+data. Inside the app you can delete everything in one step at any time under
+<em>Settings → Legal and your data → Delete all data</em>.</p>
+<p>Retention on the server:</p>
+<ul>
+  <li>crash reports and usage counters: at most 12 months;</li>
+  <li>data on the monthly allowance and subscription state: at most 24 months;</li>
+  <li>reports you send us: for as long as the investigation takes, at most 24 months.</li>
+</ul>
+<p>Step-by-step guide: <a href="delete-data.html">Deleting your data</a>.</p>
+
+<h2>8. Your rights</h2>
+<p>Under the GDPR you have the right of access, rectification, erasure, restriction of
+processing, data portability and withdrawal of consent. Because your data lives on your own
+device, you exercise most of these directly in the app. Get in touch with any question at
+the email address above. You may lodge a complaint with the Hungarian National Authority
+for Data Protection and Freedom of Information (<a href="https://naih.hu">naih.hu</a>), or
+with the supervisory authority of your own country of residence.</p>
+
+<h2>9. Children</h2>
+<p>The app is not made for people under 18, and we do not knowingly collect data from
+them.</p>
+
+<h2>10. Changes</h2>
+<p>If this notice is amended we update the date it comes into force, and we tell you about
+material changes in the app as well.</p>
+
+<footer>
+  MealPilot ·
+  <a href="privacy.html">Privacy notice</a> ·
+  <a href="terms.html">Terms of use</a> ·
+  <a href="delete-data.html">Deleting your data</a> ·
+  <a href="support.html">Support</a> ·
+  <a href="../privacy.html">Magyar</a>
+</footer>
+
+</body>
+</html>
+`,
+  },
+  'en/support.html': {
+    contentType: 'text/html; charset=utf-8',
+    body: `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MealPilot — Support</title>
+<link rel="stylesheet" href="../assets/site.css">
+</head>
+<body>
+
+<nav class="nav">
+  <strong>MealPilot</strong>
+  <a href="index.html">Home</a>
+  <a href="support.html">Support</a>
+  <a href="privacy.html">Privacy</a>
+  <a href="terms.html">Terms</a>
+  <a href="../support.html">Magyar</a>
+</nav>
+
+<h1>Support</h1>
+<p class="meta">Write in — a person reads this, not a ticketing system.</p>
+
+<div class="card">
+  <h3>Contact</h3>
+  <p><a href="mailto:mate.teke@gmail.com">mate.teke@gmail.com</a></p>
+  <p>If you're reporting a bug, it helps to say: what phone you have, which app version
+  you're on (Settings → About), and what you were doing when it happened.</p>
+</div>
+
+<h2>Frequently asked questions</h2>
+
+<h3>A dish or a nutrition figure is wrong. What do I do?</h3>
+<p>Use the report button in the app: on the plan page under the plan, at the bottom of a
+dish's detail view, and in the chat by pressing and holding a message. That way the text
+you objected to reaches us too, and we can see what went wrong. It's the fastest route.</p>
+
+<h3>How do I cancel my subscription?</h3>
+<p>Google Play app → your profile picture → Payments and subscriptions → Subscriptions →
+MealPilot → Cancel subscription. You keep the full plan until the end of the period you
+have already paid for. There's a button on the app's Settings page that takes you
+there.</p>
+
+<h3>I'd like a refund.</h3>
+<p>The purchase is handled by Google Play, so refunds are too: Google Play → Order history
+→ the item → Report a problem. If that doesn't work out, write to us and we'll see what we
+can do.</p>
+
+<h3>I got a new phone. Does my data come with me?</h3>
+<p>Your meal plan, logs and body data are on the device, and can come across with Google's
+device backup. Your subscription belongs to your Google account, so it works on the new
+phone too: open Settings and press "Restore a previous purchase".</p>
+
+<h3>The plan ignores my allergy.</h3>
+<p>That's a serious bug — please report it from the app, with the reason "It suggested
+something I ruled out". In the meantime: you can check your exclusions under Settings →
+Allergies and intolerances, and the next plan will be built with them.
+<strong>Always check what is actually in an ingredient on its packaging</strong> — the app
+cannot do that for you.</p>
+
+<h3>Planning is slow.</h3>
+<p>A week takes a few tens of seconds; a month can take several minutes, because it is
+built in stages. The first days are usable straight away and the rest loads in the
+background — feel free to leave the app in the meantime, the work carries on.</p>
+
+<h3>I don't want it to send crash reports.</h3>
+<p>Settings → Legal and your data → the "Crash reports and anonymous statistics" switch.
+Switched off, the app does not even collect them.</p>
+
+<h3>I want to delete all my data.</h3>
+<p>See the <a href="delete-data.html">data deletion page</a>.</p>
+
+<footer>
+  MealPilot ·
+  <a href="privacy.html">Privacy notice</a> ·
+  <a href="terms.html">Terms of use</a> ·
+  <a href="delete-data.html">Deleting your data</a> ·
+  <a href="index.html">Home</a> ·
+  <a href="../support.html">Magyar</a>
+</footer>
+
+</body>
+</html>
+`,
+  },
+  'en/terms.html': {
+    contentType: 'text/html; charset=utf-8',
+    body: `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MealPilot — Terms of use</title>
+<link rel="stylesheet" href="../assets/site.css">
+</head>
+<body>
+
+<nav class="nav">
+  <strong>MealPilot</strong>
+  <a href="index.html">Home</a>
+  <a href="support.html">Support</a>
+  <a href="privacy.html">Privacy</a>
+  <a href="terms.html">Terms</a>
+  <a href="../terms.html">Magyar</a>
+</nav>
+
+<h1>Terms of use</h1>
+<p class="meta">MealPilot mobile app · In force: 11 September 2026</p>
+
+<div class="draft">
+  <strong>Draft.</strong> Needs a legal review before publication. The provider's details
+  still have to be filled in.
+</div>
+
+<h2>1. The service</h2>
+<p>MealPilot is a mobile app that works out a calorie target from the body data you give
+it, builds meal plans, makes a shopping list, and helps you track your meals and your
+weight. Provider: <em>[name, registered address, tax number]</em>.</p>
+
+<div class="warn">
+  <h2 style="margin-top:0">2. Not medical advice</h2>
+  <p>The app is for information only and <strong>does not constitute medical, dietetic or
+  any other health advice</strong>. Meal plans are put together by an automated planner
+  from the data you give it; they can contain errors or inaccuracies. The app is not
+  suitable for preventing, diagnosing or treating any illness.</p>
+  <p>With an illness, in pregnancy, while breastfeeding, with an eating disorder, on
+  regular medication, or under the age of 18, you <strong>must consult a doctor or a
+  dietitian</strong> before starting the diet. Entering your allergy data is your own
+  responsibility, and you must check what is actually in each ingredient on its packaging,
+  every time.</p>
+</div>
+
+<h2>3. Who may use it</h2>
+<p>The app is made for people aged 18 and over. You are responsible for the accuracy of the
+data you enter — wrong data gives a wrong calorie target.</p>
+
+<h2>4. Free and paid plans</h2>
+<p>The app's core features are free to use: logging, the shopping list, reminders, meal
+plans built from the app's own recipes, and a set number of plans and messages a month.</p>
+<p>The full plan comes with a subscription and allows unlimited planning, unlimited chat,
+longer plans and rewriting individual days.</p>
+
+<h2>5. Subscription, renewal, cancellation</h2>
+<ul>
+  <li>The subscription is handled by Google Play and charged to your Google Play
+    account.</li>
+  <li>It <strong>renews automatically</strong> at the end of each term until you cancel
+    it.</li>
+  <li>You can cancel any time under Google Play → Subscriptions, at the latest 24 hours
+    before it renews.</li>
+  <li>A period you have already paid for remains usable after cancellation.</li>
+  <li>Refunds are governed by Google Play's policy as in force from time to time. As a
+    consumer you may exercise your right of withdrawal under the applicable law.</li>
+  <li>We may change prices; we will tell you in advance under Google Play's rules, and a
+    change only takes effect from the next renewal.</li>
+</ul>
+
+<h2>6. Proper use</h2>
+<p>You may not use the app for unlawful purposes, attempt to reverse-engineer it, work
+around its limits, or load it with automated tools. The chat feature may not be used to
+produce unlawful, hateful or self-harm content.</p>
+
+<h2>7. Liability</h2>
+<p>The app is provided "as is". We do not warrant that a meal plan will always be
+error-free, complete, or appropriate for your individual state of health. To the extent
+permitted by law we exclude liability for indirect damage arising from use of the app. This
+limitation does not affect consumers' statutory rights, and does not exclude liability for
+breaches caused intentionally or by gross negligence, or for breaches causing harm to life,
+bodily integrity or health.</p>
+
+<h2>8. Termination</h2>
+<p>You may stop using the app and uninstall it at any time. In case of a serious breach of
+these terms we may restrict access to the service.</p>
+
+<h2>9. Amendments</h2>
+<p>We may amend these terms; we will tell you about material changes in the app. Continued
+use after an amendment means you accept the terms.</p>
+
+<h2>10. Governing law</h2>
+<p>These terms are governed by Hungarian law. In a consumer dispute you may turn to the
+conciliation body for your place of residence, or to the EU Online Dispute Resolution
+platform.</p>
+
+<h2>11. Contact</h2>
+<p><a href="mailto:mate.teke@gmail.com">mate.teke@gmail.com</a></p>
+
+<footer>
+  MealPilot ·
+  <a href="privacy.html">Privacy notice</a> ·
+  <a href="terms.html">Terms of use</a> ·
+  <a href="delete-data.html">Deleting your data</a> ·
+  <a href="support.html">Support</a> ·
+  <a href="../terms.html">Magyar</a>
 </footer>
 
 </body>
@@ -254,6 +783,7 @@ tartozik. Lemondás: Google Play → Fizetések és előfizetések → Előfizet
   <a href="support.html">Támogatás</a>
   <a href="privacy.html">Adatkezelés</a>
   <a href="terms.html">Feltételek</a>
+  <a href="en/index.html">English</a>
 </nav>
 
 <h1>MealPilot</h1>
@@ -315,7 +845,8 @@ Részletek a <a href="support.html">támogatási oldalon</a>.</p>
   <a href="privacy.html">Adatkezelési tájékoztató</a> ·
   <a href="terms.html">Felhasználási feltételek</a> ·
   <a href="delete-data.html">Adatok törlése</a> ·
-  <a href="support.html">Támogatás</a>
+  <a href="support.html">Támogatás</a> ·
+  <a href="en/index.html">English</a>
 </footer>
 
 </body>
@@ -340,6 +871,7 @@ Részletek a <a href="support.html">támogatási oldalon</a>.</p>
   <a href="support.html">Támogatás</a>
   <a href="privacy.html">Adatkezelés</a>
   <a href="terms.html">Feltételek</a>
+  <a href="en/privacy.html">English</a>
 </nav>
 
 <h1>Adatkezelési tájékoztató</h1>
@@ -472,7 +1004,8 @@ az alkalmazásban is tájékoztatunk.</p>
   <a href="privacy.html">Adatkezelési tájékoztató</a> ·
   <a href="terms.html">Felhasználási feltételek</a> ·
   <a href="delete-data.html">Adatok törlése</a> ·
-  <a href="support.html">Támogatás</a>
+  <a href="support.html">Támogatás</a> ·
+  <a href="en/privacy.html">English</a>
 </footer>
 
 </body>
@@ -497,6 +1030,7 @@ az alkalmazásban is tájékoztatunk.</p>
   <a href="support.html">Támogatás</a>
   <a href="privacy.html">Adatkezelés</a>
   <a href="terms.html">Feltételek</a>
+  <a href="en/support.html">English</a>
 </nav>
 
 <h1>Támogatás</h1>
@@ -556,7 +1090,8 @@ kapcsoló. Kikapcsolva az alkalmazás nem is gyűjti ezeket.</p>
   <a href="privacy.html">Adatkezelési tájékoztató</a> ·
   <a href="terms.html">Felhasználási feltételek</a> ·
   <a href="delete-data.html">Adatok törlése</a> ·
-  <a href="index.html">Főoldal</a>
+  <a href="index.html">Főoldal</a> ·
+  <a href="en/support.html">English</a>
 </footer>
 
 </body>
@@ -581,6 +1116,7 @@ kapcsoló. Kikapcsolva az alkalmazás nem is gyűjti ezeket.</p>
   <a href="support.html">Támogatás</a>
   <a href="privacy.html">Adatkezelés</a>
   <a href="terms.html">Feltételek</a>
+  <a href="en/terms.html">English</a>
 </nav>
 
 <h1>Felhasználási feltételek</h1>
@@ -665,7 +1201,8 @@ békéltető testülethez fordulhatsz.</p>
   <a href="privacy.html">Adatkezelési tájékoztató</a> ·
   <a href="terms.html">Felhasználási feltételek</a> ·
   <a href="delete-data.html">Adatok törlése</a> ·
-  <a href="support.html">Támogatás</a>
+  <a href="support.html">Támogatás</a> ·
+  <a href="en/terms.html">English</a>
 </footer>
 
 </body>

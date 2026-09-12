@@ -41,6 +41,7 @@ import androidx.compose.ui.unit.dp
 import hu.mealpilot.app.BuildConfig
 import hu.mealpilot.app.i18n.LocalAppLanguage
 import hu.mealpilot.app.AppContainer
+import hu.mealpilot.core.i18n.AppLanguage
 import hu.mealpilot.app.R
 import hu.mealpilot.app.data.telemetry.TelemetryEvent
 import hu.mealpilot.app.billing.PREMIUM_SUBSCRIPTION_ID
@@ -62,10 +63,19 @@ object LegalLinks {
      */
     val SITE: String = BuildConfig.SITE_URL
 
-    val PRIVACY = "$SITE/privacy.html"
-    val TERMS = "$SITE/terms.html"
-    val SUPPORT = "$SITE/support.html"
-    val DELETE_DATA = "$SITE/delete-data.html"
+    /**
+     * Az angol oldalak külön könyvtárban élnek, a magyarok a gyökérben.
+     *
+     * A jogi szöveget azon a nyelven kell megmutatni, amit a felhasználó ért — egy
+     * elfogadó pipa magyar feltételek alatt egy angolul olvasó embertől nem ér semmit.
+     */
+    private fun prefix(language: AppLanguage) = if (language == AppLanguage.EN) "en/" else ""
+
+    fun privacy(language: AppLanguage) = "$SITE/${prefix(language)}privacy.html"
+    fun terms(language: AppLanguage) = "$SITE/${prefix(language)}terms.html"
+    fun support(language: AppLanguage) = "$SITE/${prefix(language)}support.html"
+    fun deleteData(language: AppLanguage) = "$SITE/${prefix(language)}delete-data.html"
+
     const val SUPPORT_EMAIL = "mate.teke@gmail.com"
 
     /**
@@ -99,6 +109,7 @@ fun PaywallScreen(
     val billing by container.billing.state.collectAsState()
     val entitlement by container.entitlements.entitlement.collectAsState(initial = null)
     val context = LocalContext.current
+    val language = LocalAppLanguage.current
 
     LaunchedEffect(Unit) { container.billing.refresh() }
     LaunchedEffect(billing.subscribed) {
@@ -245,10 +256,10 @@ fun PaywallScreen(
 
         Spacer(Modifier.height(20.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-            TextButton(onClick = { context.openUrl(LegalLinks.TERMS) }) {
+            TextButton(onClick = { context.openUrl(LegalLinks.terms(language)) }) {
                 Text(stringResource(R.string.legal_terms_short))
             }
-            TextButton(onClick = { context.openUrl(LegalLinks.PRIVACY) }) {
+            TextButton(onClick = { context.openUrl(LegalLinks.privacy(language)) }) {
                 Text(stringResource(R.string.legal_privacy_short))
             }
         }

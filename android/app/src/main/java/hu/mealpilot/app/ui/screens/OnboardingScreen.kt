@@ -80,7 +80,8 @@ fun OnboardingScreen(
     }
 
     val current = profile ?: return
-    val budget = EnergyCalculator.budget(current, LocalAppLanguage.current)
+    val language = LocalAppLanguage.current
+    val budget = EnergyCalculator.budget(current, language)
 
     Column(
         modifier
@@ -150,11 +151,11 @@ fun OnboardingScreen(
                 )
                 Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                     TextButton(
-                        onClick = { context.openUrl(LegalLinks.TERMS) },
+                        onClick = { context.openUrl(LegalLinks.terms(language)) },
                         contentPadding = PaddingValues(0.dp),
                     ) { Text(stringResource(R.string.legal_terms_short), style = MaterialTheme.typography.labelMedium) }
                     TextButton(
-                        onClick = { context.openUrl(LegalLinks.PRIVACY) },
+                        onClick = { context.openUrl(LegalLinks.privacy(language)) },
                         contentPadding = PaddingValues(0.dp),
                     ) { Text(stringResource(R.string.legal_privacy_short), style = MaterialTheme.typography.labelMedium) }
                 }
