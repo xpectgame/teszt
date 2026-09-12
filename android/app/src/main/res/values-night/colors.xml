@@ -1,4 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="surface">#101410</color>
+    <!-- A „Tányér" sötét alapja — ugyanezért. -->
+    <color name="surface">#191310</color>
 </resources>

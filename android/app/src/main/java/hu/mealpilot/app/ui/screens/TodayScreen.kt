@@ -13,7 +13,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
@@ -23,16 +22,14 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -43,10 +40,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -59,12 +57,19 @@ import hu.mealpilot.app.data.local.LogStatus
 import hu.mealpilot.app.data.local.MealLogEntity
 import hu.mealpilot.app.data.local.MealWithIngredients
 import hu.mealpilot.app.data.local.PlanEntity
-import hu.mealpilot.app.ui.components.CalorieRing
-import hu.mealpilot.app.ui.components.MealEntrySheet
+import hu.mealpilot.app.ui.components.BudgetHero
 import hu.mealpilot.app.ui.components.EmptyState
-import hu.mealpilot.app.ui.components.MacroBar
-import hu.mealpilot.app.ui.components.SectionCard
+import hu.mealpilot.app.ui.components.HeroLabels
+import hu.mealpilot.app.ui.components.MacroLine
+import hu.mealpilot.app.ui.components.MealEntrySheet
+import hu.mealpilot.app.ui.components.MealStamp
+import hu.mealpilot.app.ui.components.NumberText
+import hu.mealpilot.app.ui.components.SectionHeading
 import hu.mealpilot.app.ui.containerFactory
+import hu.mealpilot.app.ui.theme.LocalDarkTheme
+import hu.mealpilot.app.ui.theme.MealColors
+import hu.mealpilot.app.ui.theme.MealLabelStyle
+import hu.mealpilot.app.ui.theme.PlateShape
 import hu.mealpilot.core.ai.MealSlot
 import hu.mealpilot.core.i18n.label
 import hu.mealpilot.core.model.Nutrients
@@ -173,6 +178,24 @@ fun TodayScreen(
     )
     val state by viewModel.state.collectAsState()
     val consumed = state.consumed
+    val consumedKcal = consumed.kcal.roundToInt()
+    val remainingKcal = state.targetKcal - consumedKcal
+    val isToday = state.date == LocalDate.now()
+    // Csak a keresztnév: „Szia, Kovács Máté!" úgy szól, mint egy hivatalos levél.
+    val profile by container.settings.profile.collectAsState(initial = null)
+    val firstName = profile?.name?.trim()?.substringBefore(' ').orEmpty()
+    val greeting = if (firstName.isBlank()) {
+        stringResource(R.string.today_greeting_anon)
+    } else {
+        stringResource(R.string.today_greeting, firstName)
+    }
+    val subtitle = when {
+        state.targetKcal <= 0 -> state.plan?.title.orEmpty()
+        remainingKcal > 0 -> stringResource(R.string.today_subtitle_left, remainingKcal)
+        remainingKcal < 0 -> stringResource(R.string.today_subtitle_over, -remainingKcal)
+        else -> stringResource(R.string.today_subtitle_done)
+    }
+    val doneCount = state.meals.count { state.statusOf(it.meal.id) != null }
     // A tervet EGYSZER olvassuk ki, és a lambdák ezt a helyi értéket látják.
     // A LazyColumn építője azonnal fut, az `item { }` tartalma viszont csak később:
     // ha közben a terv eltűnik (adattörlés, tervcsere), a lambdán belüli újraolvasás
@@ -183,7 +206,9 @@ fun TodayScreen(
 
     LazyColumn(
         modifier = Modifier.fillMaxWidth(),
-        contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp),
+        contentPadding = androidx.compose.foundation.layout.PaddingValues(
+            start = 18.dp, end = 18.dp, top = 12.dp, bottom = 24.dp,
+        ),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         item {
@@ -192,18 +217,21 @@ fun TodayScreen(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
+                Column(Modifier.weight(1f)) {
+                    // Ma köszönünk, más napon a dátum áll a helyén: a köszönés tegnapra
+                    // vagy holnapra értelmetlen lenne, a lapozás viszont megmarad.
+                    Text(
+                        text = if (isToday) greeting else state.date.dayLabel(),
+                        style = MaterialTheme.typography.headlineLarge,
+                    )
+                    Text(
+                        text = subtitle,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
                 IconButton(onClick = { viewModel.shiftDay(-1) }) {
                     Icon(Icons.Filled.ChevronLeft, contentDescription = stringResource(R.string.today_prev_day))
-                }
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(
-                        state.date.dayLabel(),
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold,
-                    )
-                    if (plan != null) {
-                        Text(plan.title, style = MaterialTheme.typography.labelSmall)
-                    }
                 }
                 IconButton(onClick = { viewModel.shiftDay(1) }) {
                     Icon(Icons.Filled.ChevronRight, contentDescription = stringResource(R.string.today_next_day))
@@ -223,21 +251,30 @@ fun TodayScreen(
         }
 
         item {
-            SectionCard {
-                Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                    CalorieRing(
-                        consumed = consumed.kcal.roundToInt(),
-                        budget = state.targetKcal,
-                    )
-                }
-                Spacer(Modifier.height(16.dp))
-                MacroBar(stringResource(R.string.macro_protein), consumed.proteinG, plan.targetProteinG, Color(0xFF00897B))
-                Spacer(Modifier.height(8.dp))
-                MacroBar(stringResource(R.string.macro_carbs), consumed.carbsG, plan.targetCarbsG, Color(0xFF7CB342))
-                Spacer(Modifier.height(8.dp))
-                MacroBar(stringResource(R.string.macro_fat), consumed.fatG, plan.targetFatG, Color(0xFFFB8C00))
-                Spacer(Modifier.height(8.dp))
-                MacroBar(stringResource(R.string.macro_fiber), consumed.fiberG, plan.targetFiberG, Color(0xFF8D6E63))
+            BudgetHero(
+                consumedKcal = consumedKcal,
+                targetKcal = state.targetKcal,
+                labels = HeroLabels(
+                    lines = listOf(
+                        MacroLine(stringResource(R.string.macro_protein), consumed.proteinG, plan.targetProteinG),
+                        MacroLine(stringResource(R.string.macro_carbs), consumed.carbsG, plan.targetCarbsG),
+                        MacroLine(stringResource(R.string.macro_fat), consumed.fatG, plan.targetFatG),
+                        MacroLine(stringResource(R.string.macro_fiber), consumed.fiberG, plan.targetFiberG),
+                    ),
+                    leftLabel = stringResource(R.string.today_hero_left),
+                    overLabel = stringResource(R.string.today_hero_over),
+                    totalLabel = stringResource(R.string.today_kcal_of, consumedKcal, state.targetKcal),
+                ),
+            )
+        }
+
+        if (state.meals.isNotEmpty()) {
+            item {
+                Spacer(Modifier.height(10.dp))
+                SectionHeading(
+                    title = stringResource(R.string.today_meals_title),
+                    trailing = stringResource(R.string.today_meals_done, doneCount, state.meals.size),
+                )
             }
         }
 
@@ -312,11 +349,18 @@ fun TodayScreen(
 @Composable
 private fun ExtraRow(log: MealLogEntity, onDelete: () -> Unit) {
     val n = log.nutrients
-    Card(Modifier.fillMaxWidth()) {
+    // Ugyanaz a lapkaforma, mint a tervezett étkezéseké — csak bélyeg nélkül, mert
+    // ez nem tartozik egy fogáshoz sem.
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = PlateShape.card,
+        color = MaterialTheme.colorScheme.surface,
+        shadowElevation = 2.dp,
+    ) {
         Row(
             Modifier
                 .fillMaxWidth()
-                .padding(12.dp),
+                .padding(horizontal = 18.dp, vertical = 14.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Icon(
@@ -359,88 +403,135 @@ private fun MealRow(
     onReplace: () -> Unit,
     onUndo: () -> Unit,
 ) {
-    val slot = MealSlot.fromRaw(meal.meal.slot).label(LocalAppLanguage.current)
+    val mealSlot = MealSlot.fromRaw(meal.meal.slot)
+    val slot = mealSlot.label(LocalAppLanguage.current)
     val replaced = status == LogStatus.REPLACED
     // Felülírásnál azt mutatjuk, amit tényleg megevett — nem azt, amit terveztünk.
     val shownName = if (replaced) log?.name.orEmpty().ifBlank { meal.meal.name } else meal.meal.name
     val n = if (replaced && log != null) log.nutrients else meal.meal.nutrients
+    val settled = status != null
+    val accent = MealColors.of(mealSlot.ordinal, LocalDarkTheme.current)
     var menuOpen by remember { mutableStateOf(false) }
 
-    Card(
+    Surface(
         modifier = Modifier
             .fillMaxWidth()
+            // A lezárt étkezés halványabb: a szem így a következő fogásra esik, nem
+            // arra, amivel már nincs dolga. Törölni viszont nem szabad — a nap végén
+            // pont az a kérdés, mit evett.
+            .alpha(if (settled) 0.62f else 1f)
             .clickable(onClick = onOpen),
-        colors = CardDefaults.cardColors(
-            containerColor = when (status) {
-                LogStatus.EATEN, LogStatus.REPLACED -> MaterialTheme.colorScheme.primaryContainer
-                LogStatus.SKIPPED -> MaterialTheme.colorScheme.surfaceVariant
-                else -> MaterialTheme.colorScheme.surface
-            }
-        ),
+        shape = PlateShape.card,
+        color = MaterialTheme.colorScheme.surface,
+        shadowElevation = if (settled) 0.dp else 2.dp,
     ) {
-        Row(
-            Modifier
-                .fillMaxWidth()
-                .padding(12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Box(
-                Modifier
-                    .size(48.dp)
-                    .background(MaterialTheme.colorScheme.secondaryContainer, CircleShape),
-                contentAlignment = Alignment.Center,
-            ) {
-                Text(meal.meal.timeText, style = MaterialTheme.typography.labelSmall)
-            }
-            Spacer(Modifier.size(12.dp))
-            Column(Modifier.weight(1f)) {
-                Text(
-                    if (replaced) stringResource(R.string.today_slot_replaced, slot) else slot,
-                    style = MaterialTheme.typography.labelSmall,
+        Column(Modifier.padding(horizontal = 18.dp, vertical = 16.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                MealStamp(
+                    color = accent,
+                    done = status == LogStatus.EATEN || replaced,
                 )
-                Text(
-                    shownName,
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.SemiBold,
-                    textDecoration = if (status == LogStatus.SKIPPED) TextDecoration.LineThrough else null,
-                )
-                Text(
-                    stringResource(
-                        R.string.macro_line,
-                        n.kcal.roundToInt(),
-                        n.proteinG.roundToInt(),
-                        n.carbsG.roundToInt(),
-                        n.fatG.roundToInt(),
-                    ),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-            if (status == null) {
-                FilledTonalIconButton(onClick = onAte) {
-                    Icon(Icons.Filled.Check, contentDescription = stringResource(R.string.today_ate_it))
-                }
-                Box {
-                    IconButton(onClick = { menuOpen = true }) {
-                        Icon(Icons.Filled.MoreVert, contentDescription = stringResource(R.string.action_more))
-                    }
-                    DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
-                        DropdownMenuItem(
-                            text = { Text(stringResource(R.string.today_ate_other)) },
-                            onClick = { menuOpen = false; onReplace() },
-                            leadingIcon = { Icon(Icons.Filled.Edit, contentDescription = null) },
+                Spacer(Modifier.size(14.dp))
+                Column(Modifier.weight(1f)) {
+                    Row(verticalAlignment = Alignment.Bottom) {
+                        Text(
+                            text = slot.uppercase(),
+                            style = MealLabelStyle,
+                            color = accent,
                         )
-                        DropdownMenuItem(
-                            text = { Text(stringResource(R.string.today_skipped)) },
-                            onClick = { menuOpen = false; onSkip() },
-                            leadingIcon = { Icon(Icons.Filled.Close, contentDescription = null) },
+                        Spacer(Modifier.size(8.dp))
+                        NumberText(
+                            meal.meal.timeText,
+                            style = MealLabelStyle.copy(
+                                fontWeight = FontWeight.Normal,
+                                letterSpacing = 0.sp,
+                            ),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        shownName,
+                        style = MaterialTheme.typography.bodyLarge,
+                        fontWeight = FontWeight.SemiBold,
+                        textDecoration = if (status == LogStatus.SKIPPED) TextDecoration.LineThrough else null,
+                    )
+                    Spacer(Modifier.height(3.dp))
+                    NumberText(
+                        stringResource(
+                            R.string.macro_line,
+                            n.kcal.roundToInt(),
+                            n.proteinG.roundToInt(),
+                            n.carbsG.roundToInt(),
+                            n.fatG.roundToInt(),
+                        ),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
                 }
+                if (settled) {
+                    // Lezárt étkezésnél csak a visszavonás marad — a „megettem" gombpár
+                    // helye felszabadul, és a lapka alacsonyabb lesz.
+                    androidx.compose.material3.TextButton(onClick = onUndo) {
+                        Text(stringResource(R.string.action_undo))
+                    }
+                }
+            }
+
+            if (settled) {
+                Spacer(Modifier.height(7.dp))
+                Text(
+                    text = when (status) {
+                        LogStatus.SKIPPED -> stringResource(R.string.today_state_skipped)
+                        LogStatus.REPLACED -> stringResource(R.string.today_state_replaced)
+                        else -> stringResource(R.string.today_state_eaten)
+                    },
+                    style = MaterialTheme.typography.labelSmall,
+                    color = if (status == LogStatus.SKIPPED) {
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                    } else {
+                        MaterialTheme.colorScheme.primary
+                    },
+                )
             } else {
-                androidx.compose.material3.TextButton(onClick = onUndo) { Text(stringResource(R.string.action_undo)) }
+                Spacer(Modifier.height(13.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(9.dp)) {
+                    Button(
+                        onClick = onAte,
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(44.dp),
+                        shape = PlateShape.innerButton,
+                        contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 8.dp),
+                    ) {
+                        Text(stringResource(R.string.today_action_ate), style = MaterialTheme.typography.labelLarge)
+                    }
+                    Button(
+                        onClick = onSkip,
+                        modifier = Modifier.height(44.dp),
+                        shape = PlateShape.innerButton,
+                        colors = androidx.compose.material3.ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                            contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                        ),
+                        contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 18.dp),
+                    ) {
+                        Text(stringResource(R.string.today_action_skip), style = MaterialTheme.typography.labelLarge)
+                    }
+                    Box {
+                        IconButton(onClick = { menuOpen = true }, modifier = Modifier.size(44.dp)) {
+                            Icon(Icons.Filled.MoreVert, contentDescription = stringResource(R.string.action_more))
+                        }
+                        DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.today_ate_other)) },
+                                onClick = { menuOpen = false; onReplace() },
+                                leadingIcon = { Icon(Icons.Filled.Edit, contentDescription = null) },
+                            )
+                        }
+                    }
+                }
             }
         }
     }
 }
-

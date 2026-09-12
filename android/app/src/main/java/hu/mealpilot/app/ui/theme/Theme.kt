@@ -1,63 +1,93 @@
 package hu.mealpilot.app.ui.theme
 
-import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
-import androidx.compose.material3.dynamicDarkColorScheme
-import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.staticCompositionLocalOf
 
 private val LightColors = lightColorScheme(
-    primary = Color(0xFF2E6B3E),
-    onPrimary = Color.White,
-    primaryContainer = Color(0xFFB4F0BD),
-    onPrimaryContainer = Color(0xFF00210B),
-    secondary = Color(0xFF52634F),
-    secondaryContainer = Color(0xFFD5E8CE),
-    tertiary = Color(0xFF39656B),
-    error = Color(0xFFBA1A1A),
-    background = Color(0xFFFBFDF7),
-    surface = Color(0xFFFBFDF7),
-    surfaceVariant = Color(0xFFDDE5DA),
+    primary = Plate.green,
+    onPrimary = Plate.card,
+    primaryContainer = Plate.greenSoft,
+    onPrimaryContainer = Plate.green,
+    secondary = Plate.clay,
+    onSecondary = Plate.card,
+    secondaryContainer = Plate.claySoft,
+    onSecondaryContainer = Plate.clay,
+    tertiary = Plate.clay,
+    background = Plate.paper,
+    onBackground = Plate.ink,
+    surface = Plate.card,
+    onSurface = Plate.ink,
+    // A kártya a fehér, a krém alap pedig az, ami MÖGÖTTE van — ezért lesz a
+    // surfaceVariant krém, nem szürke. A rajta lévő másodlagos szöveg a „halvány
+    // tinta": a felületen minden kiegészítő felirat ezt a színt kapja.
+    surfaceVariant = Plate.paper,
+    onSurfaceVariant = Plate.ink2,
+    surfaceContainer = Plate.card,
+    surfaceContainerLow = Plate.card,
+    surfaceContainerHigh = Plate.paper,
+    surfaceContainerHighest = Plate.paper,
+    outline = Plate.ink2,
+    outlineVariant = Plate.line,
+    error = Plate.error,
+    onError = Plate.card,
 )
 
 private val DarkColors = darkColorScheme(
-    primary = Color(0xFF99D5A3),
-    onPrimary = Color(0xFF00391A),
-    primaryContainer = Color(0xFF14522A),
-    onPrimaryContainer = Color(0xFFB4F0BD),
-    secondary = Color(0xFFB9CCB3),
-    secondaryContainer = Color(0xFF3A4B38),
-    tertiary = Color(0xFFA1CED4),
-    error = Color(0xFFFFB4AB),
-    background = Color(0xFF101410),
-    surface = Color(0xFF101410),
-    surfaceVariant = Color(0xFF414941),
+    primary = Plate.greenDark,
+    onPrimary = Plate.paperDark,
+    primaryContainer = Plate.greenSoftDark,
+    onPrimaryContainer = Plate.greenDark,
+    secondary = Plate.clayDark,
+    onSecondary = Plate.paperDark,
+    secondaryContainer = Plate.claySoftDark,
+    onSecondaryContainer = Plate.clayDark,
+    tertiary = Plate.clayDark,
+    background = Plate.paperDark,
+    onBackground = Plate.inkDark,
+    surface = Plate.cardDark,
+    onSurface = Plate.inkDark,
+    surfaceVariant = Plate.paperDark,
+    onSurfaceVariant = Plate.ink2Dark,
+    surfaceContainer = Plate.cardDark,
+    surfaceContainerLow = Plate.cardDark,
+    surfaceContainerHigh = Plate.lineDark,
+    surfaceContainerHighest = Plate.lineDark,
+    outline = Plate.ink2Dark,
+    outlineVariant = Plate.lineDark,
+    error = Plate.errorDark,
+    onError = Plate.paperDark,
 )
 
-/** A kalóriakeret állapotát jelző színek — a felületen több helyen ugyanezt használjuk. */
-object BudgetColors {
-    val under = Color(0xFF2E7D32)
-    val close = Color(0xFFF9A825)
-    val over = Color(0xFFC62828)
-}
+/**
+ * Sötét mód-e. Az étkezésszínek nem férnek bele a Material sémába (öt önálló szín),
+ * viszont sötét háttéren másik változatuk kell — ezért kell egy kérdés, amit a
+ * felület bárhol feltehet.
+ */
+val LocalDarkTheme = staticCompositionLocalOf { false }
 
+/**
+ * A „Tányér" irány.
+ *
+ * A dinamikus szín szándékosan NINCS bekötve. A Material 3 azt a háttérképből
+ * származtatja, tehát minden telefonon más lenne — a krém–zöld–agyag hármas pedig
+ * pont az, amitől ez az app felismerhető. Ezt a `docs/DESIGN-BRIEF.md` is így kérte.
+ */
 @Composable
 fun MealPilotTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
-    dynamicColor: Boolean = true,
     content: @Composable () -> Unit,
 ) {
-    val context = LocalContext.current
-    val colors = when {
-        dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S ->
-            if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
-        darkTheme -> DarkColors
-        else -> LightColors
+    CompositionLocalProvider(LocalDarkTheme provides darkTheme) {
+        MaterialTheme(
+            colorScheme = if (darkTheme) DarkColors else LightColors,
+            typography = PlateTypography,
+            shapes = PlateShapes,
+            content = content,
+        )
     }
-    MaterialTheme(colorScheme = colors, content = content)
 }

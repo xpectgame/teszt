@@ -129,7 +129,6 @@
     <string name="tab_profile">Én</string>
     <string name="app_working">Dolgozom rajta</string>
     <string name="app_view_it">Megnézem</string>
-    <string name="ring_remaining">kcal maradt</string>
     <string name="entry_note">A kalória kötelező, a makrók megadása nem. A napi összesítőd ettől is pontosabb lesz.</string>
     <string name="entry_what">Mit ettél?</string>
     <string name="entry_kcal">Kalória (kcal)</string>
@@ -317,4 +316,20 @@
     <string name="profile_activity">Mennyit mozogsz?</string>
     <string name="action_back_plain">Vissza</string>
     <string name="achievement_unlocked">Megvan</string>
+    <!-- „Ma" képernyő — a Tányér dizájn hős doboza és étkezéslapkái -->
+    <string name="today_greeting">Szia, %1$s!</string>
+    <string name="today_greeting_anon">Szia!</string>
+    <string name="today_subtitle_left">Még %1$d kcal fér bele ma.</string>
+    <string name="today_subtitle_over">%1$d kcal-lal vagy a kereted fölött.</string>
+    <string name="today_subtitle_done">Pont a kereteden belül vagy ma.</string>
+    <string name="today_hero_left">kcal fér még bele ma</string>
+    <string name="today_hero_over">kcal-lal a kereted fölött</string>
+    <string name="today_kcal_of">%1$d / %2$d kcal</string>
+    <string name="today_meals_title">Mai étkezések</string>
+    <string name="today_meals_done">%1$d / %2$d kész</string>
+    <string name="today_state_eaten">Megetted</string>
+    <string name="today_state_skipped">Kihagytad</string>
+    <string name="today_state_replaced">Mást ettél</string>
+    <string name="today_action_ate">Megettem</string>
+    <string name="today_action_skip">Kihagytam</string>
 </resources>

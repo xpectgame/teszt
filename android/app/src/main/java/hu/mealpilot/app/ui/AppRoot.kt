@@ -13,17 +13,19 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.Chat
-import androidx.compose.material.icons.filled.CalendarMonth
-import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.RestaurantMenu
-import androidx.compose.material.icons.filled.ShoppingCart
+import androidx.compose.material.icons.automirrored.outlined.Chat
+import androidx.compose.material.icons.outlined.CalendarMonth
+import androidx.compose.material.icons.outlined.Person
+import androidx.compose.material.icons.outlined.RestaurantMenu
+import androidx.compose.material.icons.outlined.ShoppingCart
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -83,11 +85,11 @@ private data class Tab(val route: String, @StringRes val label: Int, val icon: I
 // étkezésről szól — ezért került ki a mozgásnapló: fél funkció volt, és pont az
 // étrend elől vette el a helyet.
 private val tabs = listOf(
-    Tab(Routes.TODAY, R.string.tab_today, Icons.Filled.RestaurantMenu),
-    Tab(Routes.PLAN, R.string.tab_plan, Icons.Filled.CalendarMonth),
-    Tab(Routes.SHOPPING, R.string.tab_shopping, Icons.Filled.ShoppingCart),
-    Tab(Routes.CHAT, R.string.tab_chat, Icons.AutoMirrored.Filled.Chat),
-    Tab(Routes.PROFILE, R.string.tab_profile, Icons.Filled.Person),
+    Tab(Routes.TODAY, R.string.tab_today, Icons.Outlined.RestaurantMenu),
+    Tab(Routes.PLAN, R.string.tab_plan, Icons.Outlined.CalendarMonth),
+    Tab(Routes.SHOPPING, R.string.tab_shopping, Icons.Outlined.ShoppingCart),
+    Tab(Routes.CHAT, R.string.tab_chat, Icons.AutoMirrored.Outlined.Chat),
+    Tab(Routes.PROFILE, R.string.tab_profile, Icons.Outlined.Person),
 )
 
 @Composable
@@ -301,21 +303,38 @@ private fun BottomBar(navController: NavHostController) {
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentDestination = backStackEntry?.destination
 
-    NavigationBar {
-        tabs.forEach { tab ->
-            val selected = currentDestination?.hierarchy?.any { it.route == tab.route } == true
-            NavigationBarItem(
-                selected = selected,
-                onClick = {
-                    navController.navigate(tab.route) {
-                        popUpTo(navController.graph.findStartDestination().id) { saveState = true }
-                        launchSingleTop = true
-                        restoreState = true
-                    }
-                },
-                icon = { Icon(tab.icon, contentDescription = stringResource(tab.label)) },
-                label = { Text(stringResource(tab.label)) },
-            )
+    Column {
+        // Hajszálvonal a sáv fölött: a fehér lapot ez választja el a krém alaptól,
+        // különben a kettő egymásba folyna a világos témában.
+        HorizontalDivider(thickness = 1.dp, color = MaterialTheme.colorScheme.outlineVariant)
+        NavigationBar(
+            containerColor = MaterialTheme.colorScheme.surface,
+            tonalElevation = 0.dp,
+        ) {
+            tabs.forEach { tab ->
+                val selected = currentDestination?.hierarchy?.any { it.route == tab.route } == true
+                NavigationBarItem(
+                    selected = selected,
+                    onClick = {
+                        navController.navigate(tab.route) {
+                            popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+                            launchSingleTop = true
+                            restoreState = true
+                        }
+                    },
+                    icon = { Icon(tab.icon, contentDescription = null) },
+                    label = { Text(stringResource(tab.label)) },
+                    // A Material alapból a másodlagos színt teszi a pirulába, az itt
+                    // agyagnarancs — a terven viszont zöld jelöli, hol vagyunk.
+                    colors = NavigationBarItemDefaults.colors(
+                        selectedIconColor = MaterialTheme.colorScheme.primary,
+                        selectedTextColor = MaterialTheme.colorScheme.primary,
+                        indicatorColor = MaterialTheme.colorScheme.primaryContainer,
+                        unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                        unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                    ),
+                )
+            }
         }
     }
 }

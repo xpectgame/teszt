@@ -131,7 +131,6 @@
     <string name="tab_profile">Me</string>
     <string name="app_working">Working on it</string>
     <string name="app_view_it">View it</string>
-    <string name="ring_remaining">kcal left</string>
     <string name="entry_note">Calories are required, macros are not. Your daily totals get more accurate with them.</string>
     <string name="entry_what">What did you eat?</string>
     <string name="entry_kcal">Calories (kcal)</string>
@@ -319,4 +318,20 @@
     <string name="profile_activity">How much do you move?</string>
     <string name="action_back_plain">Back</string>
     <string name="achievement_unlocked">Unlocked</string>
+    <!-- „Ma" képernyő — a Tányér dizájn hős doboza és étkezéslapkái -->
+    <string name="today_greeting">Hi, %1$s!</string>
+    <string name="today_greeting_anon">Hi there!</string>
+    <string name="today_subtitle_left">%1$d kcal left for today.</string>
+    <string name="today_subtitle_over">You\'re %1$d kcal over today.</string>
+    <string name="today_subtitle_done">You\'re right on budget today.</string>
+    <string name="today_hero_left">kcal left for today</string>
+    <string name="today_hero_over">kcal over your budget</string>
+    <string name="today_kcal_of">%1$d / %2$d kcal</string>
+    <string name="today_meals_title">Today\'s meals</string>
+    <string name="today_meals_done">%1$d / %2$d done</string>
+    <string name="today_state_eaten">Eaten</string>
+    <string name="today_state_skipped">Skipped</string>
+    <string name="today_state_replaced">Ate something else</string>
+    <string name="today_action_ate">I ate this</string>
+    <string name="today_action_skip">Skipped it</string>
 </resources>

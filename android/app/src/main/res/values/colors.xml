@@ -1,5 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="surface">#FFFBFE</color>
-    <color name="ic_launcher_background">#1B5E20</color>
+    <!-- A „Tányér" krém alapja. Ez az ablak háttere is: az app első képernyője
+         még a Compose elindulása előtt megjelenik, és ha itt más szín állna, minden
+         indításkor felvillanna egy idegen árnyalat. -->
+    <color name="surface">#FFF6EE</color>
+    <color name="ic_launcher_background">#2F7D5E</color>
 </resources>
