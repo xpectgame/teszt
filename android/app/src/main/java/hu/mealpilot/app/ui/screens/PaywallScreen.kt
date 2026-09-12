@@ -5,7 +5,9 @@ import android.content.Context
 import android.content.ContextWrapper
 import android.content.Intent
 import android.net.Uri
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -20,8 +22,9 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.Button
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SnackbarHostState
@@ -34,9 +37,10 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import hu.mealpilot.app.BuildConfig
 import hu.mealpilot.app.i18n.LocalAppLanguage
@@ -44,6 +48,10 @@ import hu.mealpilot.app.AppContainer
 import hu.mealpilot.core.i18n.AppLanguage
 import hu.mealpilot.app.R
 import hu.mealpilot.app.ui.components.BackButton
+import hu.mealpilot.app.ui.components.NumberText
+import hu.mealpilot.app.ui.components.SectionCard
+import hu.mealpilot.app.ui.components.SectionHeading
+import hu.mealpilot.app.ui.theme.PlateShape
 import hu.mealpilot.app.data.telemetry.TelemetryEvent
 import hu.mealpilot.app.billing.PREMIUM_SUBSCRIPTION_ID
 import hu.mealpilot.core.billing.BillingPeriod
@@ -162,63 +170,91 @@ fun PaywallScreen(
 
         Text(
             stringResource(R.string.settings_go_premium),
-            style = MaterialTheme.typography.headlineMedium,
-            fontWeight = FontWeight.Bold,
+            style = MaterialTheme.typography.headlineLarge,
         )
-        Spacer(Modifier.height(6.dp))
+        Spacer(Modifier.height(10.dp))
         Text(
             stringResource(R.string.paywall_intro),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
 
-        Spacer(Modifier.height(24.dp))
-        Tiers.premiumBenefits(LocalAppLanguage.current).forEach { benefit ->
-            Row(Modifier.padding(vertical = 6.dp), verticalAlignment = Alignment.Top) {
-                Icon(
-                    Icons.Filled.Check,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(20.dp),
-                )
-                Spacer(Modifier.size(12.dp))
-                Text(benefit, style = MaterialTheme.typography.bodyLarge)
-            }
-        }
+        Spacer(Modifier.height(22.dp))
 
-        Spacer(Modifier.height(24.dp))
-
+        // Az ár, az előnyök és a gomb EGY zöld lapon. Eddig három külön szakasz
+        // volt, köztük térközzel: a felhasználónak magának kellett összeraknia,
+        // hogy az ár melyik listához tartozik.
         val price = billing.formattedPrice
-        if (price != null) {
-            Text(
-                price + (billing.billingPeriodLabel?.let { " / $it" } ?: ""),
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.SemiBold,
-            )
-            Spacer(Modifier.height(4.dp))
-        }
-
-        Button(
-            onClick = {
-                container.telemetry.record(TelemetryEvent.PURCHASE_STARTED)
-                context.findActivity()?.let { container.billing.launchPurchase(it) }
-            },
-            enabled = billing.available && price != null && !billing.subscribed,
+        Surface(
             modifier = Modifier.fillMaxWidth(),
+            shape = PlateShape.hero,
+            color = MaterialTheme.colorScheme.primary,
+            contentColor = MaterialTheme.colorScheme.onPrimary,
         ) {
-            if (billing.connecting) {
-                CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
-                Spacer(Modifier.size(10.dp))
-            }
-            Text(
-                when {
-                    billing.subscribed -> stringResource(R.string.paywall_already)
-                    billing.pending -> stringResource(R.string.paywall_pending)
-                    !billing.available -> stringResource(R.string.paywall_unavailable)
-                    price == null -> stringResource(R.string.paywall_loading_price)
-                    else -> stringResource(R.string.paywall_subscribe)
+            Column(Modifier.padding(24.dp)) {
+                if (price != null) {
+                    Row(verticalAlignment = Alignment.Bottom) {
+                        NumberText(price, style = MaterialTheme.typography.displayMedium)
+                        billing.billingPeriodLabel?.let {
+                            Spacer(Modifier.size(9.dp))
+                            Text(
+                                "/ $it",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.8f),
+                                modifier = Modifier.padding(bottom = 4.dp),
+                            )
+                        }
+                    }
+                    Spacer(Modifier.height(14.dp))
                 }
-            )
+                Tiers.premiumBenefits(LocalAppLanguage.current).forEach { benefit ->
+                    Text(
+                        benefit,
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.padding(vertical = 3.dp),
+                    )
+                }
+
+                Spacer(Modifier.height(20.dp))
+                Button(
+                    onClick = {
+                        container.telemetry.record(TelemetryEvent.PURCHASE_STARTED)
+                        context.findActivity()?.let { container.billing.launchPurchase(it) }
+                    },
+                    enabled = billing.available && price != null && !billing.subscribed,
+                    shape = PlateShape.button,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.surface,
+                        contentColor = MaterialTheme.colorScheme.primary,
+                    ),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(50.dp),
+                ) {
+                    if (billing.connecting) {
+                        CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
+                        Spacer(Modifier.size(10.dp))
+                    }
+                    Text(
+                        when {
+                            billing.subscribed -> stringResource(R.string.paywall_already)
+                            billing.pending -> stringResource(R.string.paywall_pending)
+                            !billing.available -> stringResource(R.string.paywall_unavailable)
+                            price == null -> stringResource(R.string.paywall_loading_price)
+                            else -> stringResource(R.string.paywall_subscribe)
+                        },
+                        style = MaterialTheme.typography.labelLarge,
+                    )
+                }
+                Spacer(Modifier.height(11.dp))
+                Text(
+                    stringResource(R.string.paywall_renewal_note),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.75f),
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
         }
 
         Spacer(Modifier.height(8.dp))
@@ -227,26 +263,36 @@ fun PaywallScreen(
             modifier = Modifier.fillMaxWidth(),
         ) { Text(stringResource(R.string.paywall_restore)) }
 
-        Spacer(Modifier.height(12.dp))
-        Text(
-            stringResource(R.string.paywall_renewal_note),
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-
-        Spacer(Modifier.height(24.dp))
-        HorizontalDivider()
         Spacer(Modifier.height(20.dp))
-
-        Text(
-            stringResource(R.string.paywall_free_header),
-            style = MaterialTheme.typography.titleSmall,
-            fontWeight = FontWeight.SemiBold,
-        )
-        Spacer(Modifier.height(8.dp))
-        Tiers.freeBenefits(LocalAppLanguage.current).forEach { benefit ->
-            Text("• $benefit", style = MaterialTheme.typography.bodyMedium)
-            Spacer(Modifier.height(4.dp))
+        SectionHeading(stringResource(R.string.paywall_free_header))
+        Spacer(Modifier.height(12.dp))
+        // Ami előfizetés nélkül is jár, saját kártyán, pipával. A pontokból álló
+        // lista úgy nézett ki, mint egy lábjegyzet — pedig ez a felhasználó
+        // biztosítéka arról, hogy fizetés nélkül sem veszít el semmit.
+        SectionCard {
+            Tiers.freeBenefits(LocalAppLanguage.current).forEach { benefit ->
+                Row(
+                    Modifier.padding(vertical = 7.dp),
+                    verticalAlignment = Alignment.Top,
+                ) {
+                    Box(
+                        Modifier
+                            .size(22.dp)
+                            .clip(CircleShape)
+                            .background(MaterialTheme.colorScheme.surfaceVariant),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Icon(
+                            Icons.Filled.Check,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(14.dp),
+                        )
+                    }
+                    Spacer(Modifier.size(12.dp))
+                    Text(benefit, style = MaterialTheme.typography.bodyMedium)
+                }
+            }
         }
 
         entitlement?.let { current ->

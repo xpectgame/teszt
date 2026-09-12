@@ -15,6 +15,33 @@ publikált oldal ezekből készül újra.
 
 A `Main.dc.html` a belépési artboard (a „Ma" képernyő) — ez a vászon fókuszált nézete.
 
+## Mennyi valósult meg
+
+A vászon **be van kötve** az appba. A megfeleltetés:
+
+| Vászon | Kód |
+|---|---|
+| Szín (világos + sötét) | `ui/theme/Color.kt` — `Plate`, `MealColors` |
+| Tipográfia | `ui/theme/Type.kt` — a betűk a `res/font/` alatt utaznak |
+| Forma (30 / 26 / 19 / 16) | `ui/theme/Shape.kt` — `PlateShapes`, `PlateShape` |
+| Ismétlődő elemek | `ui/components/Plate.kt` |
+| Ma | `ui/screens/TodayScreen.kt` |
+| Étrend | `ui/screens/PlanScreen.kt` |
+| Bevásárlás | `ui/screens/ShoppingScreen.kt` |
+| Beszéljünk | `ui/screens/ChatScreen.kt` |
+| Étkezés részletei | `ui/screens/MealDetailScreen.kt` |
+| Én | `ui/screens/ProfileScreen.kt` |
+| Csomag | `ui/screens/PaywallScreen.kt` |
+| Nyelvválasztás | `ui/screens/LanguageScreen.kt` |
+| Kizárások, Értesítések | `ui/components/ProfileForm.kt`, `ui/screens/SettingsScreen.kt` |
+
+Ami a vásznon **nincs**, és ezért csak a témát kapta meg (szín, betű, forma),
+egyedi elrendezést nem: a Beállítások többi része és az Adatfelvétel.
+
+A Material 3 dinamikus szín szándékosan ki van kapcsolva. Ez a vászon
+létjogosultsága: bekapcsolva minden telefon a saját háttérképéből színezné az
+appot, tehát a megtervezett paletta sehol nem látszana.
+
 ## Az irány
 
 **C — „Tányér".** Krémszín alap, mély zöld hős doboz, narancs-agyag akcent, nagy
