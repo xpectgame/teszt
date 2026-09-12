@@ -34,12 +34,14 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import hu.mealpilot.app.BuildConfig
 import hu.mealpilot.app.i18n.LocalAppLanguage
 import hu.mealpilot.app.AppContainer
+import hu.mealpilot.app.R
 import hu.mealpilot.app.data.telemetry.TelemetryEvent
 import hu.mealpilot.app.billing.PREMIUM_SUBSCRIPTION_ID
 import hu.mealpilot.core.billing.BillingPeriod
@@ -102,7 +104,7 @@ fun PaywallScreen(
     LaunchedEffect(billing.subscribed) {
         if (billing.subscribed) {
             container.telemetry.record(TelemetryEvent.SUBSCRIBED)
-            snackbarHostState.showSnackbar("Köszönjük! A teljes csomag aktív.")
+            snackbarHostState.showSnackbar(context.getString(R.string.paywall_thanks))
             onClose()
         }
     }
@@ -137,14 +139,13 @@ fun PaywallScreen(
         }
 
         Text(
-            "Teljes csomag",
+            stringResource(R.string.settings_go_premium),
             style = MaterialTheme.typography.headlineMedium,
             fontWeight = FontWeight.Bold,
         )
         Spacer(Modifier.height(6.dp))
         Text(
-            "Az étrend tervezése és a beszélgetés valódi költséggel jár. Az előfizetés ezt " +
-                "fedezi — cserébe nincs korlát.",
+            stringResource(R.string.paywall_intro),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
@@ -189,11 +190,11 @@ fun PaywallScreen(
             }
             Text(
                 when {
-                    billing.subscribed -> "Már előfizettél"
-                    billing.pending -> "Fizetés feldolgozás alatt"
-                    !billing.available -> "Az előfizetés most nem elérhető"
-                    price == null -> "Ár betöltése…"
-                    else -> "Előfizetek"
+                    billing.subscribed -> stringResource(R.string.paywall_already)
+                    billing.pending -> stringResource(R.string.paywall_pending)
+                    !billing.available -> stringResource(R.string.paywall_unavailable)
+                    price == null -> stringResource(R.string.paywall_loading_price)
+                    else -> stringResource(R.string.paywall_subscribe)
                 }
             )
         }
@@ -202,13 +203,11 @@ fun PaywallScreen(
         TextButton(
             onClick = { container.billing.restore() },
             modifier = Modifier.fillMaxWidth(),
-        ) { Text("Korábbi vásárlás visszaállítása") }
+        ) { Text(stringResource(R.string.paywall_restore)) }
 
         Spacer(Modifier.height(12.dp))
         Text(
-            "Az előfizetés automatikusan megújul, amíg le nem mondod. A lemondás a Google Play " +
-                "előfizetéseknél bármikor elvégezhető, a megújulás előtt legalább 24 órával. " +
-                "A fizetés a Google Play fiókodat terheli.",
+            stringResource(R.string.paywall_renewal_note),
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
@@ -218,7 +217,7 @@ fun PaywallScreen(
         Spacer(Modifier.height(20.dp))
 
         Text(
-            "Ami előfizetés nélkül is jár",
+            stringResource(R.string.paywall_free_header),
             style = MaterialTheme.typography.titleSmall,
             fontWeight = FontWeight.SemiBold,
         )
@@ -232,9 +231,12 @@ fun PaywallScreen(
             if (!current.isPremium) {
                 Spacer(Modifier.height(12.dp))
                 Text(
-                    "Ebben a hónapban még ${current.remainingPlans()} étrend és " +
-                        "${current.remainingMessages()} üzenet maradt. " +
-                        "A keret ${BillingPeriod.daysUntilReset()} nap múlva nullázódik.",
+                    stringResource(
+                        R.string.settings_quota_left,
+                        current.remainingPlans(),
+                        current.remainingMessages(),
+                        BillingPeriod.daysUntilReset(),
+                    ),
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -243,8 +245,12 @@ fun PaywallScreen(
 
         Spacer(Modifier.height(20.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-            TextButton(onClick = { context.openUrl(LegalLinks.TERMS) }) { Text("Feltételek") }
-            TextButton(onClick = { context.openUrl(LegalLinks.PRIVACY) }) { Text("Adatkezelés") }
+            TextButton(onClick = { context.openUrl(LegalLinks.TERMS) }) {
+                Text(stringResource(R.string.legal_terms_short))
+            }
+            TextButton(onClick = { context.openUrl(LegalLinks.PRIVACY) }) {
+                Text(stringResource(R.string.legal_privacy_short))
+            }
         }
         Spacer(Modifier.height(32.dp))
     }

@@ -38,6 +38,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -46,6 +47,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import hu.mealpilot.app.AppContainer
+import hu.mealpilot.app.R
 import hu.mealpilot.app.BuildConfig
 import hu.mealpilot.app.data.prefs.AiEffort
 import hu.mealpilot.app.data.prefs.AiModel
@@ -56,6 +58,7 @@ import hu.mealpilot.app.ui.components.ProfileForm
 import hu.mealpilot.app.ui.components.SectionCard
 import hu.mealpilot.app.ui.containerFactory
 import hu.mealpilot.core.i18n.AppLanguage
+import hu.mealpilot.core.i18n.label
 import hu.mealpilot.core.billing.BillingPeriod
 import hu.mealpilot.core.model.UserProfile
 import kotlinx.coroutines.launch
@@ -137,33 +140,40 @@ fun SettingsScreen(
             .verticalScroll(rememberScrollState())
             .padding(16.dp),
     ) {
-        TextButton(onClick = onBack) { Text("← Vissza") }
-        Text("Beállítások", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+        TextButton(onClick = onBack) { Text(stringResource(R.string.action_back)) }
+        Text(
+            stringResource(R.string.settings_title),
+            style = MaterialTheme.typography.headlineSmall,
+            fontWeight = FontWeight.Bold,
+        )
         Spacer(Modifier.height(16.dp))
 
-        SectionCard(title = "Csomag") {
+        SectionCard(title = stringResource(R.string.settings_plan)) {
             val plan = entitlement
             Text(
-                plan?.tier?.hu ?: "…",
+                plan?.tier?.label(language) ?: "…",
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold,
             )
             Spacer(Modifier.height(4.dp))
             if (plan != null && !plan.isPremium) {
                 Text(
-                    "Ebben a hónapban még ${plan.remainingPlans()} étrend és " +
-                        "${plan.remainingMessages()} üzenet maradt. " +
-                        "A keret ${BillingPeriod.daysUntilReset()} nap múlva nullázódik.",
+                    stringResource(
+                        R.string.settings_quota_left,
+                        plan.remainingPlans(),
+                        plan.remainingMessages(),
+                        BillingPeriod.daysUntilReset(),
+                    ),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 Spacer(Modifier.height(12.dp))
                 Button(onClick = onOpenPaywall, modifier = Modifier.fillMaxWidth()) {
-                    Text("Teljes csomag")
+                    Text(stringResource(R.string.settings_go_premium))
                 }
             } else if (plan != null) {
                 Text(
-                    "Korlátlan étrend és beszélgetés. Köszönjük!",
+                    stringResource(R.string.settings_premium_thanks),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -171,7 +181,7 @@ fun SettingsScreen(
                 OutlinedButton(
                     onClick = { context.openUrl(LegalLinks.manageSubscription(context.packageName)) },
                     modifier = Modifier.fillMaxWidth(),
-                ) { Text("Előfizetés kezelése") }
+                ) { Text(stringResource(R.string.settings_manage_subscription)) }
             }
         }
 
@@ -180,6 +190,9 @@ fun SettingsScreen(
         // A modellválasztás és a hozzáférési kulcs nem felhasználói döntés: aki az appot
         // használja, étrendet akar, nem tervezőmotort konfigurálni. Ezért ezek a Névjegy
         // hétszeri megérintésével előhozható fejlesztői részbe kerültek.
+        // A fejlesztői rész szövegei szándékosan magyarok maradnak: ide csak a
+        // verziószám hétszeri megérintésével lehet bejutni, felhasználóhoz nem jut el,
+        // és a kétnyelvűsítése csak karbantartandó fordítást szülne.
         if (current.developerMode) {
             SectionCard(title = "Fejlesztői beállítások") {
                 // Melyik úton mennek ki a hívások. Ez a leggyakoribb félreértés forrása
@@ -304,11 +317,9 @@ fun SettingsScreen(
         }
 
         Spacer(Modifier.height(12.dp))
-        SectionCard(title = "Nyelv / Language") {
+        SectionCard(title = stringResource(R.string.settings_language)) {
             Text(
-                "Ez az étrend nyelvét is meghatározza: a fogásnevek, a hozzávalók és a " +
-                    "bevásárlólista is ezen a nyelven készül. A már elkészült terv nem " +
-                    "fordítódik le — az a nyelvén marad, amin készült.",
+                stringResource(R.string.settings_language_note),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -333,14 +344,14 @@ fun SettingsScreen(
         }
 
         Spacer(Modifier.height(12.dp))
-        SectionCard(title = "Emlékeztetők") {
+        SectionCard(title = stringResource(R.string.settings_reminders)) {
             SettingSwitch(
-                label = "Étkezési emlékeztetők",
+                label = stringResource(R.string.settings_meal_reminders),
                 checked = current.remindersEnabled,
                 onChange = { viewModel.saveSettings(current.copy(remindersEnabled = it)) },
             )
             SettingSwitch(
-                label = "Esti összefoglaló",
+                label = stringResource(R.string.settings_evening_summary),
                 checked = current.dailySummaryEnabled,
                 onChange = { viewModel.saveSettings(current.copy(dailySummaryEnabled = it)) },
             )
@@ -350,7 +361,10 @@ fun SettingsScreen(
             var summaryHour by remember(current.dailySummaryHour) {
                 mutableStateOf(current.dailySummaryHour.toFloat())
             }
-            Text("Összefoglaló ideje: ${summaryHour.toInt()}:00", style = MaterialTheme.typography.labelLarge)
+            Text(
+                stringResource(R.string.settings_summary_time, summaryHour.toInt()),
+                style = MaterialTheme.typography.labelLarge,
+            )
             Slider(
                 value = summaryHour,
                 onValueChange = { summaryHour = it },
@@ -364,7 +378,10 @@ fun SettingsScreen(
             var leadMinutes by remember(current.reminderLeadMinutes) {
                 mutableStateOf(current.reminderLeadMinutes.toFloat())
             }
-            Text("Előre szóljon: ${leadMinutes.toInt()} perccel", style = MaterialTheme.typography.labelLarge)
+            Text(
+                stringResource(R.string.settings_lead_minutes, leadMinutes.toInt()),
+                style = MaterialTheme.typography.labelLarge,
+            )
             Slider(
                 value = leadMinutes,
                 onValueChange = { leadMinutes = it },
@@ -378,7 +395,7 @@ fun SettingsScreen(
             if (!MealAlarmScheduler.canScheduleExact(context)) {
                 Spacer(Modifier.height(12.dp))
                 Text(
-                    "A pontos időzítés nincs engedélyezve, ezért az emlékeztetők ±10 percen belül szólnak.",
+                    stringResource(R.string.settings_inexact_alarms),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -388,47 +405,47 @@ fun SettingsScreen(
                             Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM)
                                 .setData(Uri.parse("package:${context.packageName}"))
                         )
-                    }) { Text("Pontos időzítés engedélyezése") }
+                    }) { Text(stringResource(R.string.settings_allow_exact_alarms)) }
                 }
             }
         }
 
 
         Spacer(Modifier.height(12.dp))
-        SectionCard(title = "Profil") {
+        SectionCard(title = stringResource(R.string.settings_profile)) {
             ProfileForm(profile = profile, onChange = { editedProfile = it })
             Spacer(Modifier.height(12.dp))
             Button(
                 onClick = {
                     viewModel.saveProfile(profile)
-                    scope.launch { snackbarHostState.showSnackbar("Profil mentve. Az új kalóriakeret a következő tervnél él.") }
+                    scope.launch {
+                        snackbarHostState.showSnackbar(context.getString(R.string.settings_profile_saved))
+                    }
                 },
                 modifier = Modifier.fillMaxWidth(),
-            ) { Text("Profil mentése") }
+            ) { Text(stringResource(R.string.settings_save_profile)) }
         }
 
         Spacer(Modifier.height(12.dp))
-        SectionCard(title = "Jogi tudnivalók és adatok") {
+        SectionCard(title = stringResource(R.string.settings_legal)) {
             TextButton(onClick = { context.openUrl(LegalLinks.TERMS) }) {
-                Text("Felhasználási feltételek")
+                Text(stringResource(R.string.settings_terms))
             }
             TextButton(onClick = { context.openUrl(LegalLinks.PRIVACY) }) {
-                Text("Adatkezelési tájékoztató")
+                Text(stringResource(R.string.settings_privacy))
             }
             TextButton(onClick = { context.openUrl(LegalLinks.DELETE_DATA) }) {
-                Text("Adatok törlése — mi hol van")
+                Text(stringResource(R.string.settings_delete_data))
             }
             TextButton(onClick = { context.openUrl(LegalLinks.SUPPORT) }) {
-                Text("Támogatás és gyakori kérdések")
+                Text(stringResource(R.string.settings_support))
             }
             TextButton(onClick = { context.openUrl("mailto:${LegalLinks.SUPPORT_EMAIL}") }) {
-                Text("Kapcsolat: ${LegalLinks.SUPPORT_EMAIL}")
+                Text(stringResource(R.string.settings_contact, LegalLinks.SUPPORT_EMAIL))
             }
             Spacer(Modifier.height(8.dp))
             Text(
-                "Az étrended, a naplóid és a testadataid a telefonodon maradnak. " +
-                    "Tervezéskor a profilodból származó adatok (nem, életkor, testadatok, " +
-                    "étrendi kizárások, kéréseid) kimennek a tervezőszolgáltatáshoz.",
+                stringResource(R.string.settings_data_note),
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -439,11 +456,9 @@ fun SettingsScreen(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Column(Modifier.weight(1f)) {
-                    Text("Hibajelentés és névtelen statisztika", style = MaterialTheme.typography.bodyMedium)
+                    Text(stringResource(R.string.settings_telemetry), style = MaterialTheme.typography.bodyMedium)
                     Text(
-                        "Ha az app összeomlik, elküldi a hiba helyét, és napi szinten " +
-                            "megszámolja, hány terv és bejegyzés készül. Étrend, napló, " +
-                            "testadat nem megy el. Kikapcsolva a gyűjtés is leáll.",
+                        stringResource(R.string.settings_telemetry_note),
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -459,28 +474,32 @@ fun SettingsScreen(
             // nyoma annak, hogy a felhasználó mikor és melyik szöveget fogadta el.
             if (current.acceptedTermsVersion == LegalLinks.VERSION) {
                 Text(
-                    "Elfogadva: " + java.time.Instant.ofEpochMilli(current.acceptedTermsAtMillis)
-                        .atZone(java.time.ZoneId.systemDefault())
-                        .toLocalDate(),
+                    stringResource(
+                        R.string.settings_accepted_on,
+                        java.time.Instant.ofEpochMilli(current.acceptedTermsAtMillis)
+                            .atZone(java.time.ZoneId.systemDefault())
+                            .toLocalDate()
+                            .toString(),
+                    ),
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             } else {
                 Text(
-                    "A feltételek frissültek. Kérünk, nézd át és fogadd el.",
+                    stringResource(R.string.settings_terms_updated),
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.error,
                 )
                 Spacer(Modifier.height(6.dp))
-                Button(onClick = { viewModel.acceptTerms() }) { Text("Elfogadom") }
+                Button(onClick = { viewModel.acceptTerms() }) { Text(stringResource(R.string.settings_accept)) }
             }
 
             Spacer(Modifier.height(12.dp))
-            OutlinedButton(onClick = { confirmWipe = true }) { Text("Minden adat törlése") }
+            OutlinedButton(onClick = { confirmWipe = true }) { Text(stringResource(R.string.settings_wipe)) }
         }
 
         Spacer(Modifier.height(12.dp))
-        SectionCard(title = "Névjegy") {
+        SectionCard(title = stringResource(R.string.settings_about)) {
             Text(
                 "MealPilot ${BuildConfig.VERSION_NAME}",
                 style = MaterialTheme.typography.bodyMedium,
@@ -489,24 +508,23 @@ fun SettingsScreen(
                     versionTaps++
                     if (versionTaps >= 7) {
                         viewModel.saveSettings(current.copy(developerMode = true))
-                        scope.launch { snackbarHostState.showSnackbar("Fejlesztői beállítások bekapcsolva.") }
+                        scope.launch {
+                            snackbarHostState.showSnackbar(context.getString(R.string.settings_dev_on))
+                        }
                     }
                 },
             )
             if (container.isOwnerBuild) {
                 Spacer(Modifier.height(8.dp))
                 Text(
-                    "Tulajdonosi build — a teljes csomag vásárlás nélkül aktív. " +
-                        "Ezt a csomagot ne töltsd fel a Play Console-ba.",
+                    stringResource(R.string.settings_owner_build),
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.primary,
                 )
             }
             Spacer(Modifier.height(8.dp))
             Text(
-                "Az étrendeket gépi tervező állítja össze a megadott adataid alapján. " +
-                    "Az app tájékoztató jellegű, nem orvosi tanács — betegség, terhesség vagy " +
-                    "rendszeres gyógyszerszedés esetén beszéld át orvossal.",
+                stringResource(R.string.settings_disclaimer),
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -518,22 +536,22 @@ fun SettingsScreen(
     if (confirmWipe) {
         AlertDialog(
             onDismissRequest = { confirmWipe = false },
-            title = { Text("Minden adat törlése") },
+            title = { Text(stringResource(R.string.settings_wipe)) },
             text = {
                 Text(
-                    "Törlődik az étrended, az összes naplód, a súlyadataid, a " +
-                        "beszélgetésed és a beállításaid. Ez nem vonható vissza. " +
-                        "Az előfizetésedet ez nem mondja le."
+                    stringResource(R.string.settings_wipe_body)
                 )
             },
             confirmButton = {
                 Button(onClick = {
                     confirmWipe = false
                     viewModel.wipeAllData()
-                    scope.launch { snackbarHostState.showSnackbar("Minden adat törölve.") }
-                }) { Text("Törlés") }
+                    scope.launch { snackbarHostState.showSnackbar(context.getString(R.string.settings_wiped)) }
+                }) { Text(stringResource(R.string.action_delete)) }
             },
-            dismissButton = { TextButton(onClick = { confirmWipe = false }) { Text("Mégse") } },
+            dismissButton = {
+                TextButton(onClick = { confirmWipe = false }) { Text(stringResource(R.string.action_cancel)) }
+            },
         )
     }
 }

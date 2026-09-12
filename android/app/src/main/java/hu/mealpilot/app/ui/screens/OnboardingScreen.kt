@@ -27,6 +27,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -34,6 +35,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import hu.mealpilot.app.AppContainer
+import hu.mealpilot.app.R
+import hu.mealpilot.app.i18n.LocalAppLanguage
 import hu.mealpilot.app.data.telemetry.TelemetryEvent
 import hu.mealpilot.app.ui.components.ProfileForm
 import hu.mealpilot.app.ui.components.SectionCard
@@ -77,7 +80,7 @@ fun OnboardingScreen(
     }
 
     val current = profile ?: return
-    val budget = EnergyCalculator.budget(current)
+    val budget = EnergyCalculator.budget(current, LocalAppLanguage.current)
 
     Column(
         modifier
@@ -85,11 +88,14 @@ fun OnboardingScreen(
             .verticalScroll(rememberScrollState())
             .padding(20.dp),
     ) {
-        Text("Üdv! 👋", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
+        Text(
+            stringResource(R.string.onboarding_welcome),
+            style = MaterialTheme.typography.headlineMedium,
+            fontWeight = FontWeight.Bold,
+        )
         Spacer(Modifier.height(8.dp))
         Text(
-            "Néhány adat kell ahhoz, hogy az étrended tényleg rólad szóljon. " +
-                "Ezek az adatok a telefonodon maradnak.",
+            stringResource(R.string.onboarding_intro),
             style = MaterialTheme.typography.bodyMedium,
         )
         Spacer(Modifier.height(20.dp))
@@ -97,20 +103,24 @@ fun OnboardingScreen(
         ProfileForm(profile = current, onChange = { profile = it })
 
         Spacer(Modifier.height(20.dp))
-        SectionCard(title = "Ez lesz a napi kereted") {
+        SectionCard(title = stringResource(R.string.budget_title)) {
             FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                StatChip("alapanyagcsere", "${budget.bmr}")
-                StatChip("napi felhasználás", "${budget.tdee}")
-                StatChip("napi cél", "${budget.target.kcal}")
+                StatChip(stringResource(R.string.budget_bmr), "${budget.bmr}")
+                StatChip(stringResource(R.string.budget_tdee), "${budget.tdee}")
+                StatChip(stringResource(R.string.budget_target), "${budget.target.kcal}")
             }
             Spacer(Modifier.height(12.dp))
             Text(
-                "Fehérje ${budget.target.proteinG} g · Szénhidrát ${budget.target.carbsG} g · " +
-                    "Zsír ${budget.target.fatG} g",
+                stringResource(
+                    R.string.budget_macros,
+                    budget.target.proteinG,
+                    budget.target.carbsG,
+                    budget.target.fatG,
+                ),
                 style = MaterialTheme.typography.bodyMedium,
             )
             Text(
-                "Várható ütem: ${"%.2f".format(budget.expectedRateKgPerWeek)} kg/hét",
+                stringResource(R.string.budget_rate, "%.2f".format(budget.expectedRateKgPerWeek)),
                 style = MaterialTheme.typography.bodyMedium,
             )
             budget.warnings.forEach { warning ->
@@ -125,9 +135,7 @@ fun OnboardingScreen(
 
         Spacer(Modifier.height(16.dp))
         Text(
-            "Az étrendeket gépi tervező állítja össze a megadott adataid alapján. " +
-                "Az app tájékoztató jellegű, nem orvosi tanács — ha betegséged van, terhes vagy, " +
-                "vagy gyógyszert szedsz, beszéld át orvossal a diétát.",
+            stringResource(R.string.settings_disclaimer),
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
@@ -137,18 +145,18 @@ fun OnboardingScreen(
             Checkbox(checked = consented, onCheckedChange = { consented = it })
             Column {
                 Text(
-                    "Elfogadom a felhasználási feltételeket és az adatkezelési tájékoztatót.",
+                    stringResource(R.string.onboarding_consent),
                     style = MaterialTheme.typography.bodySmall,
                 )
                 Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                     TextButton(
                         onClick = { context.openUrl(LegalLinks.TERMS) },
                         contentPadding = PaddingValues(0.dp),
-                    ) { Text("Feltételek", style = MaterialTheme.typography.labelMedium) }
+                    ) { Text(stringResource(R.string.legal_terms_short), style = MaterialTheme.typography.labelMedium) }
                     TextButton(
                         onClick = { context.openUrl(LegalLinks.PRIVACY) },
                         contentPadding = PaddingValues(0.dp),
-                    ) { Text("Adatkezelés", style = MaterialTheme.typography.labelMedium) }
+                    ) { Text(stringResource(R.string.legal_privacy_short), style = MaterialTheme.typography.labelMedium) }
                 }
             }
         }
@@ -158,7 +166,7 @@ fun OnboardingScreen(
             onClick = { viewModel.finish(current) },
             enabled = consented,
             modifier = Modifier.fillMaxWidth(),
-        ) { Text("Kezdjük") }
+        ) { Text(stringResource(R.string.onboarding_start)) }
         Spacer(Modifier.height(32.dp))
     }
 }

@@ -97,7 +97,7 @@ class GenerationCoordinator(private val container: AppContainer) {
             begin(totalDays = allowedDays, headline = "Összeállítom az étrended")
             try {
                 val profile = container.settings.currentProfile()
-                val budget = EnergyCalculator.budget(profile)
+                val budget = EnergyCalculator.budget(profile, container.language)
                 // -1 = nem volt visszaesés; 0 vagy több = ennyi nap jött a szolgáltatástól,
                 // mielőtt a beépített tervező átvette.
                 var daysFromService = -1

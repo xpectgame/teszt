@@ -44,6 +44,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
@@ -54,6 +55,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import hu.mealpilot.app.AppContainer
+import hu.mealpilot.app.R
 import hu.mealpilot.app.data.telemetry.TelemetryEvent
 import hu.mealpilot.app.data.local.WeightLogEntity
 import hu.mealpilot.app.ui.components.SectionCard
@@ -91,7 +93,7 @@ class ProfileViewModel(private val container: AppContainer) : ViewModel() {
         container.settings.profile,
         container.trackingRepository.observeWeights(),
     ) { profile, weights ->
-        ProfileUiState(profile, EnergyCalculator.budget(profile), weights)
+        ProfileUiState(profile, EnergyCalculator.budget(profile, container.language), weights)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), ProfileUiState())
 
     private val _achievements = MutableStateFlow<List<AchievementState>>(emptyList())
@@ -103,7 +105,7 @@ class ProfileViewModel(private val container: AppContainer) : ViewModel() {
 
     fun refreshAchievements() = viewModelScope.launch {
         val plan = container.planRepository.activePlan()
-        val budget = EnergyCalculator.budget(container.settings.currentProfile())
+        val budget = EnergyCalculator.budget(container.settings.currentProfile(), container.language)
         _achievements.value = container.statsRepository.evaluate(
             targetKcal = plan?.targetKcal ?: budget.target.kcal,
             targetProteinG = plan?.targetProteinG ?: budget.target.proteinG,
@@ -116,7 +118,7 @@ class ProfileViewModel(private val container: AppContainer) : ViewModel() {
         // A profil súlya követi a mérést, különben a kalóriakeret elavulna.
         container.settings.updateWeight(weightKg, bodyFat)
         refreshAchievements()
-        onDone("Súly rögzítve: $weightKg kg")
+        onDone(container.appContext.getString(R.string.profile_weight_logged, weightKg))
     }
 }
 
@@ -144,12 +146,16 @@ fun ProfileScreen(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Text("Én", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+                Text(
+                    stringResource(R.string.tab_profile),
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Bold,
+                )
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     OutlinedButton(onClick = onOpenSettings) {
                         Icon(Icons.Filled.Settings, contentDescription = null, modifier = Modifier.size(18.dp))
                         Spacer(Modifier.size(6.dp))
-                        Text("Beállítások")
+                        Text(stringResource(R.string.settings_title))
                     }
                 }
             }
@@ -157,26 +163,35 @@ fun ProfileScreen(
 
         state.budget?.let { budget ->
             item {
-                SectionCard(title = "Kalóriakeret") {
+                SectionCard(title = stringResource(R.string.budget_card_title)) {
                     FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        StatChip("alapanyagcsere", "${budget.bmr}")
-                        StatChip("napi felhasználás", "${budget.tdee}")
-                        StatChip("napi cél", "${budget.target.kcal}")
-                        StatChip("deficit", "${budget.appliedDeficit}")
+                        StatChip(stringResource(R.string.budget_bmr), "${budget.bmr}")
+                        StatChip(stringResource(R.string.budget_tdee), "${budget.tdee}")
+                        StatChip(stringResource(R.string.budget_target), "${budget.target.kcal}")
+                        StatChip(stringResource(R.string.budget_deficit), "${budget.appliedDeficit}")
                     }
                     Spacer(Modifier.height(12.dp))
                     Text(
-                        "Fehérje ${budget.target.proteinG} g · Szénhidrát ${budget.target.carbsG} g · " +
-                            "Zsír ${budget.target.fatG} g · Rost ${budget.target.fiberG} g",
+                        stringResource(
+                            R.string.budget_macros_fiber,
+                            budget.target.proteinG,
+                            budget.target.carbsG,
+                            budget.target.fatG,
+                            budget.target.fiberG,
+                        ),
                         style = MaterialTheme.typography.bodyMedium,
                     )
                     Text(
-                        "Várható ütem: ${"%.2f".format(budget.expectedRateKgPerWeek)} kg/hét",
+                        stringResource(R.string.budget_rate, "%.2f".format(budget.expectedRateKgPerWeek)),
                         style = MaterialTheme.typography.bodyMedium,
                     )
                     EnergyCalculator.daysToTarget(state.profile, budget)?.let { days ->
                         Text(
-                            "A célsúlyig ennyi kell: kb. $days nap (${LocalDate.now().plusDays(days.toLong())})",
+                            stringResource(
+                                R.string.budget_days_to_target,
+                                days,
+                                LocalDate.now().plusDays(days.toLong()).toString(),
+                            ),
                             style = MaterialTheme.typography.bodyMedium,
                         )
                     }
@@ -193,7 +208,7 @@ fun ProfileScreen(
         }
 
         item {
-            SectionCard(title = "Súly") {
+            SectionCard(title = stringResource(R.string.weight_card_title)) {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     OutlinedTextField(
                         value = weightText,
@@ -205,8 +220,8 @@ fun ProfileScreen(
                     OutlinedTextField(
                         value = bodyFatText,
                         onValueChange = { bodyFatText = it.filter { c -> c.isDigit() || c == '.' || c == ',' } },
-                        label = { Text("testzsír %") },
-                        placeholder = { Text("opcionális") },
+                        label = { Text(stringResource(R.string.weight_body_fat)) },
+                        placeholder = { Text(stringResource(R.string.weight_optional)) },
                         singleLine = true,
                         modifier = Modifier.weight(1f),
                     )
@@ -221,12 +236,14 @@ fun ProfileScreen(
                         bodyFatText = ""
                     },
                     enabled = weightText.replace(',', '.').toDoubleOrNull() != null,
-                ) { Text("Mai súly rögzítése") }
+                ) { Text(stringResource(R.string.weight_log_today)) }
 
                 state.change?.let { change ->
                     Spacer(Modifier.height(12.dp))
-                    val label = if (change < 0) "Eddig ${"%.1f".format(abs(change))} kg-ot fogytál"
-                    else "Eddig ${"%.1f".format(change)} kg-ot híztál"
+                    val label = stringResource(
+                        if (change < 0) R.string.weight_lost_so_far else R.string.weight_gained_so_far,
+                        "%.1f".format(abs(change)),
+                    )
                     Text(label, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
                 }
                 if (state.weights.isNotEmpty()) {
@@ -237,7 +254,11 @@ fun ProfileScreen(
         }
 
         item {
-            Text("Eredmények", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+            Text(
+                stringResource(R.string.achievements_title),
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+            )
         }
 
         items(achievements, key = { it.achievement.key }) { achievementState ->
@@ -354,7 +375,12 @@ private fun WeightSparkline(weights: List<WeightLogEntity>) {
         }
     }
     Text(
-        "${"%.1f".format(min)} – ${"%.1f".format(max)} kg · utolsó ${ordered.size} mérés",
+        stringResource(
+            R.string.weight_range_summary,
+            "%.1f".format(min),
+            "%.1f".format(max),
+            ordered.size,
+        ),
         style = MaterialTheme.typography.labelSmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
     )

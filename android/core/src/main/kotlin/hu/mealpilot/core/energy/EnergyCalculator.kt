@@ -1,5 +1,6 @@
 package hu.mealpilot.core.energy
 
+import hu.mealpilot.core.i18n.AppLanguage
 import hu.mealpilot.core.model.ActivityLevel
 import hu.mealpilot.core.model.DailyTarget
 import hu.mealpilot.core.model.MacroPreset
@@ -65,14 +66,22 @@ object EnergyCalculator {
         return max(sexFloor, bmr(profile))
     }
 
-    fun budget(profile: UserProfile): EnergyBudget {
+    fun budget(
+        profile: UserProfile,
+        language: AppLanguage = AppLanguage.DEFAULT,
+    ): EnergyBudget {
         val bmrValue = bmr(profile)
         val tdeeValue = tdee(profile)
         val warnings = mutableListOf<String>()
+        // A figyelmeztetés a felhasználónak szól, nem a naplónak: a felület nyelvén kell lennie.
+        fun s(hungarian: String, english: String) = if (language == AppLanguage.EN) english else hungarian
 
         val rate = profile.targetRateKgPerWeek.coerceIn(0.0, 1.5)
         if (profile.targetRateKgPerWeek > 1.0) {
-            warnings += "Heti 1 kg-nál gyorsabb fogyás tartósan nem ajánlott — 1,0 kg/hétre korlátoztam."
+            warnings += s(
+                "Heti 1 kg-nál gyorsabb fogyás tartósan nem ajánlott — 1,0 kg/hétre korlátoztam.",
+                "Losing more than 1 kg a week is not advisable long term — I capped it at 1.0 kg/week.",
+            )
         }
         val requestedDeficit = (rate.coerceAtMost(1.0) * KCAL_PER_KG_FAT / 7.0).roundToInt()
 
@@ -83,17 +92,26 @@ object EnergyCalculator {
 
         val appliedDeficit = min(requestedDeficit.toDouble(), allowedDeficit).coerceAtLeast(0.0)
         if (appliedDeficit < requestedDeficit - 1) {
-            warnings += "A kért ütem túl agresszív lenne ehhez a testsúlyhoz: a deficitet " +
-                "${appliedDeficit.roundToInt()} kcal/napra mérsékeltem " +
-                "(max. a TDEE ${(MAX_DEFICIT_RATIO * 100).roundToInt()}%-a, és nem megyünk az alapanyagcsere alá)."
+            warnings += s(
+                "A kért ütem túl agresszív lenne ehhez a testsúlyhoz: a deficitet " +
+                    "${appliedDeficit.roundToInt()} kcal/napra mérsékeltem " +
+                    "(max. a TDEE ${(MAX_DEFICIT_RATIO * 100).roundToInt()}%-a, és nem megyünk az alapanyagcsere alá).",
+                "That rate would be too aggressive at this body weight: I eased the deficit to " +
+                    "${appliedDeficit.roundToInt()} kcal/day " +
+                    "(at most ${(MAX_DEFICIT_RATIO * 100).roundToInt()}% of your TDEE, and never below your BMR).",
+            )
         }
 
         val targetKcal = (tdeeValue - appliedDeficit).roundToInt()
         val target = macroTarget(profile, targetKcal)
 
         if (profile.bmi < 20.0) {
-            warnings += "A BMI-d ${"%.1f".format(profile.bmi)} — ezen a szinten a fogyás helyett inkább " +
-                "a testösszetétel javítása (fehérje + erőedzés) az értelmes cél."
+            warnings += s(
+                "A BMI-d ${"%.1f".format(profile.bmi)} — ezen a szinten a fogyás helyett inkább " +
+                    "a testösszetétel javítása (fehérje + erőedzés) az értelmes cél.",
+                "Your BMI is ${"%.1f".format(profile.bmi)} — at this level the sensible goal is " +
+                    "improving body composition (protein + strength training), not losing weight.",
+            )
         }
 
         return EnergyBudget(

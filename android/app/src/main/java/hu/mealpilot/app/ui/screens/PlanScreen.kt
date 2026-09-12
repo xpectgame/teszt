@@ -135,7 +135,7 @@ class PlanViewModel(private val container: AppContainer) : ViewModel() {
             container.telemetry.record(TelemetryEvent.DAY_REFINED)
             val plan = container.planRepository.activePlan() ?: return@launch
             val profile = container.settings.currentProfile()
-            val budget = EnergyCalculator.budget(profile)
+            val budget = EnergyCalculator.budget(profile, container.language)
             val result = container.planRepository.refineDay(
                 ai = container.mealAi(),
                 profile = profile,
