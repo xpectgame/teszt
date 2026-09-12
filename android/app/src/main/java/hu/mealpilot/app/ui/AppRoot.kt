@@ -38,6 +38,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.navigation.NavDestination.Companion.hierarchy
@@ -47,7 +48,9 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import androidx.annotation.StringRes
 import hu.mealpilot.app.AppContainer
+import hu.mealpilot.app.R
 import hu.mealpilot.app.ui.screens.ChatScreen
 import hu.mealpilot.app.ui.screens.MealDetailScreen
 import hu.mealpilot.app.i18n.LocalAppLanguage
@@ -74,17 +77,17 @@ object Routes {
     fun meal(id: Long) = "meal/$id"
 }
 
-private data class Tab(val route: String, val label: String, val icon: ImageVector)
+private data class Tab(val route: String, @StringRes val label: Int, val icon: ImageVector)
 
 // Öt fül a maximum, ami egy telefon alján még olvasható marad. Mind az öt az
 // étkezésről szól — ezért került ki a mozgásnapló: fél funkció volt, és pont az
 // étrend elől vette el a helyet.
 private val tabs = listOf(
-    Tab(Routes.TODAY, "Ma", Icons.Filled.RestaurantMenu),
-    Tab(Routes.PLAN, "Terv", Icons.Filled.CalendarMonth),
-    Tab(Routes.SHOPPING, "Bevásárlás", Icons.Filled.ShoppingCart),
-    Tab(Routes.CHAT, "Beszéljünk", Icons.AutoMirrored.Filled.Chat),
-    Tab(Routes.PROFILE, "Én", Icons.Filled.Person),
+    Tab(Routes.TODAY, R.string.tab_today, Icons.Filled.RestaurantMenu),
+    Tab(Routes.PLAN, R.string.tab_plan, Icons.Filled.CalendarMonth),
+    Tab(Routes.SHOPPING, R.string.tab_shopping, Icons.Filled.ShoppingCart),
+    Tab(Routes.CHAT, R.string.tab_chat, Icons.AutoMirrored.Filled.Chat),
+    Tab(Routes.PROFILE, R.string.tab_profile, Icons.Filled.Person),
 )
 
 @Composable
@@ -276,7 +279,7 @@ private fun GenerationBanner(
                 ) {
                     Column(Modifier.weight(1f)) {
                         Text(
-                            status.headline.ifBlank { "Dolgozom rajta" },
+                            status.headline.ifBlank { stringResource(R.string.app_working) },
                             style = MaterialTheme.typography.labelLarge,
                         )
                         Text(
@@ -285,7 +288,7 @@ private fun GenerationBanner(
                         )
                     }
                     if (status.hasUsableDays) {
-                        Text("Megnézem", style = MaterialTheme.typography.labelLarge)
+                        Text(stringResource(R.string.app_view_it), style = MaterialTheme.typography.labelLarge)
                     }
                 }
             }
@@ -310,8 +313,8 @@ private fun BottomBar(navController: NavHostController) {
                         restoreState = true
                     }
                 },
-                icon = { Icon(tab.icon, contentDescription = tab.label) },
-                label = { Text(tab.label) },
+                icon = { Icon(tab.icon, contentDescription = stringResource(tab.label)) },
+                label = { Text(stringResource(tab.label)) },
             )
         }
     }

@@ -25,10 +25,14 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import hu.mealpilot.app.R
+import hu.mealpilot.app.i18n.LocalAppLanguage
 import hu.mealpilot.core.ai.MealSlot
+import hu.mealpilot.core.i18n.label
 import hu.mealpilot.core.model.ActivityLevel
 import hu.mealpilot.core.model.DietRestriction
 import hu.mealpilot.core.model.DietStyle
@@ -47,33 +51,35 @@ fun ProfileForm(
     onChange: (UserProfile) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val language = LocalAppLanguage.current
+
     Column(modifier.fillMaxWidth()) {
 
         OutlinedTextField(
             value = profile.name,
             onValueChange = { onChange(profile.copy(name = it)) },
-            label = { Text("Neved (opcionális)") },
+            label = { Text(stringResource(R.string.profile_name)) },
             singleLine = true,
             modifier = Modifier.fillMaxWidth(),
         )
         Spacer(Modifier.height(12.dp))
 
-        Text("Biológiai nem", style = MaterialTheme.typography.labelLarge)
+        Text(stringResource(R.string.profile_sex), style = MaterialTheme.typography.labelLarge)
         Spacer(Modifier.height(4.dp))
         FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             FilterChip(
                 selected = profile.sex == Sex.MALE,
                 onClick = { onChange(profile.copy(sex = Sex.MALE)) },
-                label = { Text("Férfi") },
+                label = { Text(stringResource(R.string.profile_sex_male)) },
             )
             FilterChip(
                 selected = profile.sex == Sex.FEMALE,
                 onClick = { onChange(profile.copy(sex = Sex.FEMALE)) },
-                label = { Text("Nő") },
+                label = { Text(stringResource(R.string.profile_sex_female)) },
             )
         }
         Text(
-            "Csak az anyagcsere-képletekhez kell.",
+            stringResource(R.string.profile_sex_note),
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
@@ -82,14 +88,14 @@ fun ProfileForm(
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             NumberField(
                 initial = profile.ageYears.toString(),
-                label = "Életkor",
+                label = stringResource(R.string.profile_age),
                 onValidValue = { onChange(profile.copy(ageYears = it.toInt())) },
                 validRange = 14.0..100.0,
                 modifier = Modifier.weight(1f),
             )
             NumberField(
                 initial = profile.heightCm.trimmed(),
-                label = "Magasság (cm)",
+                label = stringResource(R.string.profile_height),
                 decimal = true,
                 onValidValue = { onChange(profile.copy(heightCm = it)) },
                 validRange = 120.0..230.0,
@@ -101,7 +107,7 @@ fun ProfileForm(
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             NumberField(
                 initial = profile.weightKg.trimmed(),
-                label = "Testsúly (kg)",
+                label = stringResource(R.string.profile_weight),
                 decimal = true,
                 onValidValue = { onChange(profile.copy(weightKg = it)) },
                 validRange = 35.0..300.0,
@@ -109,7 +115,7 @@ fun ProfileForm(
             )
             NumberField(
                 initial = profile.targetWeightKg?.trimmed() ?: "",
-                label = "Célsúly (kg)",
+                label = stringResource(R.string.profile_target_weight),
                 decimal = true,
                 allowEmpty = true,
                 onValidValue = { onChange(profile.copy(targetWeightKg = it)) },
@@ -122,7 +128,7 @@ fun ProfileForm(
 
         NumberField(
             initial = profile.bodyFatPercent?.trimmed() ?: "",
-            label = "Testzsír % (ha tudod — pontosabb számítás)",
+            label = stringResource(R.string.profile_body_fat),
             decimal = true,
             allowEmpty = true,
             onValidValue = { onChange(profile.copy(bodyFatPercent = it)) },
@@ -139,22 +145,21 @@ fun ProfileForm(
                 FilterChip(
                     selected = profile.activityLevel == level,
                     onClick = { onChange(profile.copy(activityLevel = level)) },
-                    label = { Text(level.hu) },
+                    label = { Text(level.label(language)) },
                     modifier = Modifier.fillMaxWidth(),
                 )
                 Spacer(Modifier.height(4.dp))
             }
         }
         Text(
-            "Az edzést is számold bele. Ebből jön a napi kalóriakereted, úgyhogy inkább " +
-                "becsüld alá, mint túl.",
+            stringResource(R.string.profile_activity_note),
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         Spacer(Modifier.height(16.dp))
 
         Text(
-            "Fogyás üteme: ${"%.2f".format(profile.targetRateKgPerWeek)} kg/hét",
+            stringResource(R.string.profile_rate, "%.2f".format(profile.targetRateKgPerWeek)),
             style = MaterialTheme.typography.labelLarge,
         )
         Slider(
@@ -164,20 +169,20 @@ fun ProfileForm(
             steps = 17,
         )
         Text(
-            "0,25–0,75 kg/hét a fenntartható sáv. Az app nem enged az alapanyagcsere alá menni.",
+            stringResource(R.string.profile_rate_note),
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         Spacer(Modifier.height(16.dp))
 
-        Text("Étrendi stílus", style = MaterialTheme.typography.labelLarge)
+        Text(stringResource(R.string.profile_diet_style), style = MaterialTheme.typography.labelLarge)
         Spacer(Modifier.height(4.dp))
         FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             DietStyle.entries.forEach { style ->
                 FilterChip(
                     selected = profile.dietStyle == style,
                     onClick = { onChange(profile.copy(dietStyle = style)) },
-                    label = { Text(style.hu) },
+                    label = { Text(style.label(language)) },
                 )
             }
         }
@@ -185,20 +190,23 @@ fun ProfileForm(
         RestrictionSurvey(profile = profile, onChange = onChange)
         Spacer(Modifier.height(20.dp))
 
-        Text("Makró beállítás", style = MaterialTheme.typography.labelLarge)
+        Text(stringResource(R.string.profile_macro_preset), style = MaterialTheme.typography.labelLarge)
         Spacer(Modifier.height(4.dp))
         FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             MacroPreset.entries.forEach { preset ->
                 FilterChip(
                     selected = profile.macroPreset == preset,
                     onClick = { onChange(profile.copy(macroPreset = preset)) },
-                    label = { Text(preset.hu) },
+                    label = { Text(preset.label(language)) },
                 )
             }
         }
         Spacer(Modifier.height(16.dp))
 
-        Text("Étkezések száma naponta: ${profile.mealsPerDay}", style = MaterialTheme.typography.labelLarge)
+        Text(
+            stringResource(R.string.profile_meals_per_day, profile.mealsPerDay),
+            style = MaterialTheme.typography.labelLarge,
+        )
         Spacer(Modifier.height(4.dp))
         FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             (2..6).forEach { count ->
@@ -218,7 +226,7 @@ fun ProfileForm(
         }
         Spacer(Modifier.height(12.dp))
 
-        Text("Étkezési időpontok", style = MaterialTheme.typography.labelLarge)
+        Text(stringResource(R.string.profile_meal_times), style = MaterialTheme.typography.labelLarge)
         Spacer(Modifier.height(4.dp))
         val slots = MealSlot.forMealsPerDay(profile.mealsPerDay)
         slots.forEachIndexed { index, slot ->
@@ -231,7 +239,7 @@ fun ProfileForm(
                     times[index] = newTime
                     onChange(profile.copy(mealTimes = times))
                 },
-                label = { Text("${slot.hu} (ÓÓ:PP)") },
+                label = { Text(stringResource(R.string.profile_meal_time_field, slot.label(language))) },
                 singleLine = true,
                 isError = !TIME_REGEX.matches(profile.mealTimes.getOrNull(index) ?: slot.defaultTime),
                 modifier = Modifier.fillMaxWidth(),
@@ -243,15 +251,15 @@ fun ProfileForm(
         OutlinedTextField(
             value = profile.preferences,
             onValueChange = { onChange(profile.copy(preferences = it)) },
-            label = { Text("Állandó preferenciák") },
+            label = { Text(stringResource(R.string.profile_preferences)) },
             placeholder = {
-                Text("pl. laktózérzékeny vagyok, nem eszem kelbimbót, hétköznap max 20 perc főzés, olcsó alapanyagok")
+                Text(stringResource(R.string.profile_preferences_hint))
             },
             minLines = 3,
             modifier = Modifier.fillMaxWidth(),
         )
         Text(
-            "Ezt minden tervezésnél figyelembe vesszük.",
+            stringResource(R.string.profile_preferences_note),
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
@@ -273,17 +281,17 @@ fun RestrictionSurvey(
     modifier: Modifier = Modifier,
 ) {
     val implied = DietRestriction.impliedBy(profile.dietStyle)
+    val language = LocalAppLanguage.current
 
     Column(modifier.fillMaxWidth()) {
         Text(
-            "Allergiák és érzékenységek",
+            stringResource(R.string.restrictions_title),
             style = MaterialTheme.typography.titleSmall,
             fontWeight = FontWeight.SemiBold,
         )
         Spacer(Modifier.height(2.dp))
         Text(
-            "Amit bejelölsz, azt az étrend soha nem fogja tartalmazni — sem hozzávalóként, " +
-                "sem ízesítőként. A kész tervet ellenőrizzük is rá.",
+            stringResource(R.string.restrictions_note),
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
@@ -291,7 +299,7 @@ fun RestrictionSurvey(
         DietRestriction.byGroup().forEach { (group, items) ->
             Spacer(Modifier.height(14.dp))
             Text(
-                group.hu,
+                group.label(language),
                 style = MaterialTheme.typography.labelLarge,
                 color = MaterialTheme.colorScheme.primary,
             )
@@ -313,17 +321,19 @@ fun RestrictionSurvey(
                             if (restriction in next) next -= restriction else next += restriction
                             onChange(profile.copy(restrictions = next))
                         },
-                        label = { Text(restriction.hu) },
+                        label = { Text(restriction.label(language)) },
                         leadingIcon = if (checked) {
                             { Icon(Icons.Filled.Check, contentDescription = null, modifier = Modifier.size(16.dp)) }
                         } else null,
                     )
                 }
             }
-            val notes = items.filter { it.note.isNotBlank() && (it in profile.restrictions || it in implied) }
+            val notes = items.filter {
+                it.note(language).isNotBlank() && (it in profile.restrictions || it in implied)
+            }
             notes.forEach { restriction ->
                 Text(
-                    "${restriction.hu}: ${restriction.note}",
+                    "${restriction.label(language)}: ${restriction.note(language)}",
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(top = 4.dp),
@@ -334,8 +344,11 @@ fun RestrictionSurvey(
         if (implied.isNotEmpty()) {
             Spacer(Modifier.height(10.dp))
             Text(
-                "A(z) \"${profile.dietStyle.hu}\" stílus miatt ezek automatikusan ki vannak zárva: " +
-                    implied.sortedBy { it.hu }.joinToString(", ") { it.hu } + ".",
+                stringResource(
+                    R.string.restrictions_implied,
+                    profile.dietStyle.label(language),
+                    implied.map { it.label(language) }.sorted().joinToString(", "),
+                ),
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -345,7 +358,7 @@ fun RestrictionSurvey(
         if (total > 0) {
             Spacer(Modifier.height(10.dp))
             Text(
-                "Összesen $total kizárás aktív.",
+                stringResource(R.string.restrictions_total, total),
                 style = MaterialTheme.typography.labelMedium,
                 fontWeight = FontWeight.Medium,
             )

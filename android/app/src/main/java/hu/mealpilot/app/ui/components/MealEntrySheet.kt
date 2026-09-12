@@ -25,9 +25,11 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import hu.mealpilot.app.R
 import hu.mealpilot.core.model.Nutrients
 import kotlin.math.roundToInt
 
@@ -44,7 +46,7 @@ fun MealEntrySheet(
     title: String,
     initialName: String = "",
     initialNutrients: Nutrients? = null,
-    confirmLabel: String = "Mentés",
+    confirmLabel: String = stringResource(R.string.action_save),
     onDismiss: () -> Unit,
     onSave: (name: String, nutrients: Nutrients) -> Unit,
 ) {
@@ -68,7 +70,7 @@ fun MealEntrySheet(
             Text(title, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
             Spacer(Modifier.height(4.dp))
             Text(
-                "A kalória kötelező, a makrók megadása nem. A napi összesítőd ettől is pontosabb lesz.",
+                stringResource(R.string.entry_note),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -77,19 +79,19 @@ fun MealEntrySheet(
             OutlinedTextField(
                 value = name,
                 onValueChange = { name = it },
-                label = { Text("Mit ettél?") },
+                label = { Text(stringResource(R.string.entry_what)) },
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
             )
             Spacer(Modifier.height(10.dp))
 
-            NumberField(kcal, "Kalória (kcal)", Modifier.fillMaxWidth()) { kcal = it }
+            NumberField(kcal, stringResource(R.string.entry_kcal), Modifier.fillMaxWidth()) { kcal = it }
             Spacer(Modifier.height(10.dp))
 
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                NumberField(protein, "Fehérje (g)", Modifier.weight(1f)) { protein = it }
-                NumberField(carbs, "Szénhidrát (g)", Modifier.weight(1f)) { carbs = it }
-                NumberField(fat, "Zsír (g)", Modifier.weight(1f)) { fat = it }
+                NumberField(protein, stringResource(R.string.entry_protein), Modifier.weight(1f)) { protein = it }
+                NumberField(carbs, stringResource(R.string.entry_carbs), Modifier.weight(1f)) { carbs = it }
+                NumberField(fat, stringResource(R.string.entry_fat), Modifier.weight(1f)) { fat = it }
             }
 
             Spacer(Modifier.height(20.dp))
@@ -112,7 +114,7 @@ fun MealEntrySheet(
                     enabled = canSave,
                     modifier = Modifier.weight(1f),
                 ) { Text(confirmLabel) }
-                TextButton(onClick = onDismiss) { Text("Mégse") }
+                TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) }
             }
             Spacer(Modifier.height(24.dp))
         }

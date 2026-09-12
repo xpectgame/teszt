@@ -1,5 +1,7 @@
 package hu.mealpilot.app.data.repo
 
+import androidx.annotation.StringRes
+import hu.mealpilot.app.R
 import hu.mealpilot.app.data.remote.BackendClient
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -15,12 +17,12 @@ enum class ReportKind { PLAN, MEAL, CHAT }
  * A „veszélyes vagy sértő" kategória külön van, mert azt nem statisztikázni kell,
  * hanem megnézni.
  */
-enum class ReportReason(val code: String, val label: String) {
-    WRONG_NUTRITION("WRONG_NUTRITION", "A tápértékadatok nem stimmelnek"),
-    IGNORED_RESTRICTION("IGNORED_RESTRICTION", "Olyat ajánlott, amit kizártam"),
-    UNREALISTIC("UNREALISTIC", "Értelmetlen vagy megfőzhetetlen fogás"),
-    HARMFUL("HARMFUL", "Veszélyes, sértő vagy egészségügyi tanácsnak tűnő tartalom"),
-    OTHER("OTHER", "Egyéb"),
+enum class ReportReason(val code: String, @StringRes val label: Int) {
+    WRONG_NUTRITION("WRONG_NUTRITION", R.string.report_reason_nutrition),
+    IGNORED_RESTRICTION("IGNORED_RESTRICTION", R.string.report_reason_restriction),
+    UNREALISTIC("UNREALISTIC", R.string.report_reason_unrealistic),
+    HARMFUL("HARMFUL", R.string.report_reason_harmful),
+    OTHER("OTHER", R.string.report_reason_other),
 }
 
 /** A bejelentés sorsa — a felület ebből tudja, mit mondjon a felhasználónak. */
@@ -76,7 +78,7 @@ class ReportRepository(private val backend: BackendClient?) {
         detail: String,
         payload: String?,
     ): ReportOutcome.UseEmail = ReportOutcome.UseEmail(
-        subject = "MealPilot bejelentés — ${reason.label}",
+        subject = "MealPilot report — ${reason.code}",
         body = buildString {
             appendLine("Mire vonatkozik: ${kind.name}")
             appendLine("Ok: ${reason.label}")
@@ -86,7 +88,7 @@ class ReportRepository(private val backend: BackendClient?) {
             }
             if (!payload.isNullOrBlank()) {
                 appendLine()
-                appendLine("--- a kifogásolt tartalom ---")
+                appendLine("--- reported content ---")
                 appendLine(payload.take(MAX_EMAIL_PAYLOAD))
             }
         },

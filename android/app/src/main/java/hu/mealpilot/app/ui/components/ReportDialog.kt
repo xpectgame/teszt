@@ -22,9 +22,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import hu.mealpilot.app.AppContainer
+import hu.mealpilot.app.R
 import hu.mealpilot.app.data.repo.ReportKind
 import hu.mealpilot.app.data.repo.ReportOutcome
 import hu.mealpilot.app.data.repo.ReportReason
@@ -58,7 +60,7 @@ fun ReportDialog(
 
     AlertDialog(
         onDismissRequest = { if (!sending) onDismiss() },
-        title = { Text("Mi a baj vele?") },
+        title = { Text(stringResource(R.string.report_title)) },
         text = {
             Column {
                 FlowRow(
@@ -69,7 +71,7 @@ fun ReportDialog(
                         FilterChip(
                             selected = reason == option,
                             onClick = { reason = option },
-                            label = { Text(option.label) },
+                            label = { Text(stringResource(option.label)) },
                         )
                     }
                 }
@@ -78,13 +80,12 @@ fun ReportDialog(
                     value = detail,
                     onValueChange = { detail = it.take(1_000) },
                     modifier = Modifier.fillMaxWidth(),
-                    label = { Text("Írd le pár szóban (nem kötelező)") },
+                    label = { Text(stringResource(R.string.report_detail_label)) },
                     minLines = 3,
                 )
                 Spacer(Modifier.height(8.dp))
                 Text(
-                    "A bejelentéssel a kifogásolt fogás vagy terv szövege is elmegy. " +
-                        "Testsúly, név és étkezési napló nem.",
+                    stringResource(R.string.report_privacy_note),
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -99,12 +100,15 @@ fun ReportDialog(
                         container.telemetry.record(TelemetryEvent.REPORT_SENT)
                         val outcome = container.reportRepository.submit(kind, reason, detail, payload)
                         when (outcome) {
-                            is ReportOutcome.Sent -> onResult("Köszönjük, megkaptuk. Átnézzük.")
+                            is ReportOutcome.Sent -> onResult(context.getString(R.string.report_sent))
                             is ReportOutcome.UseEmail -> {
                                 val sent = context.sendSupportEmail(outcome.subject, outcome.body)
                                 onResult(
-                                    if (sent) "Nyitottunk egy levelet — küldd el, és megnézzük."
-                                    else "Most nem sikerült elküldeni. Írj a ${LegalLinks.SUPPORT_EMAIL} címre."
+                                    if (sent) context.getString(R.string.report_email_opened)
+                                    else context.getString(
+                                        R.string.report_email_failed,
+                                        LegalLinks.SUPPORT_EMAIL,
+                                    )
                                 )
                             }
                         }
@@ -112,10 +116,12 @@ fun ReportDialog(
                         onDismiss()
                     }
                 },
-            ) { Text(if (sending) "Küldés…" else "Jelentem") }
+            ) {
+                Text(stringResource(if (sending) R.string.report_sending else R.string.report_submit))
+            }
         },
         dismissButton = {
-            TextButton(enabled = !sending, onClick = onDismiss) { Text("Mégse") }
+            TextButton(enabled = !sending, onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) }
         },
     )
 }
