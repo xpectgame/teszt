@@ -15,7 +15,6 @@
     <string name="shopping_range_all">Whole plan</string>
     <string name="shopping_empty_title">No active plan</string>
     <string name="shopping_empty_message">The shopping list is built from the ingredients of your planned meals — make a plan first.</string>
-    <string name="shopping_progress">%1$d / %2$d done · %3$s</string>
     <string name="shopping_clear_checks">Clear ticks</string>
     <string name="date_today">"Today · "</string>
     <string name="date_tomorrow">"Tomorrow · "</string>
@@ -333,4 +332,6 @@
     <string name="today_state_replaced">Ate something else</string>
     <string name="today_action_ate">I ate this</string>
     <string name="today_action_skip">Skipped it</string>
+    <string name="shopping_have">%1$d / %2$d in the basket</string>
+    <string name="shopping_left">%1$d to go</string>
 </resources>

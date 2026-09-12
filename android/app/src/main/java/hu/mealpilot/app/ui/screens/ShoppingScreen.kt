@@ -1,19 +1,21 @@
 package hu.mealpilot.app.ui.screens
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.Checkbox
-import androidx.compose.material3.FilterChip
-import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -22,8 +24,9 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModel
@@ -36,8 +39,15 @@ import hu.mealpilot.app.i18n.LocalAppLanguage
 import hu.mealpilot.app.data.telemetry.TelemetryEvent
 import hu.mealpilot.app.data.local.ShoppingItemEntity
 import hu.mealpilot.app.data.local.endEpochDay
+import hu.mealpilot.app.ui.components.CheckCircle
 import hu.mealpilot.app.ui.components.EmptyState
+import hu.mealpilot.app.ui.components.GroupLabel
+import hu.mealpilot.app.ui.components.NumberText
+import hu.mealpilot.app.ui.components.SegmentedToggle
 import hu.mealpilot.app.ui.containerFactory
+import hu.mealpilot.app.ui.theme.LocalDarkTheme
+import hu.mealpilot.app.ui.theme.MealColors
+import hu.mealpilot.app.ui.theme.PlateShape
 import hu.mealpilot.core.ai.Aisle
 import hu.mealpilot.core.ai.Units
 import hu.mealpilot.core.i18n.AppLanguage
@@ -153,14 +163,15 @@ fun ShoppingScreen(
     LaunchedEffect(Unit) { container.telemetry.record(TelemetryEvent.SHOPPING_OPENED) }
 
     LazyColumn(
-        contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
+        contentPadding = androidx.compose.foundation.layout.PaddingValues(
+            start = 18.dp, end = 18.dp, top = 12.dp, bottom = 24.dp,
+        ),
+        verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
         item {
             Text(
                 stringResource(R.string.shopping_title),
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold,
+                style = MaterialTheme.typography.headlineLarge,
             )
         }
 
@@ -175,76 +186,129 @@ fun ShoppingScreen(
         }
 
         item {
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                ShoppingRange.entries.forEach { option ->
-                    FilterChip(
-                        selected = state.range == option,
-                        onClick = { viewModel.setRange(option) },
-                        label = { Text(stringResource(option.label)) },
-                    )
+            SegmentedToggle(
+                options = ShoppingRange.entries,
+                selected = state.range,
+                label = { stringResource(it.label) },
+                onSelect = { viewModel.setRange(it) },
+            )
+        }
+
+        item {
+            // A haladás saját kártyán: a lista hosszú, és ez az egyetlen szám,
+            // amit görgetés közben is tudni akar az ember.
+            val total = state.items.size
+            val left = total - state.checkedCount
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                shape = PlateShape.card,
+                color = MaterialTheme.colorScheme.surface,
+                shadowElevation = 2.dp,
+            ) {
+                Column(Modifier.padding(18.dp)) {
+                    Row(
+                        Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.Bottom,
+                    ) {
+                        Text(
+                            stringResource(R.string.shopping_have, state.checkedCount, total),
+                            style = MaterialTheme.typography.headlineSmall,
+                        )
+                        NumberText(
+                            stringResource(R.string.shopping_left, left),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    Spacer(Modifier.height(11.dp))
+                    Box(
+                        Modifier
+                            .fillMaxWidth()
+                            .height(9.dp)
+                            .clip(PlateShape.pill)
+                            .background(MaterialTheme.colorScheme.outlineVariant),
+                    ) {
+                        Box(
+                            Modifier
+                                .fillMaxWidth(if (total == 0) 0f else state.checkedCount.toFloat() / total)
+                                .height(9.dp)
+                                .clip(PlateShape.pill)
+                                .background(MaterialTheme.colorScheme.primary),
+                        )
+                    }
+                    if (state.rangeLabel.isNotBlank()) {
+                        Spacer(Modifier.height(9.dp))
+                        NumberText(
+                            state.rangeLabel,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
                 }
             }
         }
 
-        item {
-            Column {
-                Text(
-                    stringResource(
-                        R.string.shopping_progress,
-                        state.checkedCount,
-                        state.items.size,
-                        state.rangeLabel,
-                    ),
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                Spacer(Modifier.height(6.dp))
-                LinearProgressIndicator(
-                    progress = {
-                        if (state.items.isEmpty()) 0f
-                        else state.checkedCount.toFloat() / state.items.size
-                    },
-                    modifier = Modifier.fillMaxWidth(),
-                )
-            }
-        }
-
+        // Polconként egy kártya. Eddig a csoportcím és a tételek külön sorok voltak a
+        // háttéren: húsz tétel után nem látszott, hol ér véget egy polc.
         state.grouped.forEach { (aisle, aisleItems) ->
             item(key = "aisle-${aisle.name}") {
-                Text(
-                    aisle.label(language),
-                    style = MaterialTheme.typography.titleSmall,
-                    color = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.padding(top = 8.dp),
-                )
-            }
-            items(aisleItems, key = { it.id }) { item ->
-                Row(
-                    Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
+                val accent = MealColors.of(aisle.ordinal, LocalDarkTheme.current)
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = PlateShape.card,
+                    color = MaterialTheme.colorScheme.surface,
+                    shadowElevation = 2.dp,
                 ) {
-                    Checkbox(checked = item.checked, onCheckedChange = { viewModel.toggle(item) })
-                    Column(Modifier.weight(1f)) {
-                        Text(
-                            item.name,
-                            style = MaterialTheme.typography.bodyMedium,
-                            textDecoration = if (item.checked) TextDecoration.LineThrough else null,
-                        )
-                        if (item.notes.isNotBlank()) {
-                            Text(
-                                item.notes,
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
+                    Column(Modifier.padding(17.dp)) {
+                        GroupLabel(aisle.label(language), accent)
+                        aisleItems.forEach { item ->
+                            Row(
+                                Modifier
+                                    .fillMaxWidth()
+                                    .heightIn(min = 52.dp)
+                                    .toggleable(
+                                        value = item.checked,
+                                        role = Role.Checkbox,
+                                        onValueChange = { viewModel.toggle(item) },
+                                    ),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                CheckCircle(item.checked)
+                                Spacer(Modifier.width(13.dp))
+                                Column(Modifier.weight(1f)) {
+                                    Text(
+                                        item.name,
+                                        style = MaterialTheme.typography.bodyLarge,
+                                        color = if (item.checked) {
+                                            MaterialTheme.colorScheme.onSurfaceVariant
+                                        } else {
+                                            MaterialTheme.colorScheme.onSurface
+                                        },
+                                        textDecoration = if (item.checked) TextDecoration.LineThrough else null,
+                                    )
+                                    if (item.notes.isNotBlank()) {
+                                        Text(
+                                            item.notes,
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        )
+                                    }
+                                }
+                                Spacer(Modifier.width(10.dp))
+                                NumberText(
+                                    displayQuantity(item, language),
+                                    style = MaterialTheme.typography.labelLarge,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
                         }
                     }
-                    Text(displayQuantity(item, language), style = MaterialTheme.typography.labelLarge)
                 }
             }
         }
 
         item {
-            Spacer(Modifier.height(12.dp))
             TextButton(onClick = { viewModel.uncheckAll() }) {
                 Text(stringResource(R.string.shopping_clear_checks))
             }

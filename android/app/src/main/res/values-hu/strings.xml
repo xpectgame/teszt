@@ -13,7 +13,6 @@
     <string name="shopping_range_all">Teljes terv</string>
     <string name="shopping_empty_title">Nincs aktív terv</string>
     <string name="shopping_empty_message">A bevásárlólista a tervezett ételek hozzávalóiból áll össze — előbb készíts étrendet.</string>
-    <string name="shopping_progress">%1$d / %2$d megvan · %3$s</string>
     <string name="shopping_clear_checks">Pipák törlése</string>
     <string name="date_today">"Ma · "</string>
     <string name="date_tomorrow">"Holnap · "</string>
@@ -331,4 +330,6 @@
     <string name="today_state_replaced">Mást ettél</string>
     <string name="today_action_ate">Megettem</string>
     <string name="today_action_skip">Kihagytam</string>
+    <string name="shopping_have">%1$d / %2$d megvan</string>
+    <string name="shopping_left">%1$d hátra</string>
 </resources>

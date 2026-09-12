@@ -6,6 +6,7 @@ import androidx.compose.animation.core.animateIntAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -13,6 +14,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
@@ -35,8 +37,11 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import hu.mealpilot.app.ui.theme.MealLabelStyle
 import hu.mealpilot.app.ui.theme.PlateShape
 import hu.mealpilot.app.ui.theme.TabularNums
 import kotlin.math.abs
@@ -334,6 +339,99 @@ fun BackButton(text: String, onClick: () -> Unit, modifier: Modifier = Modifier)
         )
         Spacer(Modifier.size(8.dp))
         Text(text)
+    }
+}
+
+/**
+ * Szegmentált kapcsoló: fehér lapba ágyazott két-három pirula, a kijelölt zöld.
+ * A Material FilterChip sorát váltja ki — az egymás mellé rakott önálló chipek
+ * nem mutatják, hogy EGY döntés két állapotáról van szó.
+ */
+@Composable
+fun <T> SegmentedToggle(
+    options: List<T>,
+    selected: T,
+    label: @Composable (T) -> String,
+    onSelect: (T) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Row(
+        modifier
+            .fillMaxWidth()
+            .clip(PlateShape.tile)
+            .background(MaterialTheme.colorScheme.surface)
+            .padding(4.dp),
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        options.forEach { option ->
+            val active = option == selected
+            Box(
+                Modifier
+                    .weight(1f)
+                    .heightIn(min = 42.dp)
+                    .clip(PlateShape.innerButton)
+                    .background(if (active) MaterialTheme.colorScheme.primary else Color.Transparent)
+                    .selectable(selected = active, role = Role.RadioButton) { onSelect(option) },
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    label(option),
+                    style = MaterialTheme.typography.labelLarge,
+                    color = if (active) {
+                        MaterialTheme.colorScheme.onPrimary
+                    } else {
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                    },
+                )
+            }
+        }
+    }
+}
+
+/**
+ * Kerek jelölő a bevásárlólistához. A Material Checkbox szögletes és kicsi; itt a
+ * kipipált tétel zöld korongot kap, a hátralévő üres gyűrűt — messziről is látszik,
+ * mennyi van még hátra.
+ */
+@Composable
+fun CheckCircle(checked: Boolean, modifier: Modifier = Modifier) {
+    val ring = MaterialTheme.colorScheme.outlineVariant
+    val fill = MaterialTheme.colorScheme.primary
+    Box(
+        modifier
+            .size(26.dp)
+            .clip(CircleShape)
+            .background(if (checked) fill else Color.Transparent)
+            .then(if (checked) Modifier else Modifier.border(2.dp, ring, CircleShape)),
+        contentAlignment = Alignment.Center,
+    ) {
+        if (checked) {
+            Icon(
+                Icons.Filled.Check,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onPrimary,
+                modifier = Modifier.size(15.dp),
+            )
+        }
+    }
+}
+
+/** Színes pont + ritkított nagybetűs csoportcím — bevásárlópolc, naprész. */
+@Composable
+fun GroupLabel(text: String, color: Color, modifier: Modifier = Modifier) {
+    Row(modifier, verticalAlignment = Alignment.CenterVertically) {
+        Box(
+            Modifier
+                .size(10.dp)
+                .clip(CircleShape)
+                .background(color),
+        )
+        Spacer(Modifier.size(9.dp))
+        Text(
+            text.uppercase(),
+            style = MealLabelStyle.copy(fontSize = 11.5.sp),
+            color = color,
+        )
     }
 }
 
