@@ -161,12 +161,13 @@ class AppContainer(context: Context) {
 
     val reportRepository: ReportRepository by lazy { ReportRepository(backendClient) }
 
-    private val anthropicAi: MealAi get() =
-        AnthropicMealAi(secureKeyStore, strings, language) { settings.currentSettings() }
+    private val anthropicAi: MealAi by lazy {
+        AnthropicMealAi(secureKeyStore, strings, { language }) { settings.currentSettings() }
+    }
 
-    private val backendAi: MealAi get() = BackendMealAi(requireNotNull(backendClient), strings, language)
+    private val backendAi: MealAi by lazy { BackendMealAi(requireNotNull(backendClient), strings) { language } }
 
-    private val offlineAi: MealAi get() = OfflineMealAi(language, strings)
+    private val offlineAi: MealAi by lazy { OfflineMealAi({ language }, strings) }
 
     /**
      * Melyik tervező szolgálja ki a kérést.

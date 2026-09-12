@@ -303,6 +303,11 @@ Hogy mit kell előre kifizetned és mit nem, arról külön írás szól:
 
 - [ ] Előfizetői élmény finomhangolása: emlékeztető a próbaidőszak végéről
 - [ ] Play Integrity API, ha az ingyenes sáv csapolása gonddá válik
+- [ ] **Az adatbázis sémáját tedd be a verziókezelésbe.** A Room fordításkor kiírja az
+      `android/app/schemas/` alá, de az most nincs a repóban. A következő verzió
+      migrációját ehhez kell írni — enélkül csak tippelni lehet, milyen táblák vannak a
+      már kiadott appban, és egy rossz tipp a felhasználók naplóját viszi el. A CI
+      minden futásban feltölti `room-schemas` néven: töltsd le, és commitold.
 - [ ] A release build `mapping.txt`-jét tedd el minden kiadáshoz. Az összeomlás-jelentés
       obfuszkált hívási láncot küld; visszaolvasni az R8 `retrace` eszközével lehet:
       `retrace mapping.txt stack.txt`. A Play Console-ba is érdemes feltölteni.

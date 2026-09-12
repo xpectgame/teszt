@@ -314,4 +314,7 @@
     <string name="offline_chat_needs_network">A beszélgetéshez internetkapcsolat kell.</string>
     <string name="offline_cannot_refine">Ez a változat nem tudja átírni a napokat. Próbáld újra, ha van internetkapcsolatod.</string>
     <string name="error_quota_exhausted">Elfogyott a havi keret.</string>
+    <string name="profile_activity">Mennyit mozogsz?</string>
+    <string name="action_back_plain">Vissza</string>
+    <string name="achievement_unlocked">Megvan</string>
 </resources>

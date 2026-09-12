@@ -94,9 +94,13 @@ enum class DietRestriction(
         noteEn = "Lactose-free dairy stays allowed.",
         ruleEn = "No lactose-containing dairy; lactose-free versions are fine.",
         keywordsEn = listOf(
+            // A "whey" azért van külön, mert magyarul a „tejsavó" a „tej" előtaggal
+            // fennakad, angolul viszont a "milk" nem előtagja a "whey"-nek — a magyar
+            // összetett szó elöl hordozza a lényeget, az angol hátul. A tejsavófehérje
+            // (koncentrátum) valódi laktózforrás, tehát ez nem elméleti rés.
             "milk", "cream", "yoghurt", "yogurt", "cheese", "butter", "curd", "kefir", "buttermilk",
-            "mascarpone", "ricotta", "feta", "mozzarella", "parmesan", "camembert", "cheddar", "brie",
-            "cottage", "custard", "creme fraiche", "quark", "ghee", "ice cream"
+            "whey", "mascarpone", "ricotta", "feta", "mozzarella", "parmesan", "camembert", "cheddar",
+            "brie", "cottage", "custard", "creme fraiche", "quark", "ghee", "ice cream"
         ),
         safeMarkersEn = listOf(
             "lactose-free", "lactose free", "lactosefree", "oat milk", "soy milk", "almond milk",

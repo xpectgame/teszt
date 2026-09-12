@@ -140,7 +140,7 @@ fun PaywallScreen(
     ) {
         TextButton(onClick = onClose, modifier = Modifier.padding(top = 4.dp)) {
             Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null)
-            Text("  Vissza")
+            Text("  " + stringResource(R.string.action_back_plain))
         }
 
         if (reason != null) {

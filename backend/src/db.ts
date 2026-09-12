@@ -34,7 +34,6 @@ export async function bindPurchase(env: Env, userId: string, purchaseHash: strin
 
 export interface SubscriptionRow {
   purchase_hash: string
-  purchase_token: string
   state: string
   expires_at: number | null
   verified_at: number
@@ -52,16 +51,15 @@ export async function writeSubscription(
   row: Omit<SubscriptionRow, 'verified_at'> & { linkedFrom?: string | null },
 ): Promise<void> {
   await env.DB.prepare(
-    `INSERT INTO subscriptions (purchase_hash, purchase_token, state, expires_at, verified_at, first_user_id, linked_from)
-     VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)
+    `INSERT INTO subscriptions (purchase_hash, state, expires_at, verified_at, first_user_id, linked_from)
+     VALUES (?1, ?2, ?3, ?4, ?5, ?6)
      ON CONFLICT(purchase_hash) DO UPDATE SET
-       state = ?3, expires_at = ?4, verified_at = ?5,
-       first_user_id = COALESCE(subscriptions.first_user_id, ?6),
-       linked_from = COALESCE(?7, subscriptions.linked_from)`,
+       state = ?2, expires_at = ?3, verified_at = ?4,
+       first_user_id = COALESCE(subscriptions.first_user_id, ?5),
+       linked_from = COALESCE(?6, subscriptions.linked_from)`,
   )
     .bind(
       row.purchase_hash,
-      row.purchase_token,
       row.state,
       row.expires_at,
       Date.now(),

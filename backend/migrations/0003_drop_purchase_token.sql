@@ -1,0 +1,15 @@
+-- A nyers Play vásárlási tokent eltávolítjuk.
+--
+-- A `db.ts` teteje azt írja, hogy a tokeneket sosem tároljuk nyersen, csak a hashüket;
+-- az adatkezelési tájékoztató is „egyirányú lenyomatot" ígér. A `subscriptions` tábla
+-- ehhez képest a nyers tokent is eltárolta.
+--
+-- Nem is kellett soha: a tábla csak ÍRTA ezt az oszlopot, de egyetlen kód sem olvasta
+-- vissza. Mindkét hely, ahol újraellenőrzés történik (a kliens hívása és a Play
+-- értesítése), magát a tokent kapja meg a kérésben.
+--
+-- A vásárlási token élő hitelesítő adat a Play API felé, tehát fölöslegesen tartani
+-- nem csak pontatlanság a tájékoztatóban, hanem valódi kockázat is.
+--
+-- A SQLite 3.35 óta ismeri az ALTER TABLE ... DROP COLUMN parancsot; a D1 ennél újabb.
+ALTER TABLE subscriptions DROP COLUMN purchase_token;

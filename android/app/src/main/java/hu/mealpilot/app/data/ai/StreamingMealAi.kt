@@ -36,8 +36,18 @@ import kotlin.coroutines.coroutineContext
  */
 abstract class StreamingMealAi(
     protected val strings: AppStrings,
-    protected val language: AppLanguage,
+    /**
+     * A nyelv FÜGGVÉNYKÉNT, nem értékként.
+     *
+     * A felhasználó menet közben is válthat nyelvet, és a tervezők hosszú életű
+     * példányok: egy befagyasztott érték a váltás után a régi nyelven tervezne.
+     * Értékként az lenne a másik megoldás, hogy minden híváshoz új példány készül —
+     * az viszont a modellklienst is újraépítené, kapcsolatkészlettel együtt.
+     */
+    private val languageProvider: () -> AppLanguage,
 ) : MealAi {
+
+    protected val language: AppLanguage get() = languageProvider()
 
     /** Melyik rendszerprompttal és mekkora kerettel dolgozik a hívás. */
     enum class AiTask(val maxOutputTokens: Long) {

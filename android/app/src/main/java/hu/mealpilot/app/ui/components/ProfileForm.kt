@@ -138,7 +138,7 @@ fun ProfileForm(
         )
         Spacer(Modifier.height(16.dp))
 
-        Text("Mennyit mozogsz?", style = MaterialTheme.typography.labelLarge)
+        Text(stringResource(R.string.profile_activity), style = MaterialTheme.typography.labelLarge)
         Spacer(Modifier.height(4.dp))
         Column {
             ActivityLevel.entries.forEach { level ->

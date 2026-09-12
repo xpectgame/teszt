@@ -27,9 +27,12 @@ import kotlin.math.roundToInt
  * így az app a tervezőszolgáltatás elérhetetlensége esetén sem marad használhatatlan.
  */
 class OfflineMealAi(
-    private val language: AppLanguage = AppLanguage.DEFAULT,
+    /** Lásd [StreamingMealAi]: a nyelv függvény, mert a felhasználó menet közben vált. */
+    private val languageProvider: () -> AppLanguage,
     private val strings: AppStrings,
 ) : MealAi {
+
+    private val language: AppLanguage get() = languageProvider()
 
     override val isConfigured: Boolean = true
 

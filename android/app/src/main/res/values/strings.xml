@@ -315,4 +315,7 @@
     <string name="offline_chat_needs_network">Chatting needs an internet connection.</string>
     <string name="offline_cannot_refine">This version can\'t rewrite days. Try again when you have an internet connection.</string>
     <string name="error_quota_exhausted">You\'ve used up this month\'s allowance.</string>
+    <string name="profile_activity">How much do you move?</string>
+    <string name="action_back_plain">Back</string>
+    <string name="achievement_unlocked">Unlocked</string>
 </resources>

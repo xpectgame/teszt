@@ -17,7 +17,7 @@ import kotlinx.coroutines.CancellationException
 class BackendMealAi(
     private val backend: BackendClient,
     strings: AppStrings,
-    language: AppLanguage,
+    language: () -> AppLanguage,
 ) : StreamingMealAi(strings, language) {
 
     override val isConfigured: Boolean get() = backend.isConfigured

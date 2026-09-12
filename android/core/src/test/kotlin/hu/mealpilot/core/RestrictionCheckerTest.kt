@@ -5,6 +5,7 @@ import hu.mealpilot.core.ai.AiIngredient
 import hu.mealpilot.core.ai.AiMeal
 import hu.mealpilot.core.ai.AiPlanResponse
 import hu.mealpilot.core.ai.RestrictionChecker
+import hu.mealpilot.core.i18n.AppLanguage
 import hu.mealpilot.core.model.DietRestriction
 import hu.mealpilot.core.model.DietStyle
 import hu.mealpilot.core.model.UserProfile
@@ -17,6 +18,10 @@ class RestrictionCheckerTest {
 
     private fun hits(name: String, vararg restrictions: DietRestriction) =
         RestrictionChecker.violations(name, restrictions.toSet()).map { it.restriction }
+
+    /** Angol hozzávalónév ellenőrzése — az angol terveké ugyanaz a felelősség. */
+    private fun en(name: String, vararg restrictions: DietRestriction) =
+        RestrictionChecker.violations(name, restrictions.toSet(), AppLanguage.EN).map { it.restriction }
 
     @Test
     fun `gluten is caught in hungarian compound words`() {
@@ -191,4 +196,54 @@ class RestrictionCheckerTest {
             )
         )
     )
+
+    // ---------- Angol ----------
+    //
+    // A magyar összetett szó elöl hordozza a lényeget („búzaliszt"), az angol hátul
+    // („wholewheat"). Ez két külön illesztési szabály, tehát két külön tesztsor is:
+    // a magyar zöldje semmit nem mond az angolról.
+
+    @Test
+    fun `gluten is caught in english compound words`() {
+        for (name in listOf("wholewheat bread", "breadcrumbs", "durum pasta", "rye flour", "barley malt")) {
+            assertEquals("$name should be flagged", listOf(DietRestriction.GLUTEN), en(name, DietRestriction.GLUTEN))
+        }
+    }
+
+    @Test
+    fun `english free-from products are not flagged`() {
+        for (name in listOf("gluten-free pasta", "gluten free bread", "buckwheat flour", "rice flour")) {
+            assertTrue("$name should be safe", en(name, DietRestriction.GLUTEN).isEmpty())
+        }
+    }
+
+    @Test
+    fun `soy is caught in every common english spelling`() {
+        for (name in listOf("soy sauce", "soya milk", "soybean oil", "tofu", "tempeh", "edamame beans", "tamari")) {
+            assertEquals("$name should be flagged", listOf(DietRestriction.SOY), en(name, DietRestriction.SOY))
+        }
+    }
+
+    @Test
+    fun `short english keywords do not swallow unrelated words`() {
+        // Ezek a valódi csapdák: a rövid kulcsszó beleolvad egy másik szóba. Egy téves
+        // találat itt nem kényelmetlenség — kiveszi az étrendből az ártatlan alapanyagot,
+        // és a felhasználó megtanulja, hogy a szűrőnek nem kell hinni.
+        assertTrue(en("eggplant", DietRestriction.EGG).isEmpty())
+        assertTrue(en("chamomile tea", DietRestriction.NO_PORK).isEmpty())
+        assertTrue(en("nutmeg", DietRestriction.TREE_NUT).isEmpty())
+        assertTrue(en("coconut milk", DietRestriction.TREE_NUT).isEmpty())
+        // …de a valódi találatot nem szabad elengedni:
+        assertEquals(listOf(DietRestriction.EGG), en("eggs", DietRestriction.EGG))
+        assertEquals(listOf(DietRestriction.EGG), en("egg white", DietRestriction.EGG))
+    }
+
+    @Test
+    fun `english dairy is caught where the head word is at the end`() {
+        for (name in listOf("buttermilk", "whole milk", "greek yoghurt", "cheddar cheese", "whey protein")) {
+            assertTrue("$name should be flagged", en(name, DietRestriction.LACTOSE).isNotEmpty())
+        }
+        assertTrue(en("oat milk", DietRestriction.LACTOSE).isEmpty())
+        assertTrue(en("lactose-free milk", DietRestriction.LACTOSE).isEmpty())
+    }
 }

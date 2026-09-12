@@ -173,6 +173,11 @@ fun TodayScreen(
     )
     val state by viewModel.state.collectAsState()
     val consumed = state.consumed
+    // A tervet EGYSZER olvassuk ki, és a lambdák ezt a helyi értéket látják.
+    // A LazyColumn építője azonnal fut, az `item { }` tartalma viszont csak később:
+    // ha közben a terv eltűnik (adattörlés, tervcsere), a lambdán belüli újraolvasás
+    // már nullát adna, és a lenti makrósor összeomlana rajta.
+    val plan = state.plan
     var replacing by remember { mutableStateOf<MealWithIngredients?>(null) }
     var addingExtra by remember { mutableStateOf(false) }
 
@@ -196,8 +201,8 @@ fun TodayScreen(
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.SemiBold,
                     )
-                    state.plan?.let {
-                        Text(it.title, style = MaterialTheme.typography.labelSmall)
+                    if (plan != null) {
+                        Text(plan.title, style = MaterialTheme.typography.labelSmall)
                     }
                 }
                 IconButton(onClick = { viewModel.shiftDay(1) }) {
@@ -206,7 +211,7 @@ fun TodayScreen(
             }
         }
 
-        if (state.plan == null) {
+        if (plan == null) {
             item {
                 EmptyState(
                     title = stringResource(R.string.today_no_plan_title),
@@ -226,13 +231,13 @@ fun TodayScreen(
                     )
                 }
                 Spacer(Modifier.height(16.dp))
-                MacroBar(stringResource(R.string.macro_protein), consumed.proteinG, state.plan!!.targetProteinG, Color(0xFF00897B))
+                MacroBar(stringResource(R.string.macro_protein), consumed.proteinG, plan.targetProteinG, Color(0xFF00897B))
                 Spacer(Modifier.height(8.dp))
-                MacroBar(stringResource(R.string.macro_carbs), consumed.carbsG, state.plan!!.targetCarbsG, Color(0xFF7CB342))
+                MacroBar(stringResource(R.string.macro_carbs), consumed.carbsG, plan.targetCarbsG, Color(0xFF7CB342))
                 Spacer(Modifier.height(8.dp))
-                MacroBar(stringResource(R.string.macro_fat), consumed.fatG, state.plan!!.targetFatG, Color(0xFFFB8C00))
+                MacroBar(stringResource(R.string.macro_fat), consumed.fatG, plan.targetFatG, Color(0xFFFB8C00))
                 Spacer(Modifier.height(8.dp))
-                MacroBar("Rost", consumed.fiberG, state.plan!!.targetFiberG, Color(0xFF8D6E63))
+                MacroBar(stringResource(R.string.macro_fiber), consumed.fiberG, plan.targetFiberG, Color(0xFF8D6E63))
             }
         }
 

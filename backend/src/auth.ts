@@ -114,7 +114,6 @@ export async function resolveCaller(env: Env, request: Request): Promise<Caller>
           expiresAt = verified.expiresAt
           await writeSubscription(env, {
             purchase_hash: purchaseHash,
-            purchase_token: purchaseToken,
             state: verified.state,
             expires_at: verified.expiresAt,
             first_user_id: userId,

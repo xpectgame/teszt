@@ -454,7 +454,6 @@ app.post('/v1/play/rtdn', async (c) => {
       const existing = await readSubscription(c.env, purchaseHash)
       await writeSubscription(c.env, {
         purchase_hash: purchaseHash,
-        purchase_token: purchaseToken,
         state: verified.state,
         expires_at: verified.expiresAt,
         first_user_id: existing?.first_user_id ?? null,

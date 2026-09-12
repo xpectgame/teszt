@@ -91,9 +91,14 @@ class PlanRepository(
             startWeekday = startDate.weekdayName(language),
         )
 
+        // A helyőrző cím és az alábbi összehasonlítás ugyanabból az értékből jön.
+        // Két külön literál a lokalizációval szétcsúszna, és a cím sosem cserélődne le
+        // az elkészült terv nevére.
+        val placeholderTitle = if (language == AppLanguage.EN) "Building your plan…" else "Étrend készül…"
+
         val planId = planDao.insert(
             PlanEntity(
-                title = "Étrend készül…",
+                title = placeholderTitle,
                 summary = "",
                 startEpochDay = startDate.toEpochDay(),
                 dayCount = days,
@@ -125,8 +130,11 @@ class PlanRepository(
                 planDao.byId(planId)?.let { current ->
                     planDao.update(
                         current.copy(
-                            title = current.title.takeIf { it != "Étrend készül…" }
-                                ?: chunk.planTitle.ifBlank { "Étrend – $startDate" },
+                            title = current.title.takeIf { it != placeholderTitle }
+                                ?: chunk.planTitle.ifBlank {
+                                    if (language == AppLanguage.EN) "Meal plan – $startDate"
+                                    else "Étrend – $startDate"
+                                },
                             summary = current.summary.ifBlank { chunk.summary },
                             coachNotesJson = encodeStrings(coachNotes.distinct().take(4)),
                             isActive = true,

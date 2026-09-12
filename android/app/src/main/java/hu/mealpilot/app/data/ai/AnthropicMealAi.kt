@@ -33,7 +33,7 @@ import kotlinx.coroutines.ensureActive
 class AnthropicMealAi(
     private val keyStore: SecureKeyStore,
     strings: AppStrings,
-    language: AppLanguage,
+    language: () -> AppLanguage,
     private val settingsProvider: suspend () -> AppSettings,
 ) : StreamingMealAi(strings, language) {
 

@@ -310,7 +310,7 @@ private fun AchievementRow(state: AchievementState) {
             if (state.unlocked) {
                 Icon(
                     Icons.Filled.CheckCircle,
-                    contentDescription = "Megvan",
+                    contentDescription = stringResource(R.string.achievement_unlocked),
                     tint = tierColor(state.achievement.tier),
                     modifier = Modifier.size(20.dp),
                 )

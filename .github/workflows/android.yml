@@ -68,6 +68,18 @@ jobs:
           fi
           echo "Rendben: cím nélkül a kiadási build megáll."
 
+      # A Room a fordításkor kiírja az adatbázis pontos sémáját. Ez nincs a repóban,
+      # pedig a következő verzió migrációját EHHEZ kell írni: enélkül csak tippelni
+      # lehetne, milyen táblák vannak a felhasználók telefonján. Amíg nincs bekötve a
+      # verziókezelésbe, legalább legyen letölthető minden futásból.
+      - name: Adatbázis-séma feltöltése
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: room-schemas
+          path: android/app/schemas
+          if-no-files-found: warn
+
       - name: APK feltöltése
         if: success()
         uses: actions/upload-artifact@v4
