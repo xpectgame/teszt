@@ -113,7 +113,7 @@ android {
     // Fejlesztéshez (debug) viszont ne akadályozzon semmit.
     gradle.taskGraph.whenReady {
         val releasing = allTasks.any { task ->
-            task.project == project && (task.name.endsWith("Release") || task.name.contains("Release"))
+            task.project == project && task.name.contains("Release")
         }
         if (releasing && siteUrlForCheck.isBlank()) {
             error(

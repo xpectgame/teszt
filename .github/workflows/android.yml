@@ -51,6 +51,23 @@ jobs:
           MEALPILOT_BUILD: "build ${{ github.run_number }}"
         run: ./gradlew :app:assembleDebug --stacktrace
 
+      # A védelem csak kiadáskor lép működésbe, tehát pont akkor derülne ki, hogy
+      # elromlott, amikor a legdrágább. A --dry-run felépíti a feladatgráfot, de nem
+      # futtat semmit, így ez másodpercekbe kerül.
+      - name: Kiadási build jogi cím nélkül nem mehet ki
+        run: |
+          if ./gradlew :app:assembleRelease --dry-run > guard.log 2>&1; then
+            echo "HIBA: a kiadási build cím nélkül is elindult."
+            cat guard.log
+            exit 1
+          fi
+          if ! grep -q "jogi oldalak címe" guard.log; then
+            echo "HIBA: a build elszállt, de nem a várt okból."
+            cat guard.log
+            exit 1
+          fi
+          echo "Rendben: cím nélkül a kiadási build megáll."
+
       - name: APK feltöltése
         if: success()
         uses: actions/upload-artifact@v4
