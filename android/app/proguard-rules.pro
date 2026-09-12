@@ -16,7 +16,13 @@
 -dontwarn org.openjsse.**
 
 # kotlinx.serialization: a generált serializer-eket meg kell tartani.
+#
+# A `$$serializer` osztályokat a fordító generálja, és NÉV SZERINT keresi meg őket a
+# futásidő. Ha az R8 kidobja vagy átnevezi őket, az étrend JSON-je csak a KIADÁSI
+# buildben nem áll össze — debugban minden működik, tehát a hiba pont a boltba
+# feltöltött csomagban jelenne meg először.
 -keepattributes RuntimeVisibleAnnotations, AnnotationDefault
+-keep,includedescriptorclasses class hu.mealpilot.**$$serializer { *; }
 -keepclassmembers class hu.mealpilot.** {
     *** Companion;
 }

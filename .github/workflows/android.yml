@@ -68,6 +68,16 @@ jobs:
           fi
           echo "Rendben: cím nélkül a kiadási build megáll."
 
+      # A kiadási build eddig SEHOL nem futott le. Pedig csak ott fut az R8: a
+      # kódzsugorítás reflexióval elért osztályokat tud kidobni, tehát a szerializáció
+      # vagy a Room a boltba feltöltött csomagban romlana el először, debugban soha.
+      # Aláíró kulcs nélkül aláíratlan APK készül — a Play nem fogadná el, de az R8
+      # ugyanúgy végigfut rajta, és ez itt a lényeg.
+      - name: Kiadási build (R8 próba)
+        env:
+          MEALPILOT_BACKEND_URL: https://ci.example.invalid
+        run: ./gradlew :app:assembleRelease --stacktrace
+
       # A Room a fordításkor kiírja az adatbázis pontos sémáját. Ez nincs a repóban,
       # pedig a következő verzió migrációját EHHEZ kell írni: enélkül csak tippelni
       # lehetne, milyen táblák vannak a felhasználók telefonján. Amíg nincs bekötve a
