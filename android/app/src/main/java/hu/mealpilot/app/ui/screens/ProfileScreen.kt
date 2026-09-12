@@ -23,7 +23,7 @@ import androidx.compose.material.icons.filled.EmojiEvents
 import androidx.compose.material.icons.filled.LocalFireDepartment
 import androidx.compose.material.icons.filled.MonitorWeight
 import androidx.compose.material.icons.filled.Restaurant
-import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.filled.ShoppingCart
 import androidx.compose.material.icons.filled.TrackChanges
 import androidx.compose.material.icons.filled.TrendingDown
@@ -31,8 +31,9 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Card
 import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Surface
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
@@ -59,7 +60,8 @@ import hu.mealpilot.app.R
 import hu.mealpilot.app.data.telemetry.TelemetryEvent
 import hu.mealpilot.app.data.local.WeightLogEntity
 import hu.mealpilot.app.ui.components.SectionCard
-import hu.mealpilot.app.ui.components.StatChip
+import hu.mealpilot.app.ui.components.NumberText
+import hu.mealpilot.app.ui.components.PlatePill
 import hu.mealpilot.app.ui.components.WarningNote
 import hu.mealpilot.app.ui.containerFactory
 import hu.mealpilot.core.achievements.AchievementState
@@ -138,7 +140,9 @@ fun ProfileScreen(
     var bodyFatText by remember { mutableStateOf("") }
 
     LazyColumn(
-        contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp),
+        contentPadding = androidx.compose.foundation.layout.PaddingValues(
+            start = 18.dp, end = 18.dp, top = 12.dp, bottom = 24.dp,
+        ),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         item {
@@ -149,14 +153,24 @@ fun ProfileScreen(
             ) {
                 Text(
                     stringResource(R.string.tab_profile),
-                    style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.Bold,
+                    style = MaterialTheme.typography.headlineLarge,
                 )
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedButton(onClick = onOpenSettings) {
-                        Icon(Icons.Filled.Settings, contentDescription = null, modifier = Modifier.size(18.dp))
-                        Spacer(Modifier.size(6.dp))
-                        Text(stringResource(R.string.settings_title))
+                // Kerek fogaskerék-gomb a feliratos gomb helyett: a beállítás ritkán
+                // kell, és a felirat elvette a helyet a képernyő címétől.
+                Surface(
+                    onClick = onOpenSettings,
+                    shape = CircleShape,
+                    color = MaterialTheme.colorScheme.surface,
+                    shadowElevation = 2.dp,
+                    modifier = Modifier.size(44.dp),
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(
+                            Icons.Outlined.Settings,
+                            contentDescription = stringResource(R.string.settings_title),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(19.dp),
+                        )
                     }
                 }
             }
@@ -165,14 +179,32 @@ fun ProfileScreen(
         state.budget?.let { budget ->
             item {
                 SectionCard(title = stringResource(R.string.budget_card_title)) {
-                    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        StatChip(stringResource(R.string.budget_bmr), "${budget.bmr}")
-                        StatChip(stringResource(R.string.budget_tdee), "${budget.tdee}")
-                        StatChip(stringResource(R.string.budget_target), "${budget.target.kcal}")
-                        StatChip(stringResource(R.string.budget_deficit), "${budget.appliedDeficit}")
+                    // A négy szám jelvényként: a StatChip alatta címkével kétsoros volt,
+                    // és négy ilyen doboz kitöltötte a fél képernyőt. A jelvény egysoros,
+                    // a címke a számba került.
+                    FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        PlatePill(stringResource(R.string.budget_bmr_pill, budget.bmr))
+                        PlatePill(
+                            stringResource(R.string.budget_tdee_pill, budget.tdee),
+                            container = MaterialTheme.colorScheme.secondaryContainer,
+                            content = MaterialTheme.colorScheme.onSecondaryContainer,
+                        )
+                        PlatePill(
+                            stringResource(R.string.budget_target_pill, budget.target.kcal),
+                            container = MaterialTheme.colorScheme.secondaryContainer,
+                            content = MaterialTheme.colorScheme.onSecondaryContainer,
+                        )
+                        PlatePill(
+                            stringResource(R.string.budget_deficit_pill, budget.appliedDeficit),
+                            container = MaterialTheme.colorScheme.secondaryContainer,
+                            content = MaterialTheme.colorScheme.onSecondaryContainer,
+                        )
                     }
                     Spacer(Modifier.height(12.dp))
-                    Text(
+                    NumberText(
                         stringResource(
                             R.string.budget_macros_fiber,
                             budget.target.proteinG,
@@ -181,19 +213,22 @@ fun ProfileScreen(
                             budget.target.fiberG,
                         ),
                         style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
-                    Text(
+                    NumberText(
                         stringResource(R.string.budget_rate, "%.2f".format(budget.expectedRateKgPerWeek)),
                         style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                     EnergyCalculator.daysToTarget(state.profile, budget)?.let { days ->
-                        Text(
+                        NumberText(
                             stringResource(
                                 R.string.budget_days_to_target,
                                 days,
                                 LocalDate.now().plusDays(days.toLong()).toString(),
                             ),
                             style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
                     budget.warnings.forEach { warning ->

@@ -40,7 +40,7 @@ import hu.mealpilot.app.i18n.LocalAppLanguage
 import hu.mealpilot.app.data.telemetry.TelemetryEvent
 import hu.mealpilot.app.ui.components.ProfileForm
 import hu.mealpilot.app.ui.components.SectionCard
-import hu.mealpilot.app.ui.components.StatChip
+import hu.mealpilot.app.ui.components.PlatePill
 import hu.mealpilot.app.ui.components.WarningNote
 import hu.mealpilot.app.ui.containerFactory
 import hu.mealpilot.core.energy.EnergyCalculator
@@ -106,10 +106,21 @@ fun OnboardingScreen(
 
         Spacer(Modifier.height(20.dp))
         SectionCard(title = stringResource(R.string.budget_title)) {
-            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                StatChip(stringResource(R.string.budget_bmr), "${budget.bmr}")
-                StatChip(stringResource(R.string.budget_tdee), "${budget.tdee}")
-                StatChip(stringResource(R.string.budget_target), "${budget.target.kcal}")
+            FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                PlatePill(stringResource(R.string.budget_bmr_pill, budget.bmr))
+                PlatePill(
+                    stringResource(R.string.budget_tdee_pill, budget.tdee),
+                    container = MaterialTheme.colorScheme.secondaryContainer,
+                    content = MaterialTheme.colorScheme.onSecondaryContainer,
+                )
+                PlatePill(
+                    stringResource(R.string.budget_target_pill, budget.target.kcal),
+                    container = MaterialTheme.colorScheme.secondaryContainer,
+                    content = MaterialTheme.colorScheme.onSecondaryContainer,
+                )
             }
             Spacer(Modifier.height(12.dp))
             Text(

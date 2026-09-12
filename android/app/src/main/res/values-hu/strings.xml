@@ -77,7 +77,6 @@
     <string name="plan_free_text_hint">pl. laktózérzékeny vagyok, nem eszem halat, hétköznap max 20 perc főzés, olcsó alapanyagok</string>
     <string name="plan_generator_note">Egy hét összeállítása fél-egy perc. A terv a megadott adataid és kéréseid alapján készül, tájékoztató jellegű, nem orvosi tanács.</string>
     <string name="plan_generate">Generálás</string>
-    <string name="today_slot_replaced">%1$s · helyette</string>
     <string name="profile_name">Neved (opcionális)</string>
     <string name="profile_sex">Biológiai nem</string>
     <string name="profile_sex_male">Férfi</string>
@@ -189,10 +188,6 @@
     <string name="onboarding_start">Kezdjük</string>
     <string name="budget_title">Ez lesz a napi kereted</string>
     <string name="budget_card_title">Kalóriakeret</string>
-    <string name="budget_bmr">alapanyagcsere</string>
-    <string name="budget_tdee">napi felhasználás</string>
-    <string name="budget_target">napi cél</string>
-    <string name="budget_deficit">deficit</string>
     <string name="budget_macros">Fehérje %1$d g · Szénhidrát %2$d g · Zsír %3$d g</string>
     <string name="budget_macros_fiber">Fehérje %1$d g · Szénhidrát %2$d g · Zsír %3$d g · Rost %4$d g</string>
     <string name="budget_rate">Várható ütem: %1$s kg/hét</string>
@@ -337,4 +332,8 @@
     <string name="chat_needs_approval">Jóváhagyást kér</string>
     <string name="meal_kcal_value">%1$d kcal</string>
     <string name="meal_servings_value">%1$d adag</string>
+    <string name="budget_bmr_pill">alap %1$d</string>
+    <string name="budget_tdee_pill">napi %1$d</string>
+    <string name="budget_target_pill">cél %1$d</string>
+    <string name="budget_deficit_pill">deficit %1$d</string>
 </resources>

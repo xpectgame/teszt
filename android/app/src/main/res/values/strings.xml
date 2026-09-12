@@ -79,7 +79,6 @@
     <string name="plan_free_text_hint">e.g. I\'m lactose intolerant, I don\'t eat fish, max 20 minutes cooking on weekdays, cheap ingredients</string>
     <string name="plan_generator_note">A week takes half a minute to a minute. The plan is built from the data and requests you gave; it is for information only, not medical advice.</string>
     <string name="plan_generate">Generate</string>
-    <string name="today_slot_replaced">%1$s · instead</string>
     <string name="profile_name">Your name (optional)</string>
     <string name="profile_sex">Biological sex</string>
     <string name="profile_sex_male">Male</string>
@@ -191,10 +190,6 @@
     <string name="onboarding_start">Let\'s begin</string>
     <string name="budget_title">This will be your daily budget</string>
     <string name="budget_card_title">Calorie budget</string>
-    <string name="budget_bmr">basal rate</string>
-    <string name="budget_tdee">daily burn</string>
-    <string name="budget_target">daily target</string>
-    <string name="budget_deficit">deficit</string>
     <string name="budget_macros">Protein %1$d g · Carbs %2$d g · Fat %3$d g</string>
     <string name="budget_macros_fiber">Protein %1$d g · Carbs %2$d g · Fat %3$d g · Fibre %4$d g</string>
     <string name="budget_rate">Expected rate: %1$s kg/week</string>
@@ -339,4 +334,8 @@
     <string name="chat_needs_approval">Needs your approval</string>
     <string name="meal_kcal_value">%1$d kcal</string>
     <string name="meal_servings_value">%1$d servings</string>
+    <string name="budget_bmr_pill">base %1$d</string>
+    <string name="budget_tdee_pill">daily %1$d</string>
+    <string name="budget_target_pill">target %1$d</string>
+    <string name="budget_deficit_pill">deficit %1$d</string>
 </resources>
