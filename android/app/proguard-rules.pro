@@ -8,6 +8,19 @@
 -dontwarn com.fasterxml.jackson.databind.**
 -dontwarn com.anthropic.**
 
+# Az Anthropic SDK behúzza a victools jsonschema-generatort (ez rajzolja meg a
+# strukturált kimenet / eszközhasználat sémáit). Az a könyvtár olyan reflexiós
+# típusokra hivatkozik, amik CSAK a rendes JVM-en léteznek, Androidon nincsenek meg:
+# java.lang.reflect.AnnotatedType és társai. Az R8 a hiányzó osztályokat hibának
+# veszi, és megáll — emiatt a kiadási build egyáltalán nem fordult le, miközben a
+# debug (ahol nincs R8) végig működött.
+#
+# Az appot ez nem érinti: nem használunk strukturált kimenetet, csak sima szöveges
+# üzeneteket, tehát ezek a kódutak sosem futnak.
+-dontwarn com.github.victools.**
+-dontwarn java.lang.reflect.AnnotatedType
+-dontwarn java.lang.reflect.AnnotatedParameterizedType
+
 # OkHttp / Okio
 -dontwarn okhttp3.**
 -dontwarn okio.**
