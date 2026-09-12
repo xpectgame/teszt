@@ -9,7 +9,9 @@ import hu.mealpilot.core.achievements.Achievement
 import hu.mealpilot.core.achievements.AchievementEngine
 import hu.mealpilot.core.achievements.AchievementState
 import hu.mealpilot.core.achievements.AchievementStats
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.withContext
 import java.time.LocalDate
 import kotlin.math.abs
 
@@ -26,7 +28,19 @@ class StatsRepository(
 
     fun observeUnlocked(): Flow<List<AchievementEntity>> = achievementDao.observeAll()
 
-    suspend fun computeStats(targetKcal: Int, targetProteinG: Int): AchievementStats {
+    /**
+     * Az összes napló átnézése — ezért fut háttérszálon.
+     *
+     * A hívások a felületről jönnek (`viewModelScope`), ami a FŐ szálon folytatódik a
+     * lekérdezés után. A Room maga háttérre teszi az olvasást, a csoportosítás, a
+     * rendezés és a sorozatszámolás viszont a folytatás szálán futna — vagyis a
+     * felületen. Ez a munka a napló hosszával nő: fél év után minden bevásárlólista-
+     * pipa több ezer soron menne végig, a felhasználó szeme előtt.
+     */
+    suspend fun computeStats(
+        targetKcal: Int,
+        targetProteinG: Int,
+    ): AchievementStats = withContext(Dispatchers.Default) {
         val mealLogs = tracking.allMealLogs()
         val weights = tracking.allWeights()
 
@@ -53,7 +67,7 @@ class StatsRepository(
         val latestWeight = weights.maxByOrNull { it.epochDay }?.weightKg
         val kgLost = if (startWeight != null && latestWeight != null) startWeight - latestWeight else 0.0
 
-        return AchievementStats(
+        AchievementStats(
             daysLogged = loggedDays.size,
             currentLogStreak = currentStreak(loggedDays),
             longestLogStreak = longestStreak(loggedDays),

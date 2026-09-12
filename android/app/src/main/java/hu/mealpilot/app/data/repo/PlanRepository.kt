@@ -21,7 +21,9 @@ import hu.mealpilot.core.ai.PlanRequest
 import hu.mealpilot.core.energy.EnergyBudget
 import hu.mealpilot.core.model.UserProfile
 import hu.mealpilot.core.shopping.ShoppingListBuilder
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.builtins.serializer
 import java.time.LocalDate
@@ -254,7 +256,11 @@ class PlanRepository(
      * Újraépíti egy időszak bevásárlólistáját a hozzávalókból.
      * A már kipipált tételeket megőrizzük, hogy egy nap újratervezése ne nullázza a boltban a listát.
      */
-    suspend fun rebuildShoppingList(planId: Long, fromEpochDay: Long, toEpochDay: Long) {
+    suspend fun rebuildShoppingList(
+        planId: Long,
+        fromEpochDay: Long,
+        toEpochDay: Long,
+    ) = withContext(Dispatchers.Default) {
         val meals = mealDao.mealsInRange(planId, fromEpochDay, toEpochDay)
         val previouslyChecked = shoppingDao.checkedNames(planId, fromEpochDay, toEpochDay).toSet()
 
