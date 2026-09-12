@@ -8,8 +8,12 @@ kalória- és makrócélt, összeállít egy étrendet, bevásárlólistát ír 
 |---|---|
 | [`android/`](android/) | az alkalmazás — Kotlin, Jetpack Compose, Room ([README](android/README.md)) |
 | [`backend/`](backend/) | a kiszolgáló — Cloudflare Workers + D1 ([README](backend/README.md)) |
-| [`mealpilot/`](mealpilot/) | a nyilvános oldalak: adatkezelés, feltételek, támogatás, adattörlés |
+| [`mealpilot/`](mealpilot/) | a nyilvános oldalak: adatkezelés, feltételek, támogatás, adattörlés (magyarul a gyökérben, angolul az [`en/`](mealpilot/en/) alatt) |
 | [`docs/`](docs/) | [kiadási checklista](docs/LAUNCH-CHECKLIST.md), [monetizáció](docs/MONETIZATION.md), [domain](docs/DOMAIN.md), [designer brief](docs/DESIGN-BRIEF.md) |
+
+Az app **magyarul és angolul** is megy: az első indításkor kérdez, később a
+Beállításokban váltható. A nyelv nem csak a felületet állítja át — az étrend, a
+fogásnevek, a hozzávalók és a bevásárlólista is a választott nyelven készül.
 
 A legfrissebb, telefonra telepíthető APK a
 [Actions](../../actions) legutóbbi zöld futásának *Artifacts* szekciójában van.

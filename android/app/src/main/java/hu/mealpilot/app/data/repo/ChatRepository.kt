@@ -1,11 +1,9 @@
 package hu.mealpilot.app.data.repo
 
-import java.util.Locale
 import hu.mealpilot.core.i18n.label
 import hu.mealpilot.core.i18n.AppLanguage
 import hu.mealpilot.app.R
-import android.content.res.Configuration
-import android.content.Context
+import hu.mealpilot.app.i18n.AppStrings
 import hu.mealpilot.app.data.local.ChatDao
 import hu.mealpilot.app.data.local.ChatMessageEntity
 import hu.mealpilot.app.data.local.LogStatus
@@ -33,25 +31,16 @@ import kotlin.math.roundToInt
  * gyűjtjük össze, tömör szöveggé, hogy ne kelljen minden körben nyers adatot küldeni.
  */
 class ChatRepository(
-    private val context: Context,
+    /**
+     * A beszélgetésbe mentett szövegek a felhasználó választott nyelvén kerülnek az
+     * előzménybe — nem a telefon rendszernyelvén. Lásd [AppStrings].
+     */
+    private val strings: AppStrings,
     private val chatDao: ChatDao,
     private val planRepository: PlanRepository,
     private val tracking: TrackingRepository,
     private val settings: SettingsRepository,
 ) {
-
-    /**
-     * A felhasználónak szóló szövegek a felület nyelvén.
-     *
-     * Az alkalmazáskontextus a rendszer nyelvét hordozza, nem a felhasználó választását,
-     * ezért a nyelvet külön ráhúzzuk — enélkül egy magyar rendszernyelvű telefonon az
-     * angolra kapcsolt app magyarul mentené a hibaüzeneteket az előzménybe.
-     */
-    private fun string(resId: Int, language: AppLanguage): String {
-        val config = Configuration(context.resources.configuration)
-        config.setLocale(Locale.forLanguageTag(language.tag))
-        return context.createConfigurationContext(config).getString(resId)
-    }
 
     fun observeMessages(): Flow<List<ChatMessageEntity>> = chatDao.observeAll()
 
@@ -70,7 +59,7 @@ class ChatRepository(
         language: AppLanguage = AppLanguage.DEFAULT,
     ): Result<AiChatResponse> {
         val trimmed = text.trim()
-        if (trimmed.isEmpty()) return Result.failure(IllegalArgumentException(string(R.string.chat_empty_message, language)))
+        if (trimmed.isEmpty()) return Result.failure(IllegalArgumentException(strings[R.string.chat_empty_message]))
 
         // A korábbi ajánlatok elévülnek, amint új kérés jön.
         chatDao.clearAllPending()
@@ -94,7 +83,7 @@ class ChatRepository(
             chatDao.insert(
                 ChatMessageEntity(
                     role = ChatTurn.Role.ASSISTANT.name,
-                    body = error.message ?: string(R.string.chat_no_answer, language),
+                    body = error.message ?: strings[R.string.chat_no_answer],
                     sentAtMillis = System.currentTimeMillis(),
                 )
             )
@@ -106,9 +95,9 @@ class ChatRepository(
         chatDao.insert(
             ChatMessageEntity(
                 role = ChatTurn.Role.ASSISTANT.name,
-                body = value.reply.ifBlank { string(R.string.chat_ok, language) },
+                body = value.reply.ifBlank { strings[R.string.chat_ok] },
                 sentAtMillis = System.currentTimeMillis(),
-                actionLabel = if (hasAction) action.confirmLabel.ifBlank { string(R.string.chat_do_it, language) } else "",
+                actionLabel = if (hasAction) action.confirmLabel.ifBlank { strings[R.string.chat_do_it] } else "",
                 actionJson = if (hasAction) PlanParser.json.encodeToString(action) else "",
                 pendingAction = hasAction,
             )

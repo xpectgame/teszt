@@ -1,6 +1,6 @@
 # MealPilot — design brief
 
-Android app, magyar nyelvű. A kód működik, a felület viszont fejlesztői minőségű.
+Android app, magyar és angol nyelven. A kód működik, a felület viszont fejlesztői minőségű.
 Ez a brief azt írja le, mit kell megtervezni és milyen keretek között.
 
 ---
@@ -163,9 +163,13 @@ Ezek nem javaslatok, hanem kötöttségek.
 - Jelenleg dinamikus szín van bekapcsolva (a telefon háttérképéből veszi a palettát).
   **Javasoljuk kikapcsolni** egy saját paletta javára — de ez a te döntésed, indokold meg.
 - **Referencia szélesség 360 dp.** Ezen a szélességen kell működnie, nem 390-en.
+- **Két nyelv, magyar és angol.** Az első indításnál a felhasználó választ, később a
+  Beállításokban vált. A nyelvválasztó képernyő szándékosan kétnyelvű — ott még nem
+  tudjuk, melyiket érti.
 - **Magyar szövegek**: hosszabbak az angolnál, és az összetett szavak nem törnek szépen.
   Pl. „Enyhén aktív (napi séta, álló munka)", „FODMAP-érzékenység",
-  „Túrós-zabpelyhes tál áfonyával". Tervezz hosszú címkékre.
+  „Túrós-zabpelyhes tál áfonyával". **A magyar hosszára tervezz**, az angol utána
+  mindig belefér — fordítva nem.
 - **Dinamikus betűméret**: a felhasználó felnagyíthatja a rendszerbetűt. 200%-nál is
   működnie kell — ne legyen fix magasságú sor, amibe nem fér bele a szöveg.
 - **Érintési célpont min. 48 dp.**

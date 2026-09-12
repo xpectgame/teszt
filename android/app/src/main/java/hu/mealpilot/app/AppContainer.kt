@@ -76,7 +76,7 @@ class AppContainer(context: Context) {
 
     val chatRepository: ChatRepository by lazy {
         ChatRepository(
-            context = appContext,
+            strings = strings,
             chatDao = database.chatDao(),
             planRepository = planRepository,
             tracking = trackingRepository,

@@ -25,6 +25,8 @@ Amit a kód már tud, és amit neked kell elintézned ahhoz, hogy eladható legy
 | **Összeomlás-jelentés** | saját, külső szolgáltató nélkül: fájlba ír, a következő indításkor küld |
 | **Használati statisztika** | napi összesített darabszámok, a Beállításokban kikapcsolható |
 | **Tulajdonosi build** | a te saját telefonodon kvóta és vásárlás nélkül jár a teljes csomag |
+| **Két nyelv** | magyar és angol — az első indításkor választható, később a Beállításokban |
+| **Visszaesés** | ha a tervező elakad, a beépített receptbank fejezi be a tervet |
 
 ### A backendben (`backend/`)
 
@@ -42,6 +44,8 @@ Amit a kód már tud, és amit neked kell elintézned ahhoz, hogy eladható legy
 | Összeomlások | a `crashes` tábla, ujjlenyomat szerint csoportosíthatóan |
 | Statisztika | az `events` tábla, napi bontásban |
 | Tulajdonosi kulcs | `OWNER_KEY` titok — aki küldi, kvóta nélkül dolgozik |
+| Kétnyelvű prompt | a kérésben küldött nyelv szerint magyar vagy angol rendszerprompt |
+| Jogi oldalak | magyarul a gyökérben, angolul az `/en/` alatt |
 
 **Termékazonosító a kódban:** `mealpilot_premium_monthly`
 (`app/src/main/java/hu/mealpilot/app/billing/BillingGateway.kt`)
@@ -199,17 +203,25 @@ A jogosultság megadása után a Play oldalán **akár 24 óra**, amíg élesedi
 - [ ] Funkciógrafika 1024×500
 - [ ] Legalább 2, legfeljebb 8 telefonos képernyőkép
 - [ ] Kategória: Egészség és fitnesz
-- [ ] Nyelv: magyar (elsődleges)
+- [ ] Nyelv: **magyar és angol**. Az app mindkettőt tudja (első indításkor kérdez,
+      később a Beállításokban váltható), tehát a bolti szöveget is érdemes mindkét
+      nyelven megadni — enélkül az angol felületű felhasználók nem találják meg.
+- [ ] Képernyőképek: legalább a magyar nyelvűek. Ha van rá időd, az angol listához
+      angol nyelvű képek valók — a Play nem fordítja le a képeket.
 
 ### 4.5 Kötelező nyilatkozatok
 - [ ] **Adatvédelmi tájékoztató URL:** `https://<worker>/privacy`
+      (angolul: `https://<worker>/en/privacy`)
 - [ ] **Adattörlési URL:** `https://<worker>/delete-data`
+      (angolul: `https://<worker>/en/delete-data`)
 - [ ] **Támogatási webhely:** `https://<worker>/support`
+      (angolul: `https://<worker>/en/support`)
 
       Ezeket a backend szolgálja ki, tehát a deploy után azonnal élnek — nem kell hozzá
       se weboldal, se domain. Az app magától ezt a címet használja, ha a
-      `MEALPILOT_BACKEND_URL` be van állítva. Részletek és a domainváltás:
-      [`DOMAIN.md`](DOMAIN.md).
+      `MEALPILOT_BACKEND_URL` be van állítva, és a felhasználó nyelve szerint a magyar
+      vagy az angol változatra mutat. A Play-en nyelvenként külön adható meg az URL.
+      Részletek és a domainváltás: [`DOMAIN.md`](DOMAIN.md).
 - [ ] **Adatbiztonság (Data safety) űrlap.** A jelenlegi működés szerinti válaszok:
   - Gyűjtünk adatot? **Igen** — „Egészség és fitnesz" (testadatok, étkezés)
   - Megosztjuk harmadik féllel? **Igen** — a tervezőszolgáltatóval (Anthropic), a
