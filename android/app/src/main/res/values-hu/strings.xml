@@ -107,10 +107,7 @@
     <string name="macro_fiber">Rost</string>
     <string name="macro_sodium">Nátrium</string>
     <string name="meal_gone">Ez az étkezés már nem érhető el.</string>
-    <string name="meal_calories">kalória</string>
-    <string name="meal_prep">elkészítés</string>
     <string name="meal_minutes">%1$d p</string>
-    <string name="meal_servings">adag</string>
     <string name="meal_nutrition">Részletes tápérték</string>
     <string name="meal_of_which_sugar">ebből cukor</string>
     <string name="meal_of_which_saturated">ebből telített</string>
@@ -337,4 +334,7 @@
     <string name="plan_chip_days">%1$d nap</string>
     <string name="plan_chip_protein">F %1$d g</string>
     <string name="plan_days_title">A terv napjai</string>
+    <string name="chat_needs_approval">Jóváhagyást kér</string>
+    <string name="meal_kcal_value">%1$d kcal</string>
+    <string name="meal_servings_value">%1$d adag</string>
 </resources>

@@ -68,8 +68,10 @@ import hu.mealpilot.app.work.GenerationCoordinator
 import hu.mealpilot.app.data.ai.QuotaExceededException
 import hu.mealpilot.app.data.repo.ReportKind
 import hu.mealpilot.app.data.telemetry.TelemetryEvent
+import hu.mealpilot.app.ui.components.GroupLabel
 import hu.mealpilot.app.ui.components.ReportDialog
 import hu.mealpilot.app.ui.containerFactory
+import hu.mealpilot.app.ui.theme.PlateShape
 import hu.mealpilot.core.ai.AiChatAction
 import hu.mealpilot.core.ai.ChatActionType
 import hu.mealpilot.core.ai.ChatTurn
@@ -356,8 +358,7 @@ fun ChatScreen(
                         Spacer(Modifier.height(10.dp))
                         Text(
                             stringResource(R.string.chat_header),
-                            style = MaterialTheme.typography.headlineSmall,
-                            fontWeight = FontWeight.Bold,
+                            style = MaterialTheme.typography.headlineMedium,
                         )
                         Spacer(Modifier.height(6.dp))
                         Text(
@@ -505,21 +506,24 @@ private fun MessageBubble(
                 )
                 .clip(
                     RoundedCornerShape(
-                        topStart = 18.dp,
-                        topEnd = 18.dp,
-                        bottomStart = if (fromUser) 18.dp else 4.dp,
-                        bottomEnd = if (fromUser) 4.dp else 18.dp,
+                        topStart = 22.dp,
+                        topEnd = 22.dp,
+                        bottomStart = if (fromUser) 22.dp else 7.dp,
+                        bottomEnd = if (fromUser) 7.dp else 22.dp,
                     )
                 )
+                // A gépi válasz fehér lapon ül, a sajátunk zöldön. A korábbi krém
+                // háttér a krém alapon szinte nem is látszott: a válasz elolvadt
+                // a képernyőben.
                 .background(
                     if (fromUser) MaterialTheme.colorScheme.primary
-                    else MaterialTheme.colorScheme.surfaceVariant
+                    else MaterialTheme.colorScheme.surface
                 )
-                .padding(horizontal = 14.dp, vertical = 10.dp),
+                .padding(horizontal = 16.dp, vertical = 13.dp),
         ) {
             Text(
                 message.body,
-                style = MaterialTheme.typography.bodyMedium,
+                style = MaterialTheme.typography.bodyLarge,
                 color = if (fromUser) MaterialTheme.colorScheme.onPrimary
                 else MaterialTheme.colorScheme.onSurface,
             )
@@ -529,15 +533,37 @@ private fun MessageBubble(
             visible = message.pendingAction,
             enter = fadeIn() + slideInVertically { it / 2 },
         ) {
-            Column(Modifier.padding(top = 8.dp)) {
+            // A jóváhagyáskérés nem egy buborék alá írt mondat: saját agyagszínű
+            // lapot kap, mert ez az egyetlen pont, ahol a beszélgetés VÁR valamire.
+            Column(
+                Modifier
+                    .padding(top = 10.dp)
+                    .widthIn(max = 300.dp)
+                    .clip(PlateShape.hero)
+                    .background(MaterialTheme.colorScheme.secondaryContainer)
+                    .padding(17.dp),
+            ) {
+                GroupLabel(
+                    stringResource(R.string.chat_needs_approval),
+                    MaterialTheme.colorScheme.onSecondaryContainer,
+                )
+                Spacer(Modifier.height(9.dp))
                 Text(
                     message.actionLabel,
-                    style = MaterialTheme.typography.labelLarge,
+                    style = MaterialTheme.typography.bodyLarge,
                     fontWeight = FontWeight.SemiBold,
                 )
-                Spacer(Modifier.height(6.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Button(onClick = onConfirm, enabled = enabled) {
+                Spacer(Modifier.height(13.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(9.dp)) {
+                    Button(
+                        onClick = onConfirm,
+                        enabled = enabled,
+                        shape = PlateShape.innerButton,
+                        colors = androidx.compose.material3.ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.secondary,
+                            contentColor = MaterialTheme.colorScheme.onSecondary,
+                        ),
+                    ) {
                         Icon(Icons.Filled.Check, contentDescription = null, modifier = Modifier.size(18.dp))
                         Spacer(Modifier.size(6.dp))
                         Text(stringResource(R.string.chat_do_it))

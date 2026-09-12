@@ -8,6 +8,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
@@ -24,6 +26,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -40,10 +43,15 @@ import hu.mealpilot.app.data.local.MealWithIngredients
 import hu.mealpilot.app.data.repo.PlanRepository
 import hu.mealpilot.app.data.repo.ReportKind
 import hu.mealpilot.app.ui.components.BackButton
+import hu.mealpilot.app.ui.components.GroupLabel
+import hu.mealpilot.app.ui.components.MealStamp
+import hu.mealpilot.app.ui.components.PlatePill
 import hu.mealpilot.app.ui.components.ReportDialog
 import hu.mealpilot.app.ui.components.SectionCard
-import hu.mealpilot.app.ui.components.StatChip
 import hu.mealpilot.app.ui.containerFactory
+import hu.mealpilot.app.ui.theme.LocalDarkTheme
+import hu.mealpilot.app.ui.theme.MealColors
+import hu.mealpilot.app.ui.theme.MealLabelStyle
 import hu.mealpilot.core.ai.Aisle
 import hu.mealpilot.core.ai.Units
 import hu.mealpilot.core.i18n.label
@@ -103,21 +111,45 @@ fun MealDetailScreen(
         val meal = data.meal
         val n = meal.nutrients
 
-        Text(
-            MealSlot.fromRaw(meal.slot).label(language) + " · " + meal.timeText,
-            style = MaterialTheme.typography.labelMedium,
-        )
-        Text(meal.name, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+        // Ugyanaz a bélyeg, mint a Ma képernyőn, csak nagyobb: a megnyitott étkezés
+        // így felismerhetően AZ, amire az előző képernyőn koppintott.
+        val slot = MealSlot.fromRaw(meal.slot)
+        val accent = MealColors.of(slot.ordinal, LocalDarkTheme.current)
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            MealStamp(color = accent, done = false, modifier = Modifier.size(66.dp))
+            Spacer(Modifier.width(15.dp))
+            Column(Modifier.weight(1f)) {
+                Text(
+                    (slot.label(language) + " · " + meal.timeText).uppercase(),
+                    style = MealLabelStyle,
+                    color = accent,
+                )
+                Spacer(Modifier.height(5.dp))
+                Text(meal.name, style = MaterialTheme.typography.headlineSmall)
+            }
+        }
         if (meal.description.isNotBlank()) {
-            Spacer(Modifier.height(8.dp))
-            Text(meal.description, style = MaterialTheme.typography.bodyMedium)
+            Spacer(Modifier.height(12.dp))
+            Text(
+                meal.description,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         }
 
-        Spacer(Modifier.height(16.dp))
+        Spacer(Modifier.height(14.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            StatChip(stringResource(R.string.meal_calories), "${n.kcal.roundToInt()}")
-            StatChip(stringResource(R.string.meal_prep), stringResource(R.string.meal_minutes, meal.prepMinutes))
-            StatChip(stringResource(R.string.meal_servings), "${meal.servings}")
+            PlatePill(stringResource(R.string.meal_kcal_value, n.kcal.roundToInt()))
+            PlatePill(
+                stringResource(R.string.meal_minutes, meal.prepMinutes),
+                container = MaterialTheme.colorScheme.secondaryContainer,
+                content = MaterialTheme.colorScheme.onSecondaryContainer,
+            )
+            PlatePill(
+                stringResource(R.string.meal_servings_value, meal.servings),
+                container = MaterialTheme.colorScheme.secondaryContainer,
+                content = MaterialTheme.colorScheme.onSecondaryContainer,
+            )
         }
 
         Spacer(Modifier.height(16.dp))
@@ -139,10 +171,10 @@ fun MealDetailScreen(
         Spacer(Modifier.height(12.dp))
         SectionCard(title = stringResource(R.string.meal_ingredients)) {
             data.ingredients.groupBy { Aisle.fromRaw(it.aisle) }.forEach { (aisle, items) ->
-                Text(
+                GroupLabel(
                     aisle.label(language),
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.primary,
+                    MealColors.of(aisle.ordinal, LocalDarkTheme.current),
+                    Modifier.padding(top = 6.dp, bottom = 2.dp),
                 )
                 items.forEach { ing ->
                     val quantity = if (ing.quantity % 1.0 == 0.0) ing.quantity.toInt().toString()

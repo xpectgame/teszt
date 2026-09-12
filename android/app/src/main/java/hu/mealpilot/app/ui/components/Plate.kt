@@ -38,7 +38,6 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import hu.mealpilot.app.ui.theme.MealLabelStyle
@@ -282,23 +281,6 @@ fun PlatePill(
     }
 }
 
-/** Krém hátterű, halvány keretes doboz — ott, ahol kártya kell, de nem hangsúlyos. */
-@Composable
-fun QuietBox(
-    modifier: Modifier = Modifier,
-    content: @Composable androidx.compose.foundation.layout.ColumnScope.() -> Unit,
-) {
-    Column(
-        modifier
-            .fillMaxWidth()
-            .clip(PlateShape.card)
-            .background(MaterialTheme.colorScheme.surfaceVariant)
-            .border(1.dp, MaterialTheme.colorScheme.outlineVariant, PlateShape.card)
-            .padding(16.dp),
-        content = content,
-    )
-}
-
 /**
  * Figyelmeztető sor. Eddig egy „⚠" karakter állt a szöveg előtt — az a rendszer
  * betűkészletétől függően hol emoji, hol szimbólum, hol semmi, és a képernyőolvasó
@@ -434,12 +416,3 @@ fun GroupLabel(text: String, color: Color, modifier: Modifier = Modifier) {
         )
     }
 }
-
-@Composable
-fun CenteredNote(text: String, modifier: Modifier = Modifier) = Text(
-    text = text,
-    modifier = modifier.fillMaxWidth(),
-    style = MaterialTheme.typography.bodyMedium,
-    color = MaterialTheme.colorScheme.onSurfaceVariant,
-    textAlign = TextAlign.Center,
-)

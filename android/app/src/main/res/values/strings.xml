@@ -109,10 +109,7 @@
     <string name="macro_fiber">Fibre</string>
     <string name="macro_sodium">Sodium</string>
     <string name="meal_gone">This meal is no longer available.</string>
-    <string name="meal_calories">calories</string>
-    <string name="meal_prep">prep</string>
     <string name="meal_minutes">%1$d min</string>
-    <string name="meal_servings">servings</string>
     <string name="meal_nutrition">Full nutrition</string>
     <string name="meal_of_which_sugar">of which sugar</string>
     <string name="meal_of_which_saturated">of which saturated</string>
@@ -339,4 +336,7 @@
     <string name="plan_chip_days">%1$d days</string>
     <string name="plan_chip_protein">P %1$d g</string>
     <string name="plan_days_title">The days</string>
+    <string name="chat_needs_approval">Needs your approval</string>
+    <string name="meal_kcal_value">%1$d kcal</string>
+    <string name="meal_servings_value">%1$d servings</string>
 </resources>
