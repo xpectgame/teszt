@@ -53,6 +53,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -60,6 +61,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import hu.mealpilot.app.AppContainer
+import hu.mealpilot.app.R
 import hu.mealpilot.app.data.local.ChatMessageEntity
 import hu.mealpilot.app.notify.ReminderRefreshWorker
 import hu.mealpilot.app.work.GenerationCoordinator
@@ -73,6 +75,7 @@ import hu.mealpilot.core.ai.ChatActionType
 import hu.mealpilot.core.ai.ChatTurn
 import hu.mealpilot.core.ai.GenerationProgress
 import hu.mealpilot.core.ai.MealSlot
+import hu.mealpilot.core.i18n.label
 import hu.mealpilot.core.ai.PlanParser
 import hu.mealpilot.core.billing.PaidFeature
 import hu.mealpilot.core.energy.EnergyCalculator
@@ -113,7 +116,7 @@ class ChatViewModel(private val container: AppContainer) : ViewModel() {
             }
             _busy.value = ChatBusy.Thinking
             container.telemetry.record(TelemetryEvent.CHAT_MESSAGE)
-            val result = container.chatRepository.send(container.mealAi(), text)
+            val result = container.chatRepository.send(container.mealAi(), text, container.language)
             if (result.isSuccess) container.entitlements.recordChatMessage()
             // A helyi számláló megelőzi ezt, de a végső szó a szerveré: ha ő utasít el
             // kvóta miatt, akkor is az előfizetést ajánljuk fel, ne hibaüzenetet.
@@ -161,10 +164,11 @@ class ChatViewModel(private val container: AppContainer) : ViewModel() {
         onProgress: (GenerationProgress) -> Unit = {},
     ): String {
         val profile = container.settings.currentProfile()
-        val budget = EnergyCalculator.budget(profile)
+        val budget = EnergyCalculator.budget(profile, container.language)
+        fun text(resId: Int, vararg args: Any) = container.appContext.getString(resId, *args)
 
         return when (action.actionType) {
-            ChatActionType.NONE -> "Nincs teendő."
+            ChatActionType.NONE -> text(R.string.chat_nothing_to_do)
 
             ChatActionType.CREATE_PLAN, ChatActionType.REGENERATE_PLAN -> {
                 val existing = container.planRepository.activePlan()
@@ -190,14 +194,14 @@ class ChatViewModel(private val container: AppContainer) : ViewModel() {
                     onProgress = onProgress,
                 ).getOrThrow()
                 ReminderRefreshWorker.refreshNow(container.appContext)
-                "Kész: ${outcome.daysSaved} nap."
+                text(R.string.chat_done_days, outcome.daysSaved)
             }
 
             ChatActionType.REGENERATE_DAYS -> {
                 val plan = container.planRepository.activePlan()
-                    ?: return "Nincs aktív terv, amit át lehetne írni."
+                    ?: return text(R.string.chat_no_plan_to_rewrite)
                 val indexes = action.dayIndexes.filter { it in 0 until plan.dayCount }.distinct()
-                if (indexes.isEmpty()) return "Nem találtam, melyik napról van szó."
+                if (indexes.isEmpty()) return text(R.string.chat_which_day)
                 var done = 0
                 indexes.forEach { index ->
                     container.planRepository.refineDay(
@@ -210,7 +214,7 @@ class ChatViewModel(private val container: AppContainer) : ViewModel() {
                     ).onSuccess { done++ }
                 }
                 ReminderRefreshWorker.refreshNow(container.appContext)
-                "$done nap átírva."
+                text(R.string.chat_days_rewritten, done)
             }
 
             ChatActionType.SET_MEAL_TIMES -> {
@@ -220,7 +224,7 @@ class ChatViewModel(private val container: AppContainer) : ViewModel() {
                         ?: return@mapNotNull null
                     slot to time
                 }
-                if (parsed.isEmpty()) return "Nem értettem, melyik étkezést mikorra tegyem."
+                if (parsed.isEmpty()) return text(R.string.chat_which_meal_time)
 
                 // A profil alapértelmezése is frissül, hogy a jövőbeli tervek is ezt használják.
                 val slots = MealSlot.forMealsPerDay(profile.mealsPerDay)
@@ -240,58 +244,61 @@ class ChatViewModel(private val container: AppContainer) : ViewModel() {
                     dayIndexes = action.dayIndexes,
                 )
                 ReminderRefreshWorker.refreshNow(container.appContext)
-                val what = parsed.joinToString(", ") { (slot, time) -> "${slot.hu} $time" }
-                if (changed > 0) "Átállítva: $what. $changed étkezés időpontja és emlékeztetője frissült."
-                else "Átállítva: $what. A következő tervnél már ez lesz az alapértelmezés."
+                val what = parsed.joinToString(", ") { (slot, time) -> "${slot.label(container.language)} $time" }
+                if (changed > 0) text(R.string.chat_times_set, what, changed)
+                else text(R.string.chat_times_set_default, what)
             }
 
             ChatActionType.SWAP_DAYS -> {
                 val plan = container.planRepository.activePlan()
-                    ?: return "Nincs aktív terv, amiben cserélni lehetne."
+                    ?: return text(R.string.chat_no_plan_to_swap)
                 val indexes = action.dayIndexes.distinct().filter { it in 0 until plan.dayCount }
-                if (indexes.size != 2) return "Két napot kell megadni a cseréhez."
+                if (indexes.size != 2) return text(R.string.chat_need_two_days)
                 val swapped = container.planRepository.swapDays(plan.id, indexes[0], indexes[1])
                 ReminderRefreshWorker.refreshNow(container.appContext)
-                if (swapped) "A két nap felcserélve." else "Ezeken a napokon nincs mit cserélni."
+                if (swapped) text(R.string.chat_days_swapped) else text(R.string.chat_nothing_to_swap)
             }
 
             ChatActionType.ADD_RESTRICTIONS -> {
                 val added = action.restrictions.mapNotNull(DietRestriction::byName).toSet()
-                if (added.isEmpty()) return "Nem ismertem fel a kizárást."
+                if (added.isEmpty()) return text(R.string.chat_unknown_restriction)
                 container.settings.saveProfile(
                     profile.copy(restrictions = profile.restrictions + added)
                 )
-                "Hozzáadva: ${added.joinToString { it.hu }}. A következő tervnél már érvényes."
+                text(
+                    R.string.chat_restrictions_added,
+                    added.joinToString { it.label(container.language) },
+                )
             }
 
             ChatActionType.SET_PREFERENCES -> {
                 container.settings.saveProfile(profile.copy(preferences = action.preferences.trim()))
-                "A preferenciáid frissültek."
+                text(R.string.chat_preferences_updated)
             }
 
             ChatActionType.ADJUST_RATE -> {
                 val rate = action.rateKgPerWeek.coerceIn(0.1, 1.0)
                 container.settings.saveProfile(profile.copy(targetRateKgPerWeek = rate))
-                val updated = EnergyCalculator.budget(profile.copy(targetRateKgPerWeek = rate))
-                "Új ütem: ${"%.2f".format(rate)} kg/hét, napi ${updated.target.kcal} kcal."
+                val updated = EnergyCalculator.budget(profile.copy(targetRateKgPerWeek = rate), container.language)
+                text(R.string.chat_rate_set, "%.2f".format(rate), updated.target.kcal)
             }
 
             ChatActionType.LOG_WEIGHT -> {
                 val kg = action.weightKg
-                if (kg !in 35.0..300.0) return "Ez a súly nem tűnik valósnak."
+                if (kg !in 35.0..300.0) return text(R.string.chat_weight_unrealistic)
                 container.trackingRepository.logWeight(LocalDate.now(), kg, null)
                 container.settings.updateWeight(kg, null)
-                "Rögzítve: ${"%.1f".format(kg)} kg."
+                text(R.string.weight_logged, "%.1f".format(kg))
             }
         }
     }
 }
 
 private val STARTERS = listOf(
-    "Írd át az egész hetet olcsóbbra",
-    "Holnap nem érek rá főzni",
-    "Mennyi fehérje kell nekem?",
-    "Túl gyorsan fogyok",
+    R.string.chat_starter_cheaper,
+    R.string.chat_starter_no_time,
+    R.string.chat_starter_protein,
+    R.string.chat_starter_too_fast,
 )
 
 @OptIn(ExperimentalLayoutApi::class, ExperimentalFoundationApi::class)
@@ -346,21 +353,19 @@ fun ChatScreen(
                         )
                         Spacer(Modifier.height(10.dp))
                         Text(
-                            "Beszéljük meg",
+                            stringResource(R.string.chat_header),
                             style = MaterialTheme.typography.headlineSmall,
                             fontWeight = FontWeight.Bold,
                         )
                         Spacer(Modifier.height(6.dp))
                         Text(
-                            "Kérdezz bármit az étrendedről, a céljaidról vagy a haladásodról. " +
-                                "Ha változtatni szeretnél, elég elmondani — megkérdezem, mielőtt bármit átírok.",
+                            stringResource(R.string.chat_intro),
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                         Spacer(Modifier.height(10.dp))
                         Text(
-                            "A válaszokat gép írja, és tévedhet. Ha valami félrement, nyomj rá " +
-                                "hosszan az üzenetre, és jelentsd.",
+                            stringResource(R.string.chat_disclaimer),
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
@@ -369,7 +374,8 @@ fun ChatScreen(
                             horizontalArrangement = Arrangement.spacedBy(8.dp),
                             verticalArrangement = Arrangement.spacedBy(8.dp),
                         ) {
-                            STARTERS.forEach { starter ->
+                            STARTERS.forEach { starterRes ->
+                                val starter = stringResource(starterRes)
                                 SuggestionChip(
                                     onClick = { viewModel.send(starter) },
                                     label = { Text(starter) },
@@ -410,7 +416,7 @@ fun ChatScreen(
                                 modifier = Modifier.padding(start = 26.dp),
                             )
                             Text(
-                                "Nyugodtan zárd be az appot — a háttérben tovább dolgozom.",
+                                stringResource(R.string.chat_background_hint),
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 modifier = Modifier.padding(start = 26.dp, top = 2.dp),
@@ -441,7 +447,7 @@ fun ChatScreen(
                 OutlinedTextField(
                     value = draft,
                     onValueChange = { draft = it },
-                    placeholder = { Text("Írj egy üzenetet…") },
+                    placeholder = { Text(stringResource(R.string.chat_placeholder)) },
                     modifier = Modifier.weight(1f),
                     maxLines = 5,
                     shape = RoundedCornerShape(24.dp),
@@ -454,7 +460,7 @@ fun ChatScreen(
                     enabled = draft.isNotBlank() && !locked,
                     modifier = Modifier.size(52.dp),
                 ) {
-                    Icon(Icons.AutoMirrored.Filled.Send, contentDescription = "Küldés")
+                    Icon(Icons.AutoMirrored.Filled.Send, contentDescription = stringResource(R.string.chat_send))
                 }
             }
         }
@@ -532,12 +538,12 @@ private fun MessageBubble(
                     Button(onClick = onConfirm, enabled = enabled) {
                         Icon(Icons.Filled.Check, contentDescription = null, modifier = Modifier.size(18.dp))
                         Spacer(Modifier.size(6.dp))
-                        Text("Csináld")
+                        Text(stringResource(R.string.chat_do_it))
                     }
                     TextButton(onClick = onDismiss, enabled = enabled) {
                         Icon(Icons.Filled.Close, contentDescription = null, modifier = Modifier.size(18.dp))
                         Spacer(Modifier.size(6.dp))
-                        Text("Mégse")
+                        Text(stringResource(R.string.action_cancel))
                     }
                 }
             }

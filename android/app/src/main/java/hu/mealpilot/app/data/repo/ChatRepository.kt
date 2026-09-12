@@ -1,5 +1,11 @@
 package hu.mealpilot.app.data.repo
 
+import java.util.Locale
+import hu.mealpilot.core.i18n.label
+import hu.mealpilot.core.i18n.AppLanguage
+import hu.mealpilot.app.R
+import android.content.res.Configuration
+import android.content.Context
 import hu.mealpilot.app.data.local.ChatDao
 import hu.mealpilot.app.data.local.ChatMessageEntity
 import hu.mealpilot.app.data.local.LogStatus
@@ -27,11 +33,25 @@ import kotlin.math.roundToInt
  * gyűjtjük össze, tömör szöveggé, hogy ne kelljen minden körben nyers adatot küldeni.
  */
 class ChatRepository(
+    private val context: Context,
     private val chatDao: ChatDao,
     private val planRepository: PlanRepository,
     private val tracking: TrackingRepository,
     private val settings: SettingsRepository,
 ) {
+
+    /**
+     * A felhasználónak szóló szövegek a felület nyelvén.
+     *
+     * Az alkalmazáskontextus a rendszer nyelvét hordozza, nem a felhasználó választását,
+     * ezért a nyelvet külön ráhúzzuk — enélkül egy magyar rendszernyelvű telefonon az
+     * angolra kapcsolt app magyarul mentené a hibaüzeneteket az előzménybe.
+     */
+    private fun string(resId: Int, language: AppLanguage): String {
+        val config = Configuration(context.resources.configuration)
+        config.setLocale(Locale.forLanguageTag(language.tag))
+        return context.createConfigurationContext(config).getString(resId)
+    }
 
     fun observeMessages(): Flow<List<ChatMessageEntity>> = chatDao.observeAll()
 
@@ -44,9 +64,13 @@ class ChatRepository(
      * azt a felület kérdezi meg a felhasználótól, hogy egy félreértett mondat ne írjon át
      * csendben egy egész hónapot.
      */
-    suspend fun send(ai: MealAi, text: String): Result<AiChatResponse> {
+    suspend fun send(
+        ai: MealAi,
+        text: String,
+        language: AppLanguage = AppLanguage.DEFAULT,
+    ): Result<AiChatResponse> {
         val trimmed = text.trim()
-        if (trimmed.isEmpty()) return Result.failure(IllegalArgumentException("Üres üzenet."))
+        if (trimmed.isEmpty()) return Result.failure(IllegalArgumentException(string(R.string.chat_empty_message, language)))
 
         // A korábbi ajánlatok elévülnek, amint új kérés jön.
         chatDao.clearAllPending()
@@ -65,12 +89,12 @@ class ChatRepository(
             )
         }
 
-        val response = ai.chat(buildContext(), history, trimmed)
+        val response = ai.chat(buildContext(language), history, trimmed)
         val value = response.getOrElse { error ->
             chatDao.insert(
                 ChatMessageEntity(
                     role = ChatTurn.Role.ASSISTANT.name,
-                    body = error.message ?: "Nem sikerült válaszolni.",
+                    body = error.message ?: string(R.string.chat_no_answer, language),
                     sentAtMillis = System.currentTimeMillis(),
                 )
             )
@@ -82,9 +106,9 @@ class ChatRepository(
         chatDao.insert(
             ChatMessageEntity(
                 role = ChatTurn.Role.ASSISTANT.name,
-                body = value.reply.ifBlank { "Rendben." },
+                body = value.reply.ifBlank { string(R.string.chat_ok, language) },
                 sentAtMillis = System.currentTimeMillis(),
-                actionLabel = if (hasAction) action.confirmLabel.ifBlank { "Végrehajtás" } else "",
+                actionLabel = if (hasAction) action.confirmLabel.ifBlank { string(R.string.chat_do_it, language) } else "",
                 actionJson = if (hasAction) PlanParser.json.encodeToString(action) else "",
                 pendingAction = hasAction,
             )
@@ -92,40 +116,74 @@ class ChatRepository(
         return Result.success(value)
     }
 
-    suspend fun buildContext(): ChatContext {
+    /**
+     * A beszélgetés kontextusa.
+     *
+     * Ez a szöveg a promptba megy, nem a felületre — ezért NEM erőforrásból jön, hanem
+     * a terv nyelvén épül fel. Egy magyar kontextus angol beszélgetésben nem hiba
+     * lenne, hanem félrevezetés: a modell abból a nyelvből következtet arra, milyen
+     * nyelven válaszoljon és milyen fogásokat ajánljon.
+     */
+    suspend fun buildContext(language: AppLanguage = AppLanguage.DEFAULT): ChatContext {
         val profile = settings.currentProfile()
-        val budget = EnergyCalculator.budget(profile)
+        val budget = EnergyCalculator.budget(profile, language)
         val today = LocalDate.now()
         val plan = planRepository.activePlan()
+        val english = language == AppLanguage.EN
+        fun s(hungarian: String, englishText: String) = if (english) englishText else hungarian
 
         val profileSummary = buildString {
-            append(if (profile.sex == Sex.MALE) "Férfi" else "Nő")
-            append(", ${profile.ageYears} év, ${profile.heightCm.roundToInt()} cm, ")
+            append(
+                if (profile.sex == Sex.MALE) s("Férfi", "Male") else s("Nő", "Female")
+            )
+            append(s(", ${profile.ageYears} év, ", ", ${profile.ageYears} years old, "))
+            append("${profile.heightCm.roundToInt()} cm, ")
             append("${"%.1f".format(profile.weightKg)} kg")
-            profile.targetWeightKg?.let { append(", célsúly ${"%.1f".format(it)} kg") }
-            append(". Étrendi stílus: ${profile.dietStyle.hu}.")
+            profile.targetWeightKg?.let {
+                append(s(", célsúly ${"%.1f".format(it)} kg", ", target weight ${"%.1f".format(it)} kg"))
+            }
+            append(s(". Étrendi stílus: ", ". Diet style: ") + "${profile.dietStyle.label(language)}.")
             if (profile.preferences.isNotBlank()) {
-                append(" Állandó preferenciák: ${profile.preferences.trim()}")
+                append(s(" Állandó preferenciák: ", " Standing preferences: ") + profile.preferences.trim())
             }
         }
 
-        val targetSummary = "Napi cél: ${budget.target.kcal} kcal, ${budget.target.proteinG} g fehérje, " +
-            "${budget.target.carbsG} g szénhidrát, ${budget.target.fatG} g zsír. " +
-            "Alapanyagcsere ${budget.bmr} kcal, napi felhasználás ${budget.tdee} kcal, " +
-            "deficit ${budget.appliedDeficit} kcal/nap (${"%.2f".format(budget.expectedRateKgPerWeek)} kg/hét)."
+        val targetSummary = if (english) {
+            "Daily target: ${budget.target.kcal} kcal, ${budget.target.proteinG} g protein, " +
+                "${budget.target.carbsG} g carbs, ${budget.target.fatG} g fat. " +
+                "BMR ${budget.bmr} kcal, daily burn ${budget.tdee} kcal, " +
+                "deficit ${budget.appliedDeficit} kcal/day (${"%.2f".format(budget.expectedRateKgPerWeek)} kg/week)."
+        } else {
+            "Napi cél: ${budget.target.kcal} kcal, ${budget.target.proteinG} g fehérje, " +
+                "${budget.target.carbsG} g szénhidrát, ${budget.target.fatG} g zsír. " +
+                "Alapanyagcsere ${budget.bmr} kcal, napi felhasználás ${budget.tdee} kcal, " +
+                "deficit ${budget.appliedDeficit} kcal/nap (${"%.2f".format(budget.expectedRateKgPerWeek)} kg/hét)."
+        }
 
         val planSummary = if (plan == null) {
-            "Nincs aktív terv."
+            s("Nincs aktív terv.", "No active plan.")
         } else {
             val start = LocalDate.ofEpochDay(plan.startEpochDay)
             val dayIndex = (today.toEpochDay() - plan.startEpochDay).toInt()
             buildString {
-                append("\"${plan.title}\", ${plan.dayCount} napos, kezdete $start. ")
+                append("\"${plan.title}\", ")
+                append(
+                    s(
+                        "${plan.dayCount} napos, kezdete $start. ",
+                        "${plan.dayCount} days, starting $start. ",
+                    )
+                )
                 if (dayIndex in 0 until plan.dayCount) {
-                    append("A mai nap a terv ${dayIndex + 1}. napja, tehát day_index = $dayIndex. ")
-                    append("A holnapi day_index = ${dayIndex + 1}.")
+                    append(
+                        s(
+                            "A mai nap a terv ${dayIndex + 1}. napja, tehát day_index = $dayIndex. " +
+                                "A holnapi day_index = ${dayIndex + 1}.",
+                            "Today is day ${dayIndex + 1} of the plan, so day_index = $dayIndex. " +
+                                "Tomorrow's day_index = ${dayIndex + 1}.",
+                        )
+                    )
                 } else {
-                    append("A mai nap kívül esik a terven.")
+                    append(s("A mai nap kívül esik a terven.", "Today falls outside the plan."))
                 }
             }
         }
@@ -139,9 +197,15 @@ class ChatRepository(
         val consumed = Nutrients.sum(eaten.map { it.nutrients.toNutrients() })
 
         val todaySummary = buildString {
-            append("Eddig ${consumed.kcal.roundToInt()} kcal és ${consumed.proteinG.roundToInt()} g fehérje ")
-            append("${eaten.size} naplózott étkezésből.")
-            if (eaten.isEmpty()) append(" Ma még nem naplózott semmit.")
+            if (english) {
+                append("${consumed.kcal.roundToInt()} kcal and ${consumed.proteinG.roundToInt()} g protein ")
+                append("so far, from ${eaten.size} logged meals.")
+                if (eaten.isEmpty()) append(" Nothing logged today yet.")
+            } else {
+                append("Eddig ${consumed.kcal.roundToInt()} kcal és ${consumed.proteinG.roundToInt()} g fehérje ")
+                append("${eaten.size} naplózott étkezésből.")
+                if (eaten.isEmpty()) append(" Ma még nem naplózott semmit.")
+            }
         }
 
         val weights = tracking.allWeights().sortedBy { it.epochDay }
@@ -152,9 +216,15 @@ class ChatRepository(
             val last = weights.last()
             val change = last.weightKg - first.weightKg
             val days = last.epochDay - first.epochDay
-            val direction = if (change < 0) "fogyás" else "hízás"
-            "$days nap alatt ${"%.1f".format(abs(change))} kg $direction " +
-                "(${"%.1f".format(first.weightKg)} → ${"%.1f".format(last.weightKg)} kg)."
+            if (english) {
+                val direction = if (change < 0) "lost" else "gained"
+                "${"%.1f".format(abs(change))} kg $direction over $days days " +
+                    "(${"%.1f".format(first.weightKg)} → ${"%.1f".format(last.weightKg)} kg)."
+            } else {
+                val direction = if (change < 0) "fogyás" else "hízás"
+                "$days nap alatt ${"%.1f".format(abs(change))} kg $direction " +
+                    "(${"%.1f".format(first.weightKg)} → ${"%.1f".format(last.weightKg)} kg)."
+            }
         }
 
         return ChatContext(
