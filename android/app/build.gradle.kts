@@ -157,6 +157,16 @@ android {
         buildConfig = true
     }
 
+    lint {
+        // A lint alapból csak az ELSŐ hibát írja a konzolra, a teljes riportot egy
+        // build-könyvtárbeli fájlba. A CI naplójában emiatt minden körben csak egy
+        // hiba látszik, vagyis háromszor kellene végigfuttatni a buildet ahhoz, hogy
+        // három hibáról tudjunk. A "stdout" a lint saját varázsszava: a teljes
+        // szöveges riport a kimenetre kerül.
+        textReport = true
+        textOutput = file("stdout")
+    }
+
     packaging {
         resources.excludes += setOf(
             "META-INF/{AL2.0,LGPL2.1}",

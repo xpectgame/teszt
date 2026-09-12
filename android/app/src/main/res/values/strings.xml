@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">MealPilot</string>
+    <!-- A márkanév nem fordul le, ezért nincs values-hu párja. A jelölés nélkül a lint hiányzó fordításnak látná. -->
+    <string name="app_name" translatable="false">MealPilot</string>
     <string name="channel_meals_name">Meal reminders</string>
     <string name="channel_meals_desc">Tells you when a planned meal is due.</string>
     <string name="channel_summary_name">Daily summary</string>

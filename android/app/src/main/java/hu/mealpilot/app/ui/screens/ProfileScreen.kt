@@ -118,7 +118,7 @@ class ProfileViewModel(private val container: AppContainer) : ViewModel() {
         // A profil súlya követi a mérést, különben a kalóriakeret elavulna.
         container.settings.updateWeight(weightKg, bodyFat)
         refreshAchievements()
-        onDone(container.appContext.getString(R.string.profile_weight_logged, weightKg))
+        onDone(container.appContext.getString(R.string.profile_weight_logged, "%.1f".format(weightKg)))
     }
 }
 
