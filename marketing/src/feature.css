@@ -1,6 +1,6 @@
 .banner {
   width: 1024px; height: 500px; position: relative; overflow: hidden;
-  background: radial-gradient(130% 120% at 12% 18%, #2E6B3E 0%, #1B4A2A 45%, #10281A 100%);
+  background: radial-gradient(130% 120% at 12% 18%, #2F7D5E 0%, #24604A 45%, #17352A 100%);
   display: flex; align-items: center;
 }
 /* Halvány „tányérgyűrűk" — a kalóriagyűrűt idézik, de nem mondanak számot. */
@@ -26,7 +26,7 @@ p { margin-top: 22px; font-size: 25px; line-height: 1.45; color: rgba(251,253,24
 .kartya:last-child { margin-bottom: 0; }
 .kartya + .kartya { transform: translateX(26px); }
 .cimke { font-size: 13px; font-weight: 700; letter-spacing: .9px; text-transform: uppercase; color: var(--zold); }
-.sor { height: 11px; border-radius: 6px; background: #DDE5DA; margin-top: 11px; }
+.sor { height: 11px; border-radius: 6px; background: #E2F1E9; margin-top: 11px; }
 .sor.w80 { width: 80%; } .sor.w60 { width: 60%; } .sor.w70 { width: 70%; }
 .pipa { display: flex; align-items: center; gap: 10px; margin-top: 11px; }
 .pipa i { width: 17px; height: 17px; border-radius: 5px; background: var(--zold); flex: none; }

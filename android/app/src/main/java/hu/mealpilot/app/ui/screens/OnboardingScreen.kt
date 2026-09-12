@@ -41,6 +41,7 @@ import hu.mealpilot.app.data.telemetry.TelemetryEvent
 import hu.mealpilot.app.ui.components.ProfileForm
 import hu.mealpilot.app.ui.components.SectionCard
 import hu.mealpilot.app.ui.components.StatChip
+import hu.mealpilot.app.ui.components.WarningNote
 import hu.mealpilot.app.ui.containerFactory
 import hu.mealpilot.core.energy.EnergyCalculator
 import hu.mealpilot.core.model.UserProfile
@@ -126,11 +127,7 @@ fun OnboardingScreen(
             )
             budget.warnings.forEach { warning ->
                 Spacer(Modifier.height(8.dp))
-                Text(
-                    "⚠ $warning",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.error,
-                )
+                WarningNote(warning)
             }
         }
 

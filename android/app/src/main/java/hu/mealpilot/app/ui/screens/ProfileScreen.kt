@@ -60,6 +60,7 @@ import hu.mealpilot.app.data.telemetry.TelemetryEvent
 import hu.mealpilot.app.data.local.WeightLogEntity
 import hu.mealpilot.app.ui.components.SectionCard
 import hu.mealpilot.app.ui.components.StatChip
+import hu.mealpilot.app.ui.components.WarningNote
 import hu.mealpilot.app.ui.containerFactory
 import hu.mealpilot.core.achievements.AchievementState
 import hu.mealpilot.core.achievements.AchievementTier
@@ -197,11 +198,7 @@ fun ProfileScreen(
                     }
                     budget.warnings.forEach { warning ->
                         Spacer(Modifier.height(8.dp))
-                        Text(
-                            "⚠ $warning",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.error,
-                        )
+                        WarningNote(warning)
                     }
                 }
             }

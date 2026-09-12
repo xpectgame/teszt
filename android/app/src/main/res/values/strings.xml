@@ -106,7 +106,7 @@
     <string name="restrictions_note">Whatever you tick will never appear in your plan — not as an ingredient and not as a seasoning. The finished plan is checked for it too.</string>
     <string name="restrictions_implied">The “%1$s” style rules these out automatically: %2$s.</string>
     <string name="restrictions_total">%1$d exclusions active in total.</string>
-    <string name="action_back">← Back</string>
+    <string name="action_back">Back</string>
     <string name="macro_fiber">Fibre</string>
     <string name="macro_sodium">Sodium</string>
     <string name="meal_gone">This meal is no longer available.</string>
@@ -189,7 +189,7 @@
     <string name="settings_disclaimer">Meal plans are put together by an automated planner from the data you gave. The app is for information only, not medical advice — with an illness, in pregnancy, while breastfeeding, with an eating disorder or on regular medication, talk it through with a doctor first.</string>
     <string name="legal_terms_short">Terms</string>
     <string name="legal_privacy_short">Privacy</string>
-    <string name="onboarding_welcome">Welcome! 👋</string>
+    <string name="onboarding_welcome">Welcome!</string>
     <string name="onboarding_intro">A few details, so your meal plan is really about you. They stay on your phone.</string>
     <string name="onboarding_consent">I accept the terms of use and the privacy notice.</string>
     <string name="onboarding_start">Let\'s begin</string>
@@ -316,7 +316,6 @@
     <string name="offline_cannot_refine">This version can\'t rewrite days. Try again when you have an internet connection.</string>
     <string name="error_quota_exhausted">You\'ve used up this month\'s allowance.</string>
     <string name="profile_activity">How much do you move?</string>
-    <string name="action_back_plain">Back</string>
     <string name="achievement_unlocked">Unlocked</string>
     <!-- „Ma" képernyő — a Tányér dizájn hős doboza és étkezéslapkái -->
     <string name="today_greeting">Hi, %1$s!</string>

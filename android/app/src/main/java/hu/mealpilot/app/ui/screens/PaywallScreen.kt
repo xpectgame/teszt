@@ -43,6 +43,7 @@ import hu.mealpilot.app.i18n.LocalAppLanguage
 import hu.mealpilot.app.AppContainer
 import hu.mealpilot.core.i18n.AppLanguage
 import hu.mealpilot.app.R
+import hu.mealpilot.app.ui.components.BackButton
 import hu.mealpilot.app.data.telemetry.TelemetryEvent
 import hu.mealpilot.app.billing.PREMIUM_SUBSCRIPTION_ID
 import hu.mealpilot.core.billing.BillingPeriod
@@ -138,10 +139,11 @@ fun PaywallScreen(
             .verticalScroll(rememberScrollState())
             .padding(horizontal = 20.dp),
     ) {
-        TextButton(onClick = onClose, modifier = Modifier.padding(top = 4.dp)) {
-            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null)
-            Text("  " + stringResource(R.string.action_back_plain))
-        }
+        BackButton(
+            text = stringResource(R.string.action_back),
+            onClick = onClose,
+            modifier = Modifier.padding(top = 4.dp),
+        )
 
         if (reason != null) {
             Surface(

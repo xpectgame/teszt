@@ -54,8 +54,10 @@ import hu.mealpilot.app.data.prefs.AiModel
 import hu.mealpilot.app.data.prefs.AppSettings
 import hu.mealpilot.app.notify.MealAlarmScheduler
 import hu.mealpilot.app.notify.ReminderRefreshWorker
+import hu.mealpilot.app.ui.components.BackButton
 import hu.mealpilot.app.ui.components.ProfileForm
 import hu.mealpilot.app.ui.components.SectionCard
+import hu.mealpilot.app.ui.components.WarningNote
 import hu.mealpilot.app.ui.containerFactory
 import hu.mealpilot.core.i18n.AppLanguage
 import hu.mealpilot.core.i18n.label
@@ -140,7 +142,7 @@ fun SettingsScreen(
             .verticalScroll(rememberScrollState())
             .padding(16.dp),
     ) {
-        TextButton(onClick = onBack) { Text(stringResource(R.string.action_back)) }
+        BackButton(stringResource(R.string.action_back), onBack)
         Text(
             stringResource(R.string.settings_title),
             style = MaterialTheme.typography.headlineSmall,
@@ -219,11 +221,9 @@ fun SettingsScreen(
                 )
                 if (viewModel.usingInsecureFallback()) {
                     Spacer(Modifier.height(8.dp))
-                    Text(
-                        "⚠ A titkosított tároló nem érhető el ezen az eszközön, ezért a kulcs " +
+                    WarningNote(
+                        "A titkosított tároló nem érhető el ezen az eszközön, ezért a kulcs " +
                             "egyszerű tárolóba került. Csak akkor add meg, ha ezt elfogadod.",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.error,
                     )
                 }
                 Spacer(Modifier.height(12.dp))

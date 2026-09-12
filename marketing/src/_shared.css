@@ -1,11 +1,11 @@
 /* A MealPilot palettája — ugyanazok az értékek, mint az app témájában
    (android/app/src/main/java/hu/mealpilot/app/ui/theme). */
 :root {
-  --zold-sotet: #14331F;
-  --zold: #2E6B3E;
-  --zold-vilagos: #B4F0BD;
-  --zold-halvany: #99D5A3;
-  --papir: #FBFDF7;
+  --zold-sotet: #1C4C38;
+  --zold: #2F7D5E;
+  --zold-vilagos: #E2F1E9;
+  --zold-halvany: #8FD9BC;
+  --papir: #FFF6EE;
 }
 * { margin: 0; padding: 0; box-sizing: border-box; }
 body { font-family: "DejaVu Sans", system-ui, sans-serif; -webkit-font-smoothing: antialiased; }

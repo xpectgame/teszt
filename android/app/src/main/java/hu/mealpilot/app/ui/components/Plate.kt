@@ -18,11 +18,14 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.outlined.WarningAmber
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -289,6 +292,49 @@ fun QuietBox(
             .padding(16.dp),
         content = content,
     )
+}
+
+/**
+ * Figyelmeztető sor. Eddig egy „⚠" karakter állt a szöveg előtt — az a rendszer
+ * betűkészletétől függően hol emoji, hol szimbólum, hol semmi, és a képernyőolvasó
+ * „figyelmeztetés" helyett a nevét mondja ki. Ikonnal mindhárom megoldódik.
+ */
+@Composable
+fun WarningNote(
+    text: String,
+    modifier: Modifier = Modifier,
+    color: Color = MaterialTheme.colorScheme.error,
+) {
+    Row(
+        modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Icon(
+            Icons.Outlined.WarningAmber,
+            contentDescription = null,
+            tint = color,
+            modifier = Modifier.size(16.dp),
+        )
+        Text(text, style = MaterialTheme.typography.bodySmall, color = color)
+    }
+}
+
+/**
+ * Vissza gomb. Három helyen élt három változatban: „← Vissza" szöveges nyíllal,
+ * „Vissza" nyíl nélkül, és egy ikon + két szóköz + szöveg. A nyíl karakterként
+ * ráadásul nem fordul meg jobbról balra író nyelven, az AutoMirrored ikon igen.
+ */
+@Composable
+fun BackButton(text: String, onClick: () -> Unit, modifier: Modifier = Modifier) {
+    TextButton(onClick = onClick, modifier = modifier) {
+        Icon(
+            Icons.AutoMirrored.Filled.ArrowBack,
+            contentDescription = null,
+            modifier = Modifier.size(18.dp),
+        )
+        Spacer(Modifier.size(8.dp))
+        Text(text)
+    }
 }
 
 @Composable

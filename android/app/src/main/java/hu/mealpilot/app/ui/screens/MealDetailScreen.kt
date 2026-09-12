@@ -39,6 +39,7 @@ import hu.mealpilot.app.data.local.LogStatus
 import hu.mealpilot.app.data.local.MealWithIngredients
 import hu.mealpilot.app.data.repo.PlanRepository
 import hu.mealpilot.app.data.repo.ReportKind
+import hu.mealpilot.app.ui.components.BackButton
 import hu.mealpilot.app.ui.components.ReportDialog
 import hu.mealpilot.app.ui.components.SectionCard
 import hu.mealpilot.app.ui.components.StatChip
@@ -91,7 +92,7 @@ fun MealDetailScreen(
             .verticalScroll(rememberScrollState())
             .padding(16.dp),
     ) {
-        TextButton(onClick = onBack) { Text(stringResource(R.string.action_back)) }
+        BackButton(stringResource(R.string.action_back), onBack)
 
         val data = mealWithIngredients
         if (data == null) {
