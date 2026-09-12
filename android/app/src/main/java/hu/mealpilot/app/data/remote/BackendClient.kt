@@ -1,5 +1,7 @@
 package hu.mealpilot.app.data.remote
 
+import hu.mealpilot.app.R
+import hu.mealpilot.app.i18n.AppStrings
 import hu.mealpilot.app.data.ai.MealAiException
 import hu.mealpilot.app.data.telemetry.CrashRecord
 import hu.mealpilot.app.data.ai.QuotaExceededException
@@ -32,6 +34,7 @@ class BackendClient(
      * nélkül szolgál ki. A boltból telepített appban üres.
      */
     private val ownerKey: String = "",
+    private val strings: AppStrings,
 ) {
 
     private val json = Json { ignoreUnknownKeys = true; encodeDefaults = true }
@@ -61,6 +64,12 @@ class BackendClient(
         days: Int,
         chunkIndex: Int,
         isRetry: Boolean,
+        /**
+         * A terv nyelve. A szerver ebből választ rendszerpromptot — ez az EGYETLEN
+         * dolog, amit a kliens a prompton befolyásolhat, és az is csak választás:
+         * vagy a magyar, vagy az angol szöveget kapja.
+         */
+        language: String,
         onChars: (Int) -> Unit,
     ): String {
         val body = json.encodeToString(
@@ -71,12 +80,13 @@ class BackendClient(
                 days = days,
                 chunkIndex = chunkIndex,
                 isRetry = isRetry,
+                language = language,
             ),
         )
 
         execute(post("v1/generate", body)).use { response ->
             checkOk(response)
-            val source = response.body?.source() ?: throw MealAiException("A szolgáltatás üres választ adott.")
+            val source = response.body?.source() ?: throw MealAiException(strings[R.string.error_empty_service_response])
             val text = StringBuilder()
             var sawDone = false
 
@@ -93,7 +103,7 @@ class BackendClient(
                     }
 
                     "error" -> throw MealAiException(
-                        event.message ?: "A tervező szolgáltatás hibát adott."
+                        event.message ?: strings[R.string.error_planner_service]
                     )
 
                     "done" -> sawDone = true
@@ -103,9 +113,9 @@ class BackendClient(
             // Megszakadt kapcsolatnál a fél válasz értelmezhetetlen JSON lenne, és a
             // felhasználó egy zavaros elemzési hibát látna a valódi ok helyett.
             if (!sawDone) throw MealAiException(
-                "A kapcsolat megszakadt a terv készítése közben. Próbáld újra."
+                strings[R.string.error_connection_lost]
             )
-            if (text.isBlank()) throw MealAiException("A szolgáltatás üres választ küldött. Próbáld újra.")
+            if (text.isBlank()) throw MealAiException(strings[R.string.error_empty_service_retry])
             return text.toString()
         }
     }
@@ -172,7 +182,7 @@ class BackendClient(
         client.newCall(request).execute()
     } catch (error: IOException) {
         throw MealAiException(
-            "Nem sikerült elérni a szolgáltatást. Ellenőrizd az internetkapcsolatot.",
+            strings[R.string.error_no_network_service],
             error,
         )
     }
@@ -185,26 +195,26 @@ class BackendClient(
         when (response.code) {
             402 -> throw QuotaExceededException(
                 code = error?.error ?: "QUOTA",
-                message = error?.message ?: "Elfogyott a havi keret.",
+                message = error?.message ?: strings[R.string.error_quota_exhausted],
                 upgradeOffered = error?.upgrade ?: true,
             )
 
             401 -> throw MealAiException(
-                "A szolgáltatás nem ismerte fel ezt a telepítést. Indítsd újra az appot."
+                strings[R.string.error_unknown_install]
             )
 
-            413 -> throw MealAiException("A kérés túl hosszú lett. Rövidítsd a megjegyzéseidet.")
+            413 -> throw MealAiException(strings[R.string.error_request_too_long])
 
             429 -> throw MealAiException(
-                "Most sok kérés fut egyszerre. Várj egy percet, aztán próbáld újra."
+                strings[R.string.error_busy]
             )
 
             in 500..599 -> throw MealAiException(
-                "A tervező szolgáltatás éppen nem elérhető. Próbáld újra kicsit később."
+                strings[R.string.error_service_down]
             )
 
             else -> throw MealAiException(
-                error?.message ?: "A szolgáltatás visszautasította a kérést (${response.code})."
+                error?.message ?: strings[R.string.error_service_refused, response.code]
             )
         }
     }
@@ -221,6 +231,7 @@ private data class GenerateRequest(
     val days: Int,
     @SerialName("chunk_index") val chunkIndex: Int,
     @SerialName("is_retry") val isRetry: Boolean,
+    val language: String,
 )
 
 @Serializable

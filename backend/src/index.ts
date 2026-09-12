@@ -5,15 +5,44 @@ import { AuthError, resolveCaller, type Caller } from './auth.js'
 import { addUsage, logRequest, readSubscription, readUsage, sha256Hex, writeSubscription } from './db.js'
 import type { Env } from './env.js'
 import { checkQuota, periodKey, usageDelta, type Task } from './limits.js'
-import { CHAT_SYSTEM_PROMPT, PLAN_SYSTEM_PROMPT } from './prompts.js'
+import {
+  CHAT_SYSTEM_PROMPT,
+  CHAT_SYSTEM_PROMPT_EN,
+  PLAN_SYSTEM_PROMPT,
+  PLAN_SYSTEM_PROMPT_EN,
+} from './prompts.js'
 import { verifySubscription } from './play.js'
 import { PAGES } from './pages.js'
 
-/** Feladatonkénti keret. A kliens ezeket nem állíthatja — ez a költség felső korlátja. */
-const TASK_CONFIG: Record<Task, { maxTokens: number; maxPromptChars: number; system: string }> = {
-  PLAN: { maxTokens: 24_000, maxPromptChars: 24_000, system: PLAN_SYSTEM_PROMPT },
-  DAY: { maxTokens: 6_000, maxPromptChars: 16_000, system: PLAN_SYSTEM_PROMPT },
-  CHAT: { maxTokens: 2_000, maxPromptChars: 16_000, system: CHAT_SYSTEM_PROMPT },
+/**
+ * Feladatonkénti keret. A kliens ezeket nem állíthatja — ez a költség felső korlátja.
+ *
+ * A rendszerprompt nyelve az EGYETLEN dolog, amit a kliens befolyásolhat, és azt is
+ * csak választásként: vagy a magyar, vagy az angol szöveget kapja, harmadik nincs.
+ * Ettől a hívás nem alakítható át — mindkét prompt ugyanazt a JSON-t kényszeríti ki.
+ */
+const TASK_CONFIG: Record<
+  Task,
+  { maxTokens: number; maxPromptChars: number; system: string; systemEn: string }
+> = {
+  PLAN: {
+    maxTokens: 24_000,
+    maxPromptChars: 24_000,
+    system: PLAN_SYSTEM_PROMPT,
+    systemEn: PLAN_SYSTEM_PROMPT_EN,
+  },
+  DAY: {
+    maxTokens: 6_000,
+    maxPromptChars: 16_000,
+    system: PLAN_SYSTEM_PROMPT,
+    systemEn: PLAN_SYSTEM_PROMPT_EN,
+  },
+  CHAT: {
+    maxTokens: 2_000,
+    maxPromptChars: 16_000,
+    system: CHAT_SYSTEM_PROMPT,
+    systemEn: CHAT_SYSTEM_PROMPT_EN,
+  },
 }
 
 /** Egy feltöltésben ennyi fér el — a többit a kliens eldobja, nem gyűjtjük végtelenül. */
@@ -119,6 +148,7 @@ app.post('/v1/generate', async (c) => {
     days?: number
     chunk_index?: number
     is_retry?: boolean
+    language?: string
   } | null
 
   if (!body) return c.json({ error: 'BAD_REQUEST', message: 'Hibás kérés.' }, 400)
@@ -140,6 +170,9 @@ app.post('/v1/generate', async (c) => {
   const requestedDays = Number.isFinite(body.days) ? Number(body.days) : 1
   const chunkIndex = Number.isFinite(body.chunk_index) ? Number(body.chunk_index) : 0
   const isRetry = body.is_retry === true
+  // Ismeretlen nyelvnél magyar: az app alapértelmezése is az, és egy rossz tipp itt
+  // az egész tervet a felhasználó számára használhatatlan nyelven adná vissza.
+  const system = String(body.language ?? '').toLowerCase() === 'en' ? config.systemEn : config.system
 
   const decision = checkQuota({
     tier: caller.tier,
@@ -192,7 +225,7 @@ app.post('/v1/generate', async (c) => {
           {
             apiKey: c.env.ANTHROPIC_API_KEY,
             model,
-            system: config.system,
+            system,
             user: prompt,
             maxTokens: config.maxTokens,
             effort,

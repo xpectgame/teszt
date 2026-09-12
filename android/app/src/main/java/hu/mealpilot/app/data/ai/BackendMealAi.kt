@@ -1,6 +1,9 @@
 package hu.mealpilot.app.data.ai
 
+import hu.mealpilot.app.R
 import hu.mealpilot.app.data.remote.BackendClient
+import hu.mealpilot.app.i18n.AppStrings
+import hu.mealpilot.core.i18n.AppLanguage
 import kotlinx.coroutines.CancellationException
 
 /**
@@ -11,7 +14,11 @@ import kotlinx.coroutines.CancellationException
  * kliens dönt. A darabolás, az ellenőrzés és a javító kör változatlanul helyben fut,
  * mert azokhoz nem kell szerver.
  */
-class BackendMealAi(private val backend: BackendClient) : StreamingMealAi() {
+class BackendMealAi(
+    private val backend: BackendClient,
+    strings: AppStrings,
+    language: AppLanguage,
+) : StreamingMealAi(strings, language) {
 
     override val isConfigured: Boolean get() = backend.isConfigured
 
@@ -28,15 +35,14 @@ class BackendMealAi(private val backend: BackendClient) : StreamingMealAi() {
         days = planDays,
         chunkIndex = chunkIndex,
         isRetry = isRetry,
+        language = language.tag,
         onChars = onChars,
     )
 
     override fun translate(error: Throwable): Throwable = when (error) {
         is CancellationException -> error
         is MealAiException -> error
-        is java.io.IOException -> MealAiException(
-            "Nem sikerült elérni a szolgáltatást. Ellenőrizd az internetkapcsolatot.", error
-        )
-        else -> MealAiException(error.message ?: "Ismeretlen hiba a terv készítése közben.", error)
+        is java.io.IOException -> MealAiException(strings[R.string.error_no_network_service], error)
+        else -> MealAiException(error.message ?: strings[R.string.error_unknown_planning], error)
     }
 }

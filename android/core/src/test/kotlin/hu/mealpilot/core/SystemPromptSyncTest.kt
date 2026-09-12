@@ -37,6 +37,24 @@ class SystemPromptSyncTest {
         )
     }
 
+    @Test
+    fun `az angol tervező rendszerprompt egyezik a backendbe másolt változattal`() {
+        assertEquals(
+            "A PlanPrompts.SYSTEM_EN megváltozott — futtasd a backend/tools/gen-prompts.py szkriptet.",
+            "127de26af7626a484376242a51e389defed75ecad1fbf473ffd3cc51a7c0e1f6",
+            sha256(PlanPrompts.SYSTEM_EN),
+        )
+    }
+
+    @Test
+    fun `az angol beszélgető rendszerprompt egyezik a backendbe másolt változattal`() {
+        assertEquals(
+            "A ChatPrompts.SYSTEM_EN megváltozott — futtasd a backend/tools/gen-prompts.py szkriptet.",
+            "f8629f9eab7bd59d559c4ec08a69233070263311265e7ded1f789e0360efebc7",
+            sha256(ChatPrompts.SYSTEM_EN),
+        )
+    }
+
     private fun sha256(value: String): String =
         MessageDigest.getInstance("SHA-256")
             .digest(value.toByteArray(Charsets.UTF_8))

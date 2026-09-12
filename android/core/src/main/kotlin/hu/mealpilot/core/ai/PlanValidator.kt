@@ -1,5 +1,6 @@
 package hu.mealpilot.core.ai
 
+import hu.mealpilot.core.i18n.AppLanguage
 import hu.mealpilot.core.model.DailyTarget
 import hu.mealpilot.core.model.DietRestriction
 import hu.mealpilot.core.model.Nutrients
@@ -34,62 +35,100 @@ object PlanValidator {
         expectedDays: Int,
         expectedMealsPerDay: Int,
         restrictions: Set<DietRestriction> = emptySet(),
+        language: AppLanguage = AppLanguage.DEFAULT,
     ): List<String> {
         val problems = mutableListOf<String>()
+        // A hibalista a JAVÍTÓ PROMPTBA megy, tehát a terv nyelvén kell lennie —
+        // magyar hibaüzenetből a modell angol tervnél a nyelvre is következtetne.
+        val english = language == AppLanguage.EN
+        fun s(hungarian: String, englishText: String) = if (english) englishText else hungarian
 
         if (plan.days.isEmpty()) {
-            return listOf("A válasz egyetlen napot sem tartalmaz.")
+            return listOf(s("A válasz egyetlen napot sem tartalmaz.", "The response contains no days at all."))
         }
 
         // A kizárások mennek elöl: ezek egészségügyi kockázatot jelentenek,
         // és a javító promptban is ezeket lássa először a modell.
-        problems += RestrictionChecker.check(plan, restrictions)
+        problems += RestrictionChecker.check(plan, restrictions, language)
         if (plan.days.size != expectedDays) {
-            problems += "$expectedDays napot kértem, de ${plan.days.size} érkezett."
+            problems += s(
+                "$expectedDays napot kértem, de ${plan.days.size} érkezett.",
+                "I asked for $expectedDays days but got ${plan.days.size}.",
+            )
         }
         val duplicateIndexes = plan.days.groupingBy { it.dayIndex }.eachCount().filterValues { it > 1 }
         if (duplicateIndexes.isNotEmpty()) {
-            problems += "Ismétlődő day_index értékek: ${duplicateIndexes.keys.joinToString()}."
+            problems += s(
+                "Ismétlődő day_index értékek: ${duplicateIndexes.keys.joinToString()}.",
+                "Duplicate day_index values: ${duplicateIndexes.keys.joinToString()}.",
+            )
         }
 
         for (day in plan.days) {
-            val label = "${day.dayIndex}. nap"
+            val label = s("${day.dayIndex}. nap", "Day ${day.dayIndex}")
             if (day.meals.isEmpty()) {
-                problems += "$label: nincs benne egyetlen étkezés sem."
+                problems += s("$label: nincs benne egyetlen étkezés sem.", "$label: it has no meals at all.")
                 continue
             }
             if (day.meals.size != expectedMealsPerDay) {
-                problems += "$label: $expectedMealsPerDay étkezést kértem, ${day.meals.size} érkezett."
+                problems += s(
+                    "$label: $expectedMealsPerDay étkezést kértem, ${day.meals.size} érkezett.",
+                    "$label: I asked for $expectedMealsPerDay meals but got ${day.meals.size}.",
+                )
             }
 
             val total = Nutrients.sum(day.meals.map { it.nutrition.toNutrients() })
             val kcalDiff = total.kcal - target.kcal
             if (abs(kcalDiff) > target.kcal * KCAL_TOLERANCE) {
-                problems += "$label: ${total.kcal.roundToInt()} kcal a ${target.kcal} kcal cél helyett " +
-                    "(${if (kcalDiff > 0) "+" else ""}${kcalDiff.roundToInt()} kcal)."
+                val sign = if (kcalDiff > 0) "+" else ""
+                problems += s(
+                    "$label: ${total.kcal.roundToInt()} kcal a ${target.kcal} kcal cél helyett " +
+                        "($sign${kcalDiff.roundToInt()} kcal).",
+                    "$label: ${total.kcal.roundToInt()} kcal instead of the ${target.kcal} kcal target " +
+                        "($sign${kcalDiff.roundToInt()} kcal).",
+                )
             }
             if (total.proteinG < target.proteinG * (1 - PROTEIN_TOLERANCE)) {
-                problems += "$label: csak ${total.proteinG.roundToInt()} g fehérje a ${target.proteinG} g cél helyett."
+                problems += s(
+                    "$label: csak ${total.proteinG.roundToInt()} g fehérje a ${target.proteinG} g cél helyett.",
+                    "$label: only ${total.proteinG.roundToInt()} g protein instead of the ${target.proteinG} g target.",
+                )
             }
 
             for (meal in day.meals) {
                 val n = meal.nutrition.toNutrients()
                 if (meal.name.isBlank()) {
-                    problems += "$label: névtelen étkezés (${meal.slot})."
+                    problems += s("$label: névtelen étkezés (${meal.slot}).", "$label: unnamed meal (${meal.slot}).")
                 }
                 if (n.kcal <= 0) {
-                    problems += "$label / ${meal.name}: hiányzik a kalóriaérték."
+                    problems += s(
+                        "$label / ${meal.name}: hiányzik a kalóriaérték.",
+                        "$label / ${meal.name}: the calorie value is missing.",
+                    )
                 } else if (!n.isConsistent()) {
-                    problems += "$label / ${meal.name}: a makrók ${n.kcalFromMacros.roundToInt()} kcal-t adnak ki, " +
-                        "de ${n.kcal.roundToInt()} kcal van megadva."
+                    problems += s(
+                        "$label / ${meal.name}: a makrók ${n.kcalFromMacros.roundToInt()} kcal-t adnak ki, " +
+                            "de ${n.kcal.roundToInt()} kcal van megadva.",
+                        "$label / ${meal.name}: the macros add up to ${n.kcalFromMacros.roundToInt()} kcal, " +
+                            "but ${n.kcal.roundToInt()} kcal is given.",
+                    )
                 }
                 if (meal.ingredients.isEmpty()) {
-                    problems += "$label / ${meal.name}: nincsenek hozzávalók."
+                    problems += s(
+                        "$label / ${meal.name}: nincsenek hozzávalók.",
+                        "$label / ${meal.name}: it has no ingredients.",
+                    )
                 } else if (meal.ingredients.any { it.quantity <= 0 && !it.pantryStaple }) {
-                    problems += "$label / ${meal.name}: van 0 mennyiségű hozzávaló."
+                    problems += s(
+                        "$label / ${meal.name}: van 0 mennyiségű hozzávaló.",
+                        "$label / ${meal.name}: an ingredient has a quantity of 0.",
+                    )
                 }
                 if (!TIME_REGEX.matches(meal.time)) {
-                    problems += "$label / ${meal.name}: hibás időformátum (${meal.time}), HH:mm kell."
+                    problems += s(
+                        "$label / ${meal.name}: hibás időformátum (${meal.time}), HH:mm kell.",
+                        "$label / ${meal.name}: bad time format (${meal.time}), HH:mm is required.",
+                    )
                 }
             }
         }

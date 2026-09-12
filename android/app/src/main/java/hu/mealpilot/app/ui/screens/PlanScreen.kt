@@ -143,6 +143,7 @@ class PlanViewModel(private val container: AppContainer) : ViewModel() {
                 planId = plan.id,
                 dayIndex = dayIndex,
                 instruction = instruction,
+                language = container.language,
             )
             onResult(result.getOrElse {
                 it.message ?: container.appContext.getString(R.string.plan_refine_failed)

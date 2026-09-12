@@ -19,6 +19,7 @@ import hu.mealpilot.app.data.repo.ReportRepository
 import hu.mealpilot.app.data.telemetry.CrashReporter
 import hu.mealpilot.app.data.telemetry.Telemetry
 import hu.mealpilot.app.data.telemetry.TelemetryEvent
+import hu.mealpilot.app.i18n.AppStrings
 import hu.mealpilot.app.i18n.LanguageStore
 import hu.mealpilot.app.data.repo.StatsRepository
 import hu.mealpilot.app.data.repo.TrackingRepository
@@ -51,6 +52,13 @@ class AppContainer(context: Context) {
      * felfüggesztett olvasás.
      */
     val languageStore: LanguageStore by lazy { LanguageStore(appContext) }
+
+    /**
+     * Szövegek a felületen kívül is a választott nyelven — értesítések, munkák,
+     * hibaüzenetek. Az alkalmazáskontextus a rendszer nyelvét hordozza, nem a
+     * felhasználóét, ezért kell ez a réteg.
+     */
+    val strings: AppStrings by lazy { AppStrings(appContext) { language } }
 
     val language: hu.mealpilot.core.i18n.AppLanguage get() = languageStore.current()
 
@@ -111,13 +119,13 @@ class AppContainer(context: Context) {
      */
     val billing: BillingGateway by lazy {
         runCatching {
-            PlayBillingGateway(appContext) { subscribed, pending, expiresAt ->
+            PlayBillingGateway(appContext, strings) { subscribed, pending, expiresAt ->
                 backgroundScope.launch {
                     entitlements.applyPurchaseState(subscribed, pending, expiresAt)
                 }
             }.also { it.refresh() }
         }.getOrElse {
-            NoBillingGateway("A Google Play fizetés ezen az eszközön nem érhető el.")
+            NoBillingGateway(strings[R.string.billing_no_play])
         }
     }
 
@@ -146,19 +154,19 @@ class AppContainer(context: Context) {
                 purchaseToken = { billing.state.value.purchaseToken },
                 appVersion = BuildConfig.VERSION_NAME,
                 ownerKey = BuildConfig.OWNER_KEY,
+                strings = strings,
             )
         }
     }
 
     val reportRepository: ReportRepository by lazy { ReportRepository(backendClient) }
 
-    private val anthropicAi: MealAi by lazy {
-        AnthropicMealAi(secureKeyStore) { settings.currentSettings() }
-    }
+    private val anthropicAi: MealAi get() =
+        AnthropicMealAi(secureKeyStore, strings, language) { settings.currentSettings() }
 
-    private val backendAi: MealAi by lazy { BackendMealAi(requireNotNull(backendClient)) }
+    private val backendAi: MealAi get() = BackendMealAi(requireNotNull(backendClient), strings, language)
 
-    private val offlineAi: MealAi by lazy { OfflineMealAi() }
+    private val offlineAi: MealAi get() = OfflineMealAi(language, strings)
 
     /**
      * Melyik tervező szolgálja ki a kérést.

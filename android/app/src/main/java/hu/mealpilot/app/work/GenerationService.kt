@@ -37,7 +37,13 @@ class GenerationService : Service() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         Notifications.ensureChannels(this)
-        startInForeground(notification("Étrend készül", "Indulás…", null))
+        startInForeground(
+            notification(
+                applicationContext.appContainer.strings[R.string.notif_generating],
+                applicationContext.appContainer.strings[R.string.notif_starting],
+                null,
+            )
+        )
 
         scope.launch {
             applicationContext.appContainer.generation.status.collect { status ->
@@ -51,7 +57,7 @@ class GenerationService : Service() {
                         manager.notify(
                             Notifications.ID_GENERATION,
                             notification(
-                                title = status.headline.ifBlank { "Étrend készül" },
+                                title = status.headline.ifBlank { applicationContext.appContainer.strings[R.string.notif_generating] },
                                 text = status.detail,
                                 progress = status.fraction,
                             ),

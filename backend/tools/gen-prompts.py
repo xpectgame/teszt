@@ -1,10 +1,10 @@
 import re, hashlib, json, sys, os
 
-def extract(path, obj):
+def extract(path, name='SYSTEM'):
     src = open(path, encoding='utf-8').read()
-    m = re.search(r'val SYSTEM: String = """\n(.*?)\n""".trimIndent\(\)', src, re.S)
+    m = re.search(r'val %s: String = """\n(.*?)\n""".trimIndent\(\)' % name, src, re.S)
     if not m:
-        sys.exit(f"nem talalom a SYSTEM promptot: {path}")
+        sys.exit(f"nem talalom a {name} promptot: {path}")
     text = m.group(1)
     # trimIndent: kozos behuzas levagasa (itt 0, de legyunk pontosak)
     lines = text.split('\n')
@@ -13,8 +13,13 @@ def extract(path, obj):
     text = '\n'.join(l[common:] if l.strip() else '' for l in lines)
     return text
 
-plan = extract('android/core/src/main/kotlin/hu/mealpilot/core/ai/PlanPrompts.kt', 'PlanPrompts')
-chat = extract('android/core/src/main/kotlin/hu/mealpilot/core/ai/ChatPrompts.kt', 'ChatPrompts')
+PLAN_KT = 'android/core/src/main/kotlin/hu/mealpilot/core/ai/PlanPrompts.kt'
+CHAT_KT = 'android/core/src/main/kotlin/hu/mealpilot/core/ai/ChatPrompts.kt'
+
+plan = extract(PLAN_KT)
+chat = extract(CHAT_KT)
+plan_en = extract(PLAN_KT, 'SYSTEM_EN')
+chat_en = extract(CHAT_KT, 'SYSTEM_EN')
 
 def sha(s): return hashlib.sha256(s.encode('utf-8')).hexdigest()
 
@@ -31,24 +36,29 @@ out.write('''/**
  * fájljából származik. Ha ott változik, ITT is frissítsd. A `SystemPromptSyncTest`
  * Kotlin-teszt elbukik, ha a kettő szétcsúszik — az alábbi hasheket is vele együtt írd át.
  *
- * plan: sha256 = %s
- * chat: sha256 = %s
+ * plan:    sha256 = %s
+ * chat:    sha256 = %s
+ * plan_en: sha256 = %s
+ * chat_en: sha256 = %s
  */
 
-''' % (sha(plan), sha(chat)))
+''' % (sha(plan), sha(chat), sha(plan_en), sha(chat_en)))
 
 def emit(name, text):
     out.write('export const %s = `%s`\n\n' % (name, text.replace('\\', '\\\\').replace('`', '\\`').replace('${', '\\${')))
 
 emit('PLAN_SYSTEM_PROMPT', plan)
 emit('CHAT_SYSTEM_PROMPT', chat)
+emit('PLAN_SYSTEM_PROMPT_EN', plan_en)
+emit('CHAT_SYSTEM_PROMPT_EN', chat_en)
 
 out.write('''export const PROMPT_HASHES = {
   plan: '%s',
   chat: '%s',
+  plan_en: '%s',
+  chat_en: '%s',
 } as const
-''' % (sha(plan), sha(chat)))
+''' % (sha(plan), sha(chat), sha(plan_en), sha(chat_en)))
 out.close()
-print("plan sha", sha(plan))
-print("chat sha", sha(chat))
-print("plan chars", len(plan), "chat chars", len(chat))
+for name, text in (('plan', plan), ('chat', chat), ('plan_en', plan_en), ('chat_en', chat_en)):
+    print(name, "sha", sha(text), "chars", len(text))

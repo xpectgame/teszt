@@ -108,6 +108,7 @@ class GenerationCoordinator(private val container: AppContainer) {
                     startDate = if (startTomorrow) LocalDate.now().plusDays(1) else LocalDate.now(),
                     days = allowedDays,
                     freeText = freeText,
+                    language = container.language,
                     onProgress = { progress -> publish(progress, allowedDays) },
                 )
                 val result = raw.map { it.copy(usedFallback = daysFromService >= 0) }

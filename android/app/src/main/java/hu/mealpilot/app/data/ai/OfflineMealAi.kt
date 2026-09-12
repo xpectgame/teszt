@@ -1,5 +1,9 @@
 package hu.mealpilot.app.data.ai
 
+import hu.mealpilot.app.i18n.AppStrings
+import hu.mealpilot.app.R
+import hu.mealpilot.core.i18n.Text
+import hu.mealpilot.core.i18n.AppLanguage
 import hu.mealpilot.core.ai.AiDay
 import hu.mealpilot.core.ai.AiDayResponse
 import hu.mealpilot.core.ai.AiIngredient
@@ -22,7 +26,10 @@ import kotlin.math.roundToInt
  * A szabad szöveges kéréseket nem érti, de a napi keretet és a makrókat pontosan tartja,
  * így az app a tervezőszolgáltatás elérhetetlensége esetén sem marad használhatatlan.
  */
-class OfflineMealAi : MealAi {
+class OfflineMealAi(
+    private val language: AppLanguage = AppLanguage.DEFAULT,
+    private val strings: AppStrings,
+) : MealAi {
 
     override val isConfigured: Boolean = true
 
@@ -42,13 +49,13 @@ class OfflineMealAi : MealAi {
                     stage = GenerationProgress.Stage.STREAMING,
                     currentChunk = offset,
                     totalChunks = request.days,
-                    message = "${offset + 1}. nap összeállítása…",
+                    message = strings[R.string.progress_day, offset + 1],
                 )
             )
             AiDay(
                 dayIndex = dayIndex,
-                title = "${dayIndex + 1}. nap",
-                note = "Sablonból, a napi kerethez méretezve.",
+                title = strings[R.string.offline_day_title, dayIndex + 1],
+                note = strings[R.string.offline_day_note],
                 meals = slots.mapIndexed { slotIndex, slot ->
                     val bank = bankFor(slot)
                     val template = bank[(dayIndex * slots.size + slotIndex) % bank.size]
@@ -56,6 +63,7 @@ class OfflineMealAi : MealAi {
                         targetKcal = target.kcal * shares[slotIndex],
                         slot = slot,
                         time = request.profile.mealTimes.getOrNull(slotIndex) ?: slot.defaultTime,
+                        language = language,
                     )
                 },
             )
@@ -66,20 +74,17 @@ class OfflineMealAi : MealAi {
                 stage = GenerationProgress.Stage.DONE,
                 currentChunk = request.days,
                 totalChunks = request.days,
-                message = "Kész.",
+                message = strings[R.string.progress_done],
             )
         )
 
         val result = AiPlanResponse(
-            planTitle = "Heti étrend",
-            summary = "Ez a terv internetkapcsolat nélkül, beépített receptekből készült. " +
-                "A napi kalória és a makrók a te célodhoz vannak méretezve, de a szabad " +
-                "szöveges kéréseidet ez a változat nem veszi figyelembe — internettel " +
-                "újragenerálva személyre szabottabb tervet kapsz.",
+            planTitle = strings[R.string.offline_plan_title],
+            summary = strings[R.string.offline_plan_summary],
             days = days,
             coachNotes = listOf(
-                "Igyál napi 2–3 liter folyadékot.",
-                "A fehérjét oszd el egyenletesen a nap folyamán.",
+                strings[R.string.offline_tip_water],
+                strings[R.string.offline_tip_protein],
             ),
         )
         onChunk(result)
@@ -91,7 +96,7 @@ class OfflineMealAi : MealAi {
         history: List<ChatTurn>,
         message: String,
     ): Result<AiChatResponse> = Result.failure(
-        MealAiException("A beszélgetéshez internetkapcsolat kell.")
+        MealAiException(strings[R.string.offline_chat_needs_network])
     )
 
     override suspend fun refineDay(
@@ -99,7 +104,7 @@ class OfflineMealAi : MealAi {
         currentDayJson: String,
         instruction: String,
     ): Result<AiDayResponse> = Result.failure(
-        MealAiException("Ez a változat nem tudja átírni a napokat. Próbáld újra, ha van internetkapcsolatod.")
+        MealAiException(strings[R.string.offline_cannot_refine])
     )
 
     /** A napi kalória elosztása az étkezések között. */
@@ -122,29 +127,52 @@ class OfflineMealAi : MealAi {
         else -> SNACKS
     }
 
+    /** Kétnyelvű hozzávaló; a mennyiség és a polc nyelvfüggetlen. */
+    private data class Ingredient(
+        val name: Text,
+        val quantity: Double,
+        val unit: String,
+        val aisle: String,
+        val pantryStaple: Boolean = false,
+    ) {
+        fun toAi(language: AppLanguage, factor: Double) = AiIngredient(
+            name = name.get(language),
+            // A kamrai alapanyagot (olaj, só) nem méretezzük: egy 1,7-szeres kanál olaj
+            // nem mond semmit, csak zajt visz a bevásárlólistára.
+            quantity = if (pantryStaple) quantity else (quantity * factor * 10).roundToInt() / 10.0,
+            unit = unit,
+            aisle = aisle,
+            pantryStaple = pantryStaple,
+        )
+    }
+
+    /**
+     * Egy sablonfogás, mindkét nyelven.
+     *
+     * A receptbank tartalom, nem felirat: nem Android erőforrásból jön, mert a
+     * hozzávalók neve a bevásárlólistára és a naplóba is bekerül, és ott a TERV
+     * nyelvén kell állnia — nem azon, amit a telefon éppen mutat.
+     */
     private data class Template(
-        val name: String,
-        val description: String,
+        val name: Text,
+        val description: Text,
         val prepMinutes: Int,
-        val steps: List<String>,
-        val ingredients: List<AiIngredient>,
+        val steps: List<Text>,
+        val ingredients: List<Ingredient>,
         val nutrition: AiNutrition,
     ) {
         /** Az egész fogást egy szorzóval a kívánt kalóriaszintre méretezi. */
-        fun scaledTo(targetKcal: Double, slot: MealSlot, time: String): AiMeal {
+        fun scaledTo(targetKcal: Double, slot: MealSlot, time: String, language: AppLanguage): AiMeal {
             val factor = if (nutrition.kcal <= 0) 1.0 else (targetKcal / nutrition.kcal).coerceIn(0.4, 2.5)
             return AiMeal(
                 slot = slot.name,
                 time = time,
-                name = name,
-                description = description,
+                name = name.get(language),
+                description = description.get(language),
                 prepMinutes = prepMinutes,
                 servings = 1.0,
-                recipeSteps = steps,
-                ingredients = ingredients.map { ing ->
-                    if (ing.pantryStaple) ing
-                    else ing.copy(quantity = round1(ing.quantity * factor))
-                },
+                recipeSteps = steps.map { it.get(language) },
+                ingredients = ingredients.map { it.toAi(language, factor) },
                 nutrition = AiNutrition(
                     kcal = round1(nutrition.kcal * factor),
                     proteinG = round1(nutrition.proteinG * factor),
@@ -164,46 +192,63 @@ class OfflineMealAi : MealAi {
 
     private companion object {
 
-        fun ing(name: String, qty: Double, unit: String, aisle: String, staple: Boolean = false) =
-            AiIngredient(name = name, quantity = qty, unit = unit, aisle = aisle, pantryStaple = staple)
+        fun ing(
+            hungarian: String,
+            english: String,
+            qty: Double,
+            unit: String,
+            aisle: String,
+            staple: Boolean = false,
+        ) = Ingredient(Text(hungarian, english), qty, unit, aisle, staple)
+
+        fun t(hungarian: String, english: String) = Text(hungarian, english)
 
         val BREAKFASTS = listOf(
             Template(
-                "Túrós-zabpelyhes tál bogyós gyümölccsel",
-                "Gyors, magas fehérjetartalmú reggeli.",
+                t("Túrós-zabpelyhes tál bogyós gyümölccsel", "Quark and oat bowl with berries"),
+                t("Gyors, magas fehérjetartalmú reggeli.", "A quick, high-protein breakfast."),
                 5,
-                listOf("Keverd össze a túrót a zabpehellyel.", "Tedd rá a gyümölcsöt és a magokat."),
                 listOf(
-                    ing("sovány túró", 200.0, "g", "TEJTERMEK"),
-                    ing("zabpehely", 40.0, "g", "SZARAZARU"),
-                    ing("áfonya", 80.0, "g", "ZOLDSEG_GYUMOLCS"),
-                    ing("dió", 15.0, "g", "SZARAZARU"),
+                    t("Keverd össze a túrót a zabpehellyel.", "Mix the quark with the oats."),
+                    t("Tedd rá a gyümölcsöt és a magokat.", "Top with the fruit and the nuts."),
+                ),
+                listOf(
+                    ing("sovány túró", "low-fat quark", 200.0, "g", "TEJTERMEK"),
+                    ing("zabpehely", "rolled oats", 40.0, "g", "SZARAZARU"),
+                    ing("áfonya", "blueberries", 80.0, "g", "ZOLDSEG_GYUMOLCS"),
+                    ing("dió", "walnuts", 15.0, "g", "SZARAZARU"),
                 ),
                 AiNutrition(kcal = 480.0, proteinG = 38.0, carbsG = 45.0, fatG = 15.0, fiberG = 7.0, sugarG = 12.0),
             ),
             Template(
-                "Rántotta teljes kiőrlésű pirítóssal",
-                "Klasszikus, laktató reggeli.",
+                t("Rántotta teljes kiőrlésű pirítóssal", "Scrambled eggs with wholemeal toast"),
+                t("Klasszikus, laktató reggeli.", "A classic, filling breakfast."),
                 10,
-                listOf("Süsd meg a tojásokat kevés olajon.", "Pirítsd meg a kenyeret, tedd mellé a zöldséget."),
                 listOf(
-                    ing("tojás", 3.0, "db", "TEJTERMEK"),
-                    ing("teljes kiőrlésű kenyér", 60.0, "g", "PEKARU"),
-                    ing("paradicsom", 100.0, "g", "ZOLDSEG_GYUMOLCS"),
-                    ing("olívaolaj", 5.0, "ml", "FUSZER", staple = true),
+                    t("Süsd meg a tojásokat kevés olajon.", "Scramble the eggs in a little oil."),
+                    t("Pirítsd meg a kenyeret, tedd mellé a zöldséget.", "Toast the bread and serve the veg alongside."),
+                ),
+                listOf(
+                    ing("tojás", "eggs", 3.0, "db", "TEJTERMEK"),
+                    ing("teljes kiőrlésű kenyér", "wholemeal bread", 60.0, "g", "PEKARU"),
+                    ing("paradicsom", "tomato", 100.0, "g", "ZOLDSEG_GYUMOLCS"),
+                    ing("olívaolaj", "olive oil", 5.0, "ml", "FUSZER", staple = true),
                 ),
                 AiNutrition(kcal = 460.0, proteinG = 27.0, carbsG = 34.0, fatG = 22.0, fiberG = 6.0, sugarG = 5.0),
             ),
             Template(
-                "Görög joghurtos smoothie tál",
-                "Reggeli, ami előre elkészíthető.",
+                t("Görög joghurtos smoothie tál", "Greek yoghurt smoothie bowl"),
+                t("Reggeli, ami előre elkészíthető.", "A breakfast you can make ahead."),
                 5,
-                listOf("Turmixold össze a joghurtot a banánnal.", "Szórd meg maggal és zabbal."),
                 listOf(
-                    ing("görög joghurt", 250.0, "g", "TEJTERMEK"),
-                    ing("banán", 1.0, "db", "ZOLDSEG_GYUMOLCS"),
-                    ing("zabpehely", 30.0, "g", "SZARAZARU"),
-                    ing("chia mag", 10.0, "g", "SZARAZARU"),
+                    t("Turmixold össze a joghurtot a banánnal.", "Blend the yoghurt with the banana."),
+                    t("Szórd meg maggal és zabbal.", "Scatter over the seeds and oats."),
+                ),
+                listOf(
+                    ing("görög joghurt", "Greek yoghurt", 250.0, "g", "TEJTERMEK"),
+                    ing("banán", "banana", 1.0, "db", "ZOLDSEG_GYUMOLCS"),
+                    ing("zabpehely", "rolled oats", 30.0, "g", "SZARAZARU"),
+                    ing("chia mag", "chia seeds", 10.0, "g", "SZARAZARU"),
                 ),
                 AiNutrition(kcal = 450.0, proteinG = 26.0, carbsG = 52.0, fatG = 14.0, fiberG = 8.0, sugarG = 20.0),
             ),
@@ -211,67 +256,87 @@ class OfflineMealAi : MealAi {
 
         val MAINS = listOf(
             Template(
-                "Grillezett csirkemell párolt rizzsel és salátával",
-                "Egyszerű, kiszámítható alap fogás.",
+                t("Grillezett csirkemell párolt rizzsel és salátával", "Grilled chicken breast with rice and salad"),
+                t("Egyszerű, kiszámítható alap fogás.", "A simple, dependable staple."),
                 25,
-                listOf("Fűszerezd és süsd meg a csirkemellet.", "Főzz rizst.", "Készíts hozzá salátát."),
                 listOf(
-                    ing("csirkemell", 180.0, "g", "HUS_HAL"),
-                    ing("barna rizs", 70.0, "g", "SZARAZARU"),
-                    ing("vegyes saláta", 120.0, "g", "ZOLDSEG_GYUMOLCS"),
-                    ing("olívaolaj", 10.0, "ml", "FUSZER", staple = true),
+                    t("Fűszerezd és süsd meg a csirkemellet.", "Season and grill the chicken breast."),
+                    t("Főzz rizst.", "Cook the rice."),
+                    t("Készíts hozzá salátát.", "Put a salad together on the side."),
+                ),
+                listOf(
+                    ing("csirkemell", "chicken breast", 180.0, "g", "HUS_HAL"),
+                    ing("barna rizs", "brown rice", 70.0, "g", "SZARAZARU"),
+                    ing("vegyes saláta", "mixed salad leaves", 120.0, "g", "ZOLDSEG_GYUMOLCS"),
+                    ing("olívaolaj", "olive oil", 10.0, "ml", "FUSZER", staple = true),
                 ),
                 AiNutrition(kcal = 620.0, proteinG = 50.0, carbsG = 60.0, fatG = 17.0, fiberG = 6.0, sugarG = 4.0),
             ),
             Template(
-                "Sült lazac édesburgonyával és brokkolival",
-                "Omega-3-ban gazdag főétel.",
+                t("Sült lazac édesburgonyával és brokkolival", "Baked salmon with sweet potato and broccoli"),
+                t("Omega-3-ban gazdag főétel.", "A main course rich in omega-3."),
                 30,
-                listOf("Süsd a lazacot 180 fokon 15 percig.", "Süsd meg az édesburgonyát.", "Párold a brokkolit."),
                 listOf(
-                    ing("lazacfilé", 160.0, "g", "HUS_HAL"),
-                    ing("édesburgonya", 250.0, "g", "ZOLDSEG_GYUMOLCS"),
-                    ing("brokkoli", 200.0, "g", "ZOLDSEG_GYUMOLCS"),
-                    ing("olívaolaj", 10.0, "ml", "FUSZER", staple = true),
+                    t("Süsd a lazacot 180 fokon 15 percig.", "Bake the salmon at 180°C for 15 minutes."),
+                    t("Süsd meg az édesburgonyát.", "Roast the sweet potato."),
+                    t("Párold a brokkolit.", "Steam the broccoli."),
+                ),
+                listOf(
+                    ing("lazacfilé", "salmon fillet", 160.0, "g", "HUS_HAL"),
+                    ing("édesburgonya", "sweet potato", 250.0, "g", "ZOLDSEG_GYUMOLCS"),
+                    ing("brokkoli", "broccoli", 200.0, "g", "ZOLDSEG_GYUMOLCS"),
+                    ing("olívaolaj", "olive oil", 10.0, "ml", "FUSZER", staple = true),
                 ),
                 AiNutrition(kcal = 640.0, proteinG = 40.0, carbsG = 55.0, fatG = 27.0, fiberG = 9.0, sugarG = 12.0),
             ),
             Template(
-                "Bolognai lencseragu teljes kiőrlésű tésztával",
-                "Növényi fehérje, sok rost.",
+                t("Bolognai lencseragu teljes kiőrlésű tésztával", "Lentil bolognese with wholemeal pasta"),
+                t("Növényi fehérje, sok rost.", "Plant protein and plenty of fibre."),
                 30,
-                listOf("Párold meg a zöldségeket.", "Add hozzá a lencsét és a paradicsomot.", "Főzd ki a tésztát."),
                 listOf(
-                    ing("vörös lencse", 90.0, "g", "SZARAZARU"),
-                    ing("teljes kiőrlésű tészta", 80.0, "g", "SZARAZARU"),
-                    ing("paradicsomkonzerv", 200.0, "g", "SZARAZARU"),
-                    ing("vöröshagyma", 80.0, "g", "ZOLDSEG_GYUMOLCS"),
+                    t("Párold meg a zöldségeket.", "Soften the vegetables."),
+                    t("Add hozzá a lencsét és a paradicsomot.", "Add the lentils and the tomatoes."),
+                    t("Főzd ki a tésztát.", "Cook the pasta."),
+                ),
+                listOf(
+                    ing("vörös lencse", "red lentils", 90.0, "g", "SZARAZARU"),
+                    ing("teljes kiőrlésű tészta", "wholemeal pasta", 80.0, "g", "SZARAZARU"),
+                    ing("paradicsomkonzerv", "tinned tomatoes", 200.0, "g", "SZARAZARU"),
+                    ing("vöröshagyma", "onion", 80.0, "g", "ZOLDSEG_GYUMOLCS"),
                 ),
                 AiNutrition(kcal = 610.0, proteinG = 32.0, carbsG = 100.0, fatG = 8.0, fiberG = 18.0, sugarG = 12.0),
             ),
             Template(
-                "Marhapörkölt párolt zöldségekkel",
-                "Hétvégi, laktató fogás.",
+                t("Marhapörkölt párolt zöldségekkel", "Beef stew with braised vegetables"),
+                t("Hétvégi, laktató fogás.", "A hearty weekend dish."),
                 75,
-                listOf("Pirítsd meg a hagymát.", "Főzd puhára a húst.", "Párold mellé a zöldséget."),
                 listOf(
-                    ing("marhalábszár", 180.0, "g", "HUS_HAL"),
-                    ing("burgonya", 200.0, "g", "ZOLDSEG_GYUMOLCS"),
-                    ing("vöröshagyma", 100.0, "g", "ZOLDSEG_GYUMOLCS"),
-                    ing("paprika", 100.0, "g", "ZOLDSEG_GYUMOLCS"),
+                    t("Pirítsd meg a hagymát.", "Brown the onion."),
+                    t("Főzd puhára a húst.", "Simmer the beef until tender."),
+                    t("Párold mellé a zöldséget.", "Braise the vegetables alongside."),
+                ),
+                listOf(
+                    ing("marhalábszár", "beef shin", 180.0, "g", "HUS_HAL"),
+                    ing("burgonya", "potato", 200.0, "g", "ZOLDSEG_GYUMOLCS"),
+                    ing("vöröshagyma", "onion", 100.0, "g", "ZOLDSEG_GYUMOLCS"),
+                    ing("paprika", "bell pepper", 100.0, "g", "ZOLDSEG_GYUMOLCS"),
                 ),
                 AiNutrition(kcal = 650.0, proteinG = 45.0, carbsG = 48.0, fatG = 28.0, fiberG = 7.0, sugarG = 8.0),
             ),
             Template(
-                "Csirkés-zöldséges wok basmati rizzsel",
-                "Egy serpenyős, 20 perces vacsora.",
+                t("Csirkés-zöldséges wok basmati rizzsel", "Chicken and vegetable stir-fry with basmati rice"),
+                t("Egy serpenyős, 20 perces vacsora.", "A one-pan dinner in 20 minutes."),
                 20,
-                listOf("Pirítsd a csirkét.", "Dobd hozzá a zöldségeket.", "Ízesítsd szójaszósszal."),
                 listOf(
-                    ing("csirkecomb filé", 170.0, "g", "HUS_HAL"),
-                    ing("wok zöldségkeverék", 250.0, "g", "FAGYASZTOTT"),
-                    ing("basmati rizs", 70.0, "g", "SZARAZARU"),
-                    ing("szójaszósz", 15.0, "ml", "FUSZER", staple = true),
+                    t("Pirítsd a csirkét.", "Sear the chicken."),
+                    t("Dobd hozzá a zöldségeket.", "Throw in the vegetables."),
+                    t("Ízesítsd szójaszósszal.", "Season with soy sauce."),
+                ),
+                listOf(
+                    ing("csirkecomb filé", "chicken thigh fillet", 170.0, "g", "HUS_HAL"),
+                    ing("wok zöldségkeverék", "stir-fry vegetable mix", 250.0, "g", "FAGYASZTOTT"),
+                    ing("basmati rizs", "basmati rice", 70.0, "g", "SZARAZARU"),
+                    ing("szójaszósz", "soy sauce", 15.0, "ml", "FUSZER", staple = true),
                 ),
                 AiNutrition(kcal = 630.0, proteinG = 43.0, carbsG = 68.0, fatG = 18.0, fiberG = 8.0, sugarG = 9.0),
             ),
@@ -279,35 +344,38 @@ class OfflineMealAi : MealAi {
 
         val SNACKS = listOf(
             Template(
-                "Görög joghurt dióval",
-                "Gyors fehérjeforrás két étkezés között.",
+                t("Görög joghurt dióval", "Greek yoghurt with walnuts"),
+                t("Gyors fehérjeforrás két étkezés között.", "A quick protein hit between meals."),
                 2,
-                listOf("Keverd össze."),
+                listOf(t("Keverd össze.", "Stir together.")),
                 listOf(
-                    ing("görög joghurt", 150.0, "g", "TEJTERMEK"),
-                    ing("dió", 15.0, "g", "SZARAZARU"),
+                    ing("görög joghurt", "Greek yoghurt", 150.0, "g", "TEJTERMEK"),
+                    ing("dió", "walnuts", 15.0, "g", "SZARAZARU"),
                 ),
                 AiNutrition(kcal = 220.0, proteinG = 16.0, carbsG = 9.0, fatG = 13.0, fiberG = 1.0, sugarG = 7.0),
             ),
             Template(
-                "Alma mogyoróvajjal",
-                "Rost és jó zsírok.",
+                t("Alma mogyoróvajjal", "Apple with peanut butter"),
+                t("Rost és jó zsírok.", "Fibre and good fats."),
                 2,
-                listOf("Szeleteld fel az almát, kend meg."),
+                listOf(t("Szeleteld fel az almát, kend meg.", "Slice the apple and spread it.")),
                 listOf(
-                    ing("alma", 1.0, "db", "ZOLDSEG_GYUMOLCS"),
-                    ing("mogyoróvaj", 20.0, "g", "SZARAZARU"),
+                    ing("alma", "apple", 1.0, "db", "ZOLDSEG_GYUMOLCS"),
+                    ing("mogyoróvaj", "peanut butter", 20.0, "g", "SZARAZARU"),
                 ),
                 AiNutrition(kcal = 220.0, proteinG = 6.0, carbsG = 25.0, fatG = 11.0, fiberG = 5.0, sugarG = 18.0),
             ),
             Template(
-                "Sárgarépa hummusszal",
-                "Ropogós, alacsony kalóriájú nassolnivaló.",
+                t("Sárgarépa hummusszal", "Carrot sticks with hummus"),
+                t("Ropogós, alacsony kalóriájú nassolnivaló.", "A crunchy, low-calorie snack."),
                 3,
-                listOf("Vágd a répát csíkokra.", "Mártsd a hummuszba."),
                 listOf(
-                    ing("sárgarépa", 150.0, "g", "ZOLDSEG_GYUMOLCS"),
-                    ing("hummusz", 60.0, "g", "SZARAZARU"),
+                    t("Vágd a répát csíkokra.", "Cut the carrots into sticks."),
+                    t("Mártsd a hummuszba.", "Dip them in the hummus."),
+                ),
+                listOf(
+                    ing("sárgarépa", "carrot", 150.0, "g", "ZOLDSEG_GYUMOLCS"),
+                    ing("hummusz", "hummus", 60.0, "g", "SZARAZARU"),
                 ),
                 AiNutrition(kcal = 210.0, proteinG = 7.0, carbsG = 24.0, fatG = 9.0, fiberG = 7.0, sugarG = 8.0),
             ),

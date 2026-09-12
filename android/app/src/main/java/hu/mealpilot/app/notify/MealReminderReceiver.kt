@@ -13,6 +13,7 @@ import hu.mealpilot.app.appContainer
 import hu.mealpilot.app.data.local.LogStatus
 import hu.mealpilot.app.data.local.MealEntity
 import hu.mealpilot.core.ai.MealSlot
+import hu.mealpilot.core.i18n.label
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -60,12 +61,18 @@ class MealReminderReceiver : BroadcastReceiver() {
 
         val slot = MealSlot.fromRaw(meal.slot)
         val n = meal.nutrients
-        val details = "${n.kcal.roundToInt()} kcal · F ${n.proteinG.roundToInt()} g · " +
-            "Sz ${n.carbsG.roundToInt()} g · Zs ${n.fatG.roundToInt()} g"
+        val strings = container.strings
+        val details = strings[
+            R.string.macro_line,
+            n.kcal.roundToInt(),
+            n.proteinG.roundToInt(),
+            n.carbsG.roundToInt(),
+            n.fatG.roundToInt(),
+        ]
 
         val notification = NotificationCompat.Builder(context, Notifications.CHANNEL_MEALS)
             .setSmallIcon(R.drawable.ic_notification)
-            .setContentTitle("${slot.hu}: ${meal.name}")
+            .setContentTitle("${slot.label(container.language)}: ${meal.name}")
             .setContentText(details)
             .setStyle(
                 NotificationCompat.BigTextStyle().bigText(
@@ -76,7 +83,7 @@ class MealReminderReceiver : BroadcastReceiver() {
                             append(meal.description)
                         }
                         if (meal.prepMinutes > 0) {
-                            append("\nElkészítés: ${meal.prepMinutes} perc")
+                            append("\n" + strings[R.string.notif_prep_minutes, meal.prepMinutes])
                         }
                     }
                 )
@@ -85,9 +92,9 @@ class MealReminderReceiver : BroadcastReceiver() {
             .setCategory(NotificationCompat.CATEGORY_REMINDER)
             .setAutoCancel(true)
             .setContentIntent(openMealIntent(context, meal))
-            .addAction(0, "Megettem", actionIntent(context, ACTION_ATE, mealId))
-            .addAction(0, "Kihagytam", actionIntent(context, ACTION_SKIP, mealId))
-            .addAction(0, "+15 perc", actionIntent(context, ACTION_SNOOZE, mealId))
+            .addAction(0, strings[R.string.today_ate_it], actionIntent(context, ACTION_ATE, mealId))
+            .addAction(0, strings[R.string.today_skipped], actionIntent(context, ACTION_SKIP, mealId))
+            .addAction(0, strings[R.string.notif_snooze], actionIntent(context, ACTION_SNOOZE, mealId))
             .build()
 
         notify(context, Notifications.mealNotificationId(mealId), notification)
@@ -138,17 +145,18 @@ class MealReminderReceiver : BroadcastReceiver() {
         val protein = eaten.sumOf { it.nutrients.proteinG }.roundToInt()
         val target = plan?.targetKcal ?: 0
 
+        val strings = container.strings
         val text = if (target > 0) {
-            "Bevitt: $consumed kcal / $target kcal keret · Fehérje: $protein g"
+            strings[R.string.notif_summary_text, consumed, target, protein]
         } else {
-            "Bevitt: $consumed kcal · Fehérje: $protein g"
+            strings[R.string.notif_summary_text_no_target, consumed, protein]
         }
 
         val title = when {
-            target <= 0 -> "Napi összefoglaló"
-            consumed == 0 -> "Ma még nem naplóztál semmit"
-            consumed <= target -> "Szép nap! A kereten belül maradtál"
-            else -> "Ma ${consumed - target} kcal-lal léptél túl"
+            target <= 0 -> strings[R.string.notif_summary_title]
+            consumed == 0 -> strings[R.string.notif_summary_nothing]
+            consumed <= target -> strings[R.string.notif_summary_within]
+            else -> strings[R.string.notif_summary_over, consumed - target]
         }
 
         Notifications.ensureChannels(context)

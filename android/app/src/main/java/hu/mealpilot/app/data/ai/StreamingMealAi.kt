@@ -1,7 +1,10 @@
 package hu.mealpilot.app.data.ai
 
 import android.util.Log
+import hu.mealpilot.app.R
+import hu.mealpilot.app.i18n.AppStrings
 import hu.mealpilot.core.ai.AiChatResponse
+import hu.mealpilot.core.i18n.AppLanguage
 import hu.mealpilot.core.ai.AiDay
 import hu.mealpilot.core.ai.AiDayResponse
 import hu.mealpilot.core.ai.AiPlanResponse
@@ -31,7 +34,10 @@ import kotlin.coroutines.coroutineContext
  * backendünkön megy ki. Az örökösnek egyetlen dolga van: adjon vissza szöveget egy
  * kérésre, és streamelje a közben érkező karakterek számát.
  */
-abstract class StreamingMealAi : MealAi {
+abstract class StreamingMealAi(
+    protected val strings: AppStrings,
+    protected val language: AppLanguage,
+) : MealAi {
 
     /** Melyik rendszerprompttal és mekkora kerettel dolgozik a hívás. */
     enum class AiTask(val maxOutputTokens: Long) {
@@ -88,9 +94,9 @@ abstract class StreamingMealAi : MealAi {
                         currentChunk = chunk.index,
                         totalChunks = chunk.total,
                         message = if (chunk.total > 1) {
-                            "${chunk.index + 1}. hét összeállítása…"
+                            strings[R.string.progress_week, chunk.index + 1]
                         } else {
-                            "Terv összeállítása…"
+                            strings[R.string.progress_plan]
                         },
                     )
                 )
@@ -119,9 +125,9 @@ abstract class StreamingMealAi : MealAi {
                         totalChunks = chunk.total,
                         daysReady = allDays.size,
                         message = if (chunk.index + 1 < chunk.total) {
-                            "${allDays.size} nap kész, a többi töltődik…"
+                            strings[R.string.progress_days_ready, allDays.size]
                         } else {
-                            "Kész."
+                            strings[R.string.progress_done]
                         },
                     )
                 )
@@ -133,13 +139,13 @@ abstract class StreamingMealAi : MealAi {
                     currentChunk = chunks.size,
                     totalChunks = chunks.size,
                     daysReady = allDays.size,
-                    message = "Kész.",
+                    message = strings[R.string.progress_done],
                 )
             )
 
             Result.success(
                 AiPlanResponse(
-                    planTitle = title.ifBlank { "Étrend" },
+                    planTitle = title.ifBlank { strings[R.string.plan_title] },
                     summary = summary,
                     days = allDays.sortedBy { it.dayIndex },
                     coachNotes = coachNotes.distinct().take(6),
@@ -158,7 +164,7 @@ abstract class StreamingMealAi : MealAi {
         chunk: PlanChunker.Chunk,
         onProgress: (GenerationProgress) -> Unit,
     ): AiPlanResponse {
-        val basePrompt = PlanPrompts.userPrompt(chunkRequest)
+        val basePrompt = PlanPrompts.userPrompt(chunkRequest, language)
         val expectedMeals = MealSlot.forMealsPerDay(chunkRequest.profile.mealsPerDay).size
 
         var prompt = basePrompt
@@ -167,7 +173,7 @@ abstract class StreamingMealAi : MealAi {
         repeat(MAX_ATTEMPTS) { attempt ->
             coroutineContext.ensureActive()
             val stage = if (attempt == 0) GenerationProgress.Stage.STREAMING else GenerationProgress.Stage.REPAIRING
-            val label = if (attempt == 0) "Receptek írása…" else "A kalóriakeret finomhangolása…"
+            val label = strings[if (attempt == 0) R.string.progress_recipes else R.string.progress_tuning]
 
             fun report(chars: Int) = onProgress(
                 GenerationProgress(
@@ -197,14 +203,14 @@ abstract class StreamingMealAi : MealAi {
                     stage = GenerationProgress.Stage.VALIDATING,
                     currentChunk = chunk.index,
                     totalChunks = chunk.total,
-                    message = "Ellenőrzés…",
+                    message = strings[R.string.progress_validating],
                 )
             )
 
             val parsed = PlanParser.parsePlan(raw)
             val rawPlan = parsed.getOrElse { error ->
-                lastProblems = listOf(error.message ?: "A válasz nem volt értelmezhető JSON.")
-                prompt = basePrompt + "\n\n" + PlanPrompts.repairPrompt(lastProblems)
+                lastProblems = listOf(error.message ?: strings[R.string.error_unparsable_json])
+                prompt = basePrompt + "\n\n" + PlanPrompts.repairPrompt(lastProblems, language)
                 return@repeat
             }
 
@@ -228,10 +234,21 @@ abstract class StreamingMealAi : MealAi {
 
             Log.i(TAG, "A(z) ${chunk.index + 1}. szakasz nem ment át az ellenőrzésen: $problems")
             lastProblems = problems
-            prompt = basePrompt + "\n\n" + PlanPrompts.repairPrompt(problems)
+            prompt = basePrompt + "\n\n" + PlanPrompts.repairPrompt(problems, language)
         }
 
-        throw PlanQualityException(lastProblems)
+        throw PlanQualityException(
+            problems = lastProblems,
+            message = buildString {
+                append(strings[R.string.error_plan_quality])
+                if (lastProblems.isNotEmpty()) {
+                    append(" ")
+                    append(strings[R.string.error_plan_quality_details])
+                    append(" ")
+                    append(lastProblems.take(3).joinToString("; "))
+                }
+            },
+        )
     }
 
     final override suspend fun refineDay(
@@ -242,7 +259,7 @@ abstract class StreamingMealAi : MealAi {
         try {
             val raw = call(
                 task = AiTask.DAY,
-                userText = PlanPrompts.refineDayPrompt(request, currentDayJson, instruction),
+                userText = PlanPrompts.refineDayPrompt(request, currentDayJson, instruction, language),
                 planDays = 1,
             )
             val parsed = PlanParser.parseDay(raw).getOrThrow()
@@ -263,7 +280,7 @@ abstract class StreamingMealAi : MealAi {
         try {
             val raw = call(
                 task = AiTask.CHAT,
-                userText = ChatPrompts.userPrompt(context, history, message),
+                userText = ChatPrompts.userPrompt(context, history, message, language),
             )
             Result.success(PlanParser.parseChat(raw).getOrThrow())
         } catch (cancelled: CancellationException) {
@@ -283,22 +300,11 @@ abstract class StreamingMealAi : MealAi {
 
 open class MealAiException(message: String, cause: Throwable? = null) : Exception(message, cause)
 
-class MissingApiKeyException : MealAiException(
-    "Nincs beállítva API kulcs. A Beállításokban add meg az Anthropic kulcsodat, " +
-        "vagy használd a beépített offline tervezőt."
-)
+class MissingApiKeyException(message: String) : MealAiException(message)
 
-class EmptyResponseException : MealAiException("Az AI üres választ küldött. Próbáld újra.")
+class EmptyResponseException(message: String) : MealAiException(message)
 
-class PlanQualityException(val problems: List<String>) : MealAiException(
-    buildString {
-        append("A terv kétszer sem felelt meg a céloknak. ")
-        if (problems.isNotEmpty()) {
-            append("Az utolsó hibák: ")
-            append(problems.take(3).joinToString("; "))
-        }
-    }
-)
+class PlanQualityException(val problems: List<String>, message: String) : MealAiException(message)
 
 /**
  * A szerver visszautasította a kérést, mert elfogyott a keret.

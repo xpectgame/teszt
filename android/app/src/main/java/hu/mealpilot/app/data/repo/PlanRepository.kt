@@ -1,5 +1,6 @@
 package hu.mealpilot.app.data.repo
 
+import hu.mealpilot.core.i18n.AppLanguage
 import hu.mealpilot.app.data.ai.MealAiException
 import hu.mealpilot.app.data.local.IngredientEntity
 import hu.mealpilot.app.data.local.MealDao
@@ -74,6 +75,7 @@ class PlanRepository(
         startDate: LocalDate,
         days: Int,
         freeText: String,
+        language: AppLanguage = AppLanguage.DEFAULT,
         onProgress: (GenerationProgress) -> Unit = {},
     ): Result<PlanGenerationOutcome> {
         val previousNames = planDao.activePlan()?.let { mealDao.namesInPlan(it.id) } ?: emptyList()
@@ -86,7 +88,7 @@ class PlanRepository(
             totalDays = days,
             freeText = freeText,
             avoidRecipes = previousNames.takeLast(40),
-            startWeekday = startDate.hungarianWeekday(),
+            startWeekday = startDate.weekdayName(language),
         )
 
         val planId = planDao.insert(
@@ -166,6 +168,7 @@ class PlanRepository(
         planId: Long,
         dayIndex: Int,
         instruction: String,
+        language: AppLanguage = AppLanguage.DEFAULT,
     ): Result<String> {
         val plan = planDao.byId(planId) ?: return Result.failure(MealAiException("A terv nem található."))
         val startDate = LocalDate.ofEpochDay(plan.startEpochDay)
@@ -180,7 +183,7 @@ class PlanRepository(
             days = 1,
             startDayIndex = dayIndex,
             totalDays = plan.dayCount,
-            startWeekday = date.hungarianWeekday(),
+            startWeekday = date.weekdayName(language),
         )
 
         val response = ai.refineDay(request, current.toAiDayJson(dayIndex), instruction)
@@ -389,8 +392,21 @@ class PlanRepository(
     }
 }
 
-/** Magyar napnév a promptba (a hétvégére hosszabb receptek kerülhetnek). */
-fun LocalDate.hungarianWeekday(): String = when (dayOfWeek.value) {
-    1 -> "hétfő"; 2 -> "kedd"; 3 -> "szerda"; 4 -> "csütörtök"
-    5 -> "péntek"; 6 -> "szombat"; else -> "vasárnap"
+/**
+ * Napnév a promptba, a TERV nyelvén (a hétvégére hosszabb receptek kerülhetnek).
+ *
+ * Nem erőforrásból jön: ez a szöveg a modellnek szól, nem a felületnek. Egy angol
+ * tervben a „szombat" nem fordítási hiba lenne, hanem félreértés — a modell abból is
+ * a válasz nyelvére következtet.
+ */
+fun LocalDate.weekdayName(language: AppLanguage): String = if (language == AppLanguage.EN) {
+    when (dayOfWeek.value) {
+        1 -> "Monday"; 2 -> "Tuesday"; 3 -> "Wednesday"; 4 -> "Thursday"
+        5 -> "Friday"; 6 -> "Saturday"; else -> "Sunday"
+    }
+} else {
+    when (dayOfWeek.value) {
+        1 -> "hétfő"; 2 -> "kedd"; 3 -> "szerda"; 4 -> "csütörtök"
+        5 -> "péntek"; 6 -> "szombat"; else -> "vasárnap"
+    }
 }

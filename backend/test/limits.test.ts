@@ -2,7 +2,13 @@ import { describe, expect, it } from 'vitest'
 import { DEFAULT_LIMITS, EMPTY_USAGE, checkQuota, periodKey, usageDelta } from '../src/limits.js'
 import { isEntitled } from '../src/play.js'
 import { costMicros } from '../src/anthropic.js'
-import { PROMPT_HASHES, PLAN_SYSTEM_PROMPT, CHAT_SYSTEM_PROMPT } from '../src/prompts.js'
+import {
+  PROMPT_HASHES,
+  PLAN_SYSTEM_PROMPT,
+  CHAT_SYSTEM_PROMPT,
+  PLAN_SYSTEM_PROMPT_EN,
+  CHAT_SYSTEM_PROMPT_EN,
+} from '../src/prompts.js'
 
 const free = DEFAULT_LIMITS.FREE
 const premium = DEFAULT_LIMITS.PREMIUM
@@ -171,5 +177,7 @@ describe('rendszerpromptok', () => {
     }
     expect(await hash(PLAN_SYSTEM_PROMPT)).toBe(PROMPT_HASHES.plan)
     expect(await hash(CHAT_SYSTEM_PROMPT)).toBe(PROMPT_HASHES.chat)
+    expect(await hash(PLAN_SYSTEM_PROMPT_EN)).toBe(PROMPT_HASHES.plan_en)
+    expect(await hash(CHAT_SYSTEM_PROMPT_EN)).toBe(PROMPT_HASHES.chat_en)
   })
 })

@@ -13,6 +13,9 @@ import com.anthropic.models.messages.TextBlockParam
 import hu.mealpilot.app.data.prefs.AiEffort
 import hu.mealpilot.app.data.prefs.AiModel
 import hu.mealpilot.app.data.prefs.AppSettings
+import hu.mealpilot.app.R
+import hu.mealpilot.app.i18n.AppStrings
+import hu.mealpilot.core.i18n.AppLanguage
 import hu.mealpilot.app.data.prefs.SecureKeyStore
 import hu.mealpilot.core.ai.ChatPrompts
 import hu.mealpilot.core.ai.PlanPrompts
@@ -29,8 +32,10 @@ import kotlinx.coroutines.ensureActive
  */
 class AnthropicMealAi(
     private val keyStore: SecureKeyStore,
+    strings: AppStrings,
+    language: AppLanguage,
     private val settingsProvider: suspend () -> AppSettings,
-) : StreamingMealAi() {
+) : StreamingMealAi(strings, language) {
 
     override val isConfigured: Boolean get() = keyStore.hasApiKey()
 
@@ -57,7 +62,7 @@ class AnthropicMealAi(
         isRetry: Boolean,
         onChars: (Int) -> Unit,
     ): String {
-        val apiKey = keyStore.apiKey() ?: throw MissingApiKeyException()
+        val apiKey = keyStore.apiKey() ?: throw MissingApiKeyException(strings[R.string.error_missing_api_key])
         val settings = settingsProvider()
 
         val builder = MessageCreateParams.builder()
@@ -95,7 +100,7 @@ class AnthropicMealAi(
             }
         }
         coroutineContext.ensureActive()
-        if (text.isBlank()) throw EmptyResponseException()
+        if (text.isBlank()) throw EmptyResponseException(strings[R.string.error_empty_response])
         return text.toString()
     }
 
@@ -108,23 +113,20 @@ class AnthropicMealAi(
     override fun translate(error: Throwable): Throwable = when (error) {
         is CancellationException -> error
         is MealAiException -> error
-        is UnauthorizedException -> MealAiException(
-            "Az API kulcs érvénytelen vagy lejárt. Nézd meg a Beállításokban.", error
-        )
-        is RateLimitException -> MealAiException(
-            "Túl sok kérés ment ki egymás után. Várj egy percet, aztán próbáld újra.", error
-        )
+        is UnauthorizedException -> MealAiException(strings[R.string.error_bad_api_key], error)
+        is RateLimitException -> MealAiException(strings[R.string.error_rate_limited], error)
         is BadRequestException -> MealAiException(
-            "A kérést az API visszautasította: ${error.message ?: "ismeretlen ok"}", error
-        )
-        is AnthropicServiceException -> MealAiException(
-            "Az AI szolgáltatás hibát adott (${error.errorType().map { it.toString() }.orElse("ismeretlen")}). " +
-                "Próbáld újra kicsit később.",
+            strings[R.string.error_bad_request, error.message ?: strings[R.string.error_unknown_reason]],
             error,
         )
-        is java.io.IOException -> MealAiException(
-            "Nem sikerült elérni az AI szolgáltatást. Ellenőrizd az internetkapcsolatot.", error
+        is AnthropicServiceException -> MealAiException(
+            strings[
+                R.string.error_service,
+                error.errorType().map { it.toString() }.orElse(strings[R.string.error_unknown_reason]),
+            ],
+            error,
         )
-        else -> MealAiException(error.message ?: "Ismeretlen hiba a terv készítése közben.", error)
+        is java.io.IOException -> MealAiException(strings[R.string.error_no_network_ai], error)
+        else -> MealAiException(error.message ?: strings[R.string.error_unknown_planning], error)
     }
 }

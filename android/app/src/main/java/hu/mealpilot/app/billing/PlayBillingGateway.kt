@@ -1,5 +1,7 @@
 package hu.mealpilot.app.billing
 
+import hu.mealpilot.app.R
+import hu.mealpilot.app.i18n.AppStrings
 import android.app.Activity
 import android.content.Context
 import android.util.Log
@@ -29,6 +31,7 @@ import kotlinx.coroutines.flow.asStateFlow
  */
 class PlayBillingGateway(
     context: Context,
+    private val strings: AppStrings,
     private val onEntitlementChanged: (subscribed: Boolean, pending: Boolean, expiresAtMillis: Long?) -> Unit,
 ) : BillingGateway {
 
@@ -112,7 +115,7 @@ class PlayBillingGateway(
                 formattedPrice = phase?.formattedPrice,
                 billingPeriodLabel = phase?.billingPeriod?.let(::humanPeriod),
                 error = if (product == null) {
-                    "Az előfizetés jelenleg nem elérhető. Próbáld újra később."
+                    strings[R.string.billing_unavailable_retry]
                 } else {
                     null
                 },
@@ -163,12 +166,12 @@ class PlayBillingGateway(
     override fun launchPurchase(activity: Activity) {
         val product = productDetails
         if (product == null) {
-            _state.value = _state.value.copy(error = "Az előfizetés most nem elérhető.")
+            _state.value = _state.value.copy(error = strings[R.string.billing_unavailable])
             return
         }
         val offerToken = product.subscriptionOfferDetails?.firstOrNull()?.offerToken
         if (offerToken == null) {
-            _state.value = _state.value.copy(error = "Nincs elérhető ajánlat ehhez a termékhez.")
+            _state.value = _state.value.copy(error = strings[R.string.billing_no_offer])
             return
         }
         val params = BillingFlowParams.newBuilder()
@@ -192,24 +195,24 @@ class PlayBillingGateway(
     }
 
     private fun humanPeriod(iso: String): String = when (iso) {
-        "P1M" -> "hó"
-        "P3M" -> "negyedév"
-        "P6M" -> "félév"
-        "P1Y" -> "év"
-        "P1W" -> "hét"
+        "P1M" -> strings[R.string.period_month]
+        "P3M" -> strings[R.string.period_quarter]
+        "P6M" -> strings[R.string.period_half_year]
+        "P1Y" -> strings[R.string.period_year]
+        "P1W" -> strings[R.string.period_week]
         else -> iso
     }
 
     private fun readable(result: BillingResult): String = when (result.responseCode) {
         BillingClient.BillingResponseCode.BILLING_UNAVAILABLE ->
-            "Ezen az eszközön nem érhető el a Play fizetés."
+            strings[R.string.billing_no_play]
         BillingClient.BillingResponseCode.SERVICE_UNAVAILABLE,
         BillingClient.BillingResponseCode.SERVICE_DISCONNECTED ->
-            "A Play szolgáltatás most nem elérhető. Próbáld újra később."
+            strings[R.string.billing_play_down]
         BillingClient.BillingResponseCode.ITEM_UNAVAILABLE ->
-            "Ez az előfizetés jelenleg nem vásárolható meg."
+            strings[R.string.billing_not_purchasable]
         BillingClient.BillingResponseCode.ITEM_ALREADY_OWNED ->
-            "Már van aktív előfizetésed."
+            strings[R.string.billing_already_owned]
         BillingClient.BillingResponseCode.NETWORK_ERROR ->
             "Nincs internetkapcsolat."
         else -> result.debugMessage.ifBlank { "Ismeretlen hiba (${result.responseCode})." }

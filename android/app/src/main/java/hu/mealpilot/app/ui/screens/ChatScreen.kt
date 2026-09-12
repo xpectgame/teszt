@@ -191,6 +191,7 @@ class ChatViewModel(private val container: AppContainer) : ViewModel() {
                     freeText = listOf(profile.preferences, action.instruction)
                         .filter { it.isNotBlank() }
                         .joinToString(". "),
+                    language = container.language,
                     onProgress = onProgress,
                 ).getOrThrow()
                 ReminderRefreshWorker.refreshNow(container.appContext)
@@ -211,6 +212,7 @@ class ChatViewModel(private val container: AppContainer) : ViewModel() {
                         planId = plan.id,
                         dayIndex = index,
                         instruction = action.instruction,
+                        language = container.language,
                     ).onSuccess { done++ }
                 }
                 ReminderRefreshWorker.refreshNow(container.appContext)
