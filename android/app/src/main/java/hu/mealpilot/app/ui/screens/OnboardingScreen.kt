@@ -152,10 +152,12 @@ fun OnboardingScreen(
                 Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                     TextButton(
                         onClick = { context.openUrl(LegalLinks.terms(language)) },
+                        enabled = LegalLinks.isConfigured,
                         contentPadding = PaddingValues(0.dp),
                     ) { Text(stringResource(R.string.legal_terms_short), style = MaterialTheme.typography.labelMedium) }
                     TextButton(
                         onClick = { context.openUrl(LegalLinks.privacy(language)) },
+                        enabled = LegalLinks.isConfigured,
                         contentPadding = PaddingValues(0.dp),
                     ) { Text(stringResource(R.string.legal_privacy_short), style = MaterialTheme.typography.labelMedium) }
                 }

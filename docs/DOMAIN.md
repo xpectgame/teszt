@@ -77,19 +77,27 @@ keresés.
 ## Tartalék: GitHub Pages
 
 Ha valamiért mégsem a Worker szolgálná ki őket, a `mealpilot/` könyvtár önmagában is egy
-kész statikus oldal. A `main` ágon a repó Pages-oldala kiadja:
+kész statikus oldal, és a repó Pages-kiadása közvetlenül ki tudja adni:
 
 ```
-https://xpectgame.github.io/teszt/mealpilot/privacy.html
+https://<felhasznalo>.github.io/<repo>/mealpilot/privacy.html
+https://<felhasznalo>.github.io/<repo>/mealpilot/en/privacy.html
 ```
 
-Ez az app **tartalék** címe is, ha se `MEALPILOT_SITE_URL`, se `MEALPILOT_BACKEND_URL`
-nincs megadva. Fejlesztéshez jó, bolti kiadáshoz viszont a Workeré (vagy egy saját
-domain) a rendes válasz.
+Ez **nincs beégetve az appba**, és szándékosan nincs: egy beégetett tartalék cím csendben
+túlélné a kiadást, és az appból egy olyan névtérbe mutató jogi linkek mennének ki, aminek
+semmi köze a MealPilothoz. Ha ezt akarod használni, add meg kézzel:
+
+```bash
+MEALPILOT_SITE_URL=https://<felhasznalo>.github.io/<repo>/mealpilot ./gradlew :app:assembleRelease
+```
+
+Cím nélkül a jogi gombok letiltva jelennek meg, a **kiadási build pedig el sem készül** —
+a Play kötelezően kéri az adatkezelési és adattörlési URL-t, és egy halott link
+elutasítást jelent.
 
 A korábbi `hernadicsaba.hu` egyéni domain a `CNAME` fájllal együtt megszűnt. Ha a
-Pages-oldalt teljesen ki akarod kapcsolni: Settings → Pages → Source: *None*. Ilyenkor
-a fenti tartalék cím sem él, tehát az appot mindenképp backend címmel kell fordítani.
+Pages-oldalt teljesen ki akarod kapcsolni: Settings → Pages → Source: *None*.
 
 ---
 

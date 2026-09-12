@@ -1,12 +1,7 @@
 import java.util.Properties
 
-/**
- * A jogi oldalak címe, ha sem a backend, sem a MEALPILOT_SITE_URL nincs megadva.
- *
- * Rendes esetben nem ez fut: a backend maga is kiszolgálja a jogi oldalakat, tehát a
- * MEALPILOT_BACKEND_URL egyben a weboldal címe is. Lásd docs/DOMAIN.md.
- */
-val FALLBACK_SITE_URL = "https://xpectgame.github.io/teszt/mealpilot"
+/** A jogi oldalak címe — a kiadási ellenőrzés is ezt nézi (lásd lentebb). */
+var siteUrlForCheck = ""
 
 plugins {
     id("com.android.application")
@@ -48,10 +43,16 @@ android {
         // tehát nem kell hozzá se külön tárhely, se domain, és a szöveg ugyanazzal a
         // deployjal frissül, mint a kód. Saját domainnel felülírható:
         //   MEALPILOT_SITE_URL=https://mealpilot.hu ./gradlew :app:bundleRelease
+        //
+        // Szándékosan NINCS beégetett tartalék cím. Egy ilyen cím csendben túlélné a
+        // kiadást, és az appból egy idegen névtérbe mutató jogi linkek mennének ki.
+        // Ha nincs megadva, a jogi gombok letiltva jelennek meg, a kiadási build pedig
+        // inkább elszáll (lásd lentebb) — a hangos hiba itt a helyes.
         val siteUrl = System.getenv("MEALPILOT_SITE_URL")?.trim()?.trimEnd('/')
             ?.takeIf { it.isNotBlank() }
-            ?: backendUrl.ifBlank { FALLBACK_SITE_URL }
+            ?: backendUrl
         buildConfigField("String", "SITE_URL", "\"$siteUrl\"")
+        siteUrlForCheck = siteUrl
     }
 
     // A kiadási aláíráshoz szükséges adatok. SOHA nem kerülnek a repóba: vagy a
@@ -105,6 +106,21 @@ android {
             "FIGYELEM: a tulajdonosi kulcs bekerül a RELEASE buildbe. Ezt a csomagot ne " +
                 "töltsd fel a Play Console-ba — a kulcs visszafejthető lenne belőle."
         )
+    }
+
+    // Kiadási build jogi cím nélkül nem mehet ki: a Play kötelezően kéri az
+    // adatkezelési és adattörlési URL-t, és egy halott link elutasítást jelent.
+    // Fejlesztéshez (debug) viszont ne akadályozzon semmit.
+    gradle.taskGraph.whenReady {
+        val releasing = allTasks.any { task ->
+            task.project == project && (task.name.endsWith("Release") || task.name.contains("Release"))
+        }
+        if (releasing && siteUrlForCheck.isBlank()) {
+            error(
+                "A kiadási buildhez kell a jogi oldalak címe. Add meg a MEALPILOT_BACKEND_URL " +
+                    "vagy a MEALPILOT_SITE_URL környezeti változót. Lásd docs/DOMAIN.md."
+            )
+        }
     }
 
     buildTypes {

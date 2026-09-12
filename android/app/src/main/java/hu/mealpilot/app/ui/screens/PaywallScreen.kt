@@ -69,6 +69,15 @@ object LegalLinks {
      * A jogi szöveget azon a nyelven kell megmutatni, amit a felhasználó ért — egy
      * elfogadó pipa magyar feltételek alatt egy angolul olvasó embertől nem ér semmit.
      */
+    /**
+     * Hamis, ha a build nem tudja, hol vannak a jogi oldalak.
+     *
+     * Ilyenkor a gombok letiltva jelennek meg. Egy beégetett tartalék cím kényelmesebb
+     * lenne, de az csendben túlélné a kiadást — a kiadási build ezért inkább el sem
+     * készül cím nélkül (lásd app/build.gradle.kts).
+     */
+    val isConfigured: Boolean get() = SITE.isNotBlank()
+
     private fun prefix(language: AppLanguage) = if (language == AppLanguage.EN) "en/" else ""
 
     fun privacy(language: AppLanguage) = "$SITE/${prefix(language)}privacy.html"
@@ -256,10 +265,16 @@ fun PaywallScreen(
 
         Spacer(Modifier.height(20.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-            TextButton(onClick = { context.openUrl(LegalLinks.terms(language)) }) {
+            TextButton(
+                enabled = LegalLinks.isConfigured,
+                onClick = { context.openUrl(LegalLinks.terms(language)) },
+            ) {
                 Text(stringResource(R.string.legal_terms_short))
             }
-            TextButton(onClick = { context.openUrl(LegalLinks.privacy(language)) }) {
+            TextButton(
+                enabled = LegalLinks.isConfigured,
+                onClick = { context.openUrl(LegalLinks.privacy(language)) },
+            ) {
                 Text(stringResource(R.string.legal_privacy_short))
             }
         }
