@@ -8,7 +8,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -116,7 +115,7 @@ fun MealDetailScreen(
         val slot = MealSlot.fromRaw(meal.slot)
         val accent = MealColors.of(slot.ordinal, LocalDarkTheme.current)
         Row(verticalAlignment = Alignment.CenterVertically) {
-            MealStamp(color = accent, done = false, modifier = Modifier.size(66.dp))
+            MealStamp(color = accent, done = false, size = 66.dp)
             Spacer(Modifier.width(15.dp))
             Column(Modifier.weight(1f)) {
                 Text(

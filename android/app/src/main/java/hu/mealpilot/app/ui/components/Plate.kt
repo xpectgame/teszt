@@ -38,8 +38,10 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import hu.mealpilot.app.ui.theme.MealColors
 import hu.mealpilot.app.ui.theme.MealLabelStyle
 import hu.mealpilot.app.ui.theme.PlateShape
 import hu.mealpilot.app.ui.theme.TabularNums
@@ -213,22 +215,26 @@ fun MealStamp(
     color: Color,
     done: Boolean,
     modifier: Modifier = Modifier,
+    size: Dp = 58.dp,
 ) {
-    Box(modifier.size(58.dp)) {
+    // A méret paraméter, mert az Étkezés részletei nagyobb bélyeget mutat. A belső
+    // elemek is ehhez igazodnak, különben a nagyobb keretben ugyanakkora jel ülne.
+    val badge = size * 0.38f
+    Box(modifier.size(size)) {
         Box(
             Modifier
-                .size(58.dp)
+                .size(size)
                 .clip(PlateShape.tile)
                 .background(color),
             contentAlignment = Alignment.Center,
         ) {
-            PlateMark(Modifier.size(26.dp), Color.White)
+            PlateMark(Modifier.size(size * 0.45f), MealColors.contentOn(color))
         }
         if (done) {
             Box(
                 Modifier
                     .align(Alignment.BottomEnd)
-                    .size(22.dp)
+                    .size(badge)
                     .clip(CircleShape)
                     .background(MaterialTheme.colorScheme.surface)
                     .padding(2.dp)
@@ -240,7 +246,7 @@ fun MealStamp(
                     Icons.Filled.Check,
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.onPrimary,
-                    modifier = Modifier.size(13.dp),
+                    modifier = Modifier.size(badge * 0.6f),
                 )
             }
         }

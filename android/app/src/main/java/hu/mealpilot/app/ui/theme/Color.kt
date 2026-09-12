@@ -14,7 +14,11 @@ object Plate {
     val paper = Color(0xFFFFF6EE)
     val card = Color(0xFFFFFFFF)
     val ink = Color(0xFF2A1E16)
-    val ink2 = Color(0xFF8A7566)
+    // A vászon #8A7566-ot adott, az viszont krém alapon csak 4,08:1 — apró szövegre
+    // (tápértéksor, időpont, kiegészítő felirat) ez a WCAG AA 4,5:1 alatt van, és
+    // pont ezeket a feliratokat viseli. A legkisebb sötétítés, ami krémen ÉS fehéren
+    // is átmegy: #826E60 (4,52 / 4,83). A karaktere ugyanaz a meleg szürkésbarna.
+    val ink2 = Color(0xFF826E60)
     val line = Color(0xFFF0E0D2)
     val green = Color(0xFF2F7D5E)
     val greenSoft = Color(0xFFE2F1E9)
@@ -71,6 +75,38 @@ object MealColors {
         val palette = if (darkTheme) dark else light
         // A negatív indexet is elbírja: a rem operátor előjelet tart Kotlinban.
         return palette[((index % palette.size) + palette.size) % palette.size]
+    }
+
+    /**
+     * Mi látszik EZEN az étkezésszínen: a tányér jele és minden rárajzolt elem.
+     *
+     * Fehér nem elég. A borostyán már világos témában is csak 2,17:1 fehérrel,
+     * sötét témában pedig mind a hat szín világos pasztell — ott a fehér jel
+     * gyakorlatilag eltűnne a bélyegen.
+     *
+     * Ezért a tinta és a fehér közül azt választjuk, amelyik jobban elüt. A hat
+     * világos és hat sötét étkezésszínen a legrosszabb eset így 4,17:1, a korábbi
+     * 1,64:1 helyett. A döntést a szín hozza, nem a téma: sötét témában is lehet
+     * sötét étkezésszín, és fordítva.
+     */
+    fun contentOn(color: Color): Color =
+        if (contrast(Plate.ink, color) >= contrast(Color.White, color)) Plate.ink else Color.White
+
+    /** WCAG kontrasztarány két szín között: 1:1 (azonos) és 21:1 (fekete-fehér) között. */
+    private fun contrast(a: Color, b: Color): Float {
+        val la = relativeLuminance(a)
+        val lb = relativeLuminance(b)
+        return (maxOf(la, lb) + 0.05f) / (minOf(la, lb) + 0.05f)
+    }
+
+    /** WCAG relatív világosság. */
+    private fun relativeLuminance(color: Color): Float {
+        fun channel(v: Float): Float =
+            if (v <= 0.03928f) v / 12.92f
+            else Math.pow(((v + 0.055f) / 1.055f).toDouble(), 2.4).toFloat()
+        return 0.2126f * channel(color.red) +
+            0.7152f * channel(color.green) +
+            0.0722f * channel(color.blue)
     }
 }
 
