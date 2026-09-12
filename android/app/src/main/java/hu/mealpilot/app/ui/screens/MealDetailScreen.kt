@@ -44,6 +44,7 @@ import hu.mealpilot.app.ui.components.SectionCard
 import hu.mealpilot.app.ui.components.StatChip
 import hu.mealpilot.app.ui.containerFactory
 import hu.mealpilot.core.ai.Aisle
+import hu.mealpilot.core.ai.Units
 import hu.mealpilot.core.i18n.label
 import hu.mealpilot.core.ai.MealSlot
 import kotlinx.coroutines.flow.SharingStarted
@@ -148,7 +149,7 @@ fun MealDetailScreen(
                     NutrientRow(
                         ing.name.replaceFirstChar(Char::uppercaseChar) +
                             if (ing.note.isNotBlank()) " (${ing.note})" else "",
-                        "$quantity ${ing.unit}",
+                        "$quantity ${Units.label(ing.unit, ing.quantity, language)}",
                     )
                 }
                 Spacer(Modifier.height(8.dp))

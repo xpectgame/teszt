@@ -39,6 +39,8 @@ import hu.mealpilot.app.data.local.endEpochDay
 import hu.mealpilot.app.ui.components.EmptyState
 import hu.mealpilot.app.ui.containerFactory
 import hu.mealpilot.core.ai.Aisle
+import hu.mealpilot.core.ai.Units
+import hu.mealpilot.core.i18n.AppLanguage
 import hu.mealpilot.core.i18n.label
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -236,7 +238,7 @@ fun ShoppingScreen(
                             )
                         }
                     }
-                    Text(displayQuantity(item), style = MaterialTheme.typography.labelLarge)
+                    Text(displayQuantity(item, language), style = MaterialTheme.typography.labelLarge)
                 }
             }
         }
@@ -250,8 +252,8 @@ fun ShoppingScreen(
     }
 }
 
-/** A tárolt alapegységet (g/ml) olvasható formára hozza. */
-private fun displayQuantity(item: ShoppingItemEntity): String {
+/** A tárolt alapegységet (g/ml) olvasható formára hozza, a felület nyelvén. */
+private fun displayQuantity(item: ShoppingItemEntity, language: AppLanguage): String {
     fun trim(value: Double): String {
         val rounded = Math.round(value * 100) / 100.0
         return if (rounded % 1.0 == 0.0) rounded.toInt().toString() else rounded.toString()
@@ -259,6 +261,6 @@ private fun displayQuantity(item: ShoppingItemEntity): String {
     return when {
         item.unit == "g" && item.quantity >= 1000 -> "${trim(item.quantity / 1000)} kg"
         item.unit == "ml" && item.quantity >= 1000 -> "${trim(item.quantity / 1000)} l"
-        else -> "${trim(item.quantity)} ${item.unit}"
+        else -> "${trim(item.quantity)} ${Units.label(item.unit, item.quantity, language)}"
     }
 }
