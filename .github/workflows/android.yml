@@ -94,11 +94,14 @@ jobs:
       - name: Adatbázis-séma kiírása
         if: success()
         run: |
-          for f in app/schemas/*/*.json; do
-            echo "=== $f ==="
-            cat "$f"
-            echo
-          done
+          sha256sum app/schemas/*/*.json
+          # Tömörítve és base64-ben: a nyers JSON több tízezer karakter, abból
+          # kézzel átmásolni HIBÁS sémát szülne — és a hibás séma rosszabb, mint a
+          # hiányzó, mert a következő migrációt egy hazugságra írnánk. Így viszont
+          # gépileg visszafejthető, és a fenti ellenőrzőösszeg igazolja.
+          echo "--- séma tar.gz base64 ---"
+          tar czf - app/schemas | base64 -w 100
+          echo "--- séma vége ---"
 
       # A Room a fordításkor kiírja az adatbázis pontos sémáját. Ez nincs a repóban,
       # pedig a következő verzió migrációját EHHEZ kell írni: enélkül csak tippelni
