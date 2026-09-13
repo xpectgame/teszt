@@ -39,7 +39,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
@@ -49,6 +52,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import hu.mealpilot.app.AppContainer
 import hu.mealpilot.app.R
 import hu.mealpilot.app.BuildConfig
+import hu.mealpilot.app.data.telemetry.CrashReporter
 import hu.mealpilot.app.data.prefs.AiEffort
 import hu.mealpilot.app.data.prefs.AiModel
 import hu.mealpilot.app.data.prefs.AppSettings
@@ -120,6 +124,7 @@ fun SettingsScreen(
     val storedProfile by viewModel.profile.collectAsState(initial = null)
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+    val clipboard = LocalClipboardManager.current
     val language by container.languageStore.language.collectAsState()
 
     var apiKeyInput by remember { mutableStateOf("") }
@@ -196,6 +201,50 @@ fun SettingsScreen(
         // verziószám hétszeri megérintésével lehet bejutni, felhasználóhoz nem jut el,
         // és a kétnyelvűsítése csak karbantartandó fordítást szülne.
         if (current.developerMode) {
+            // Az elmentett összeomlások. A CrashReporter eddig is fájlba írta őket, de
+            // csak a backend olvasta vissza — backend nélküli buildben tehát senki.
+            // Éppen a tesztelésnél, ahol a legtöbbet érnének.
+            var crashes by remember { mutableStateOf(CrashReporter.pending(context)) }
+            if (crashes.isNotEmpty()) {
+                SectionCard(title = "Összeomlások (${crashes.size})") {
+                    crashes.asReversed().forEach { crash ->
+                        Text(
+                            crash.fingerprint,
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.SemiBold,
+                        )
+                        crash.message?.let {
+                            Text(it, style = MaterialTheme.typography.bodySmall)
+                        }
+                        Text(
+                            // A teljes verem hosszú; az eleje mondja meg, hol tört el.
+                            crash.stack.lineSequence().take(24).joinToString("\n"),
+                            style = MaterialTheme.typography.labelSmall,
+                            fontFamily = FontFamily.Monospace,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        Spacer(Modifier.height(12.dp))
+                    }
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Button(onClick = {
+                            clipboard.setText(
+                                AnnotatedString(
+                                    crashes.joinToString("\n\n---\n\n") {
+                                        "${it.fingerprint}\n${it.message.orEmpty()}\n${it.stack}"
+                                    }
+                                )
+                            )
+                        }) { Text("Másolás") }
+                        OutlinedButton(onClick = {
+                            CrashReporter.clear(context)
+                            crashes = emptyList()
+                            scope.launch { snackbarHostState.showSnackbar("Összeomlások törölve.") }
+                        }) { Text("Törlés") }
+                    }
+                }
+                Spacer(Modifier.height(12.dp))
+            }
+
             SectionCard(title = "Fejlesztői beállítások") {
                 // Melyik úton mennek ki a hívások. Ez a leggyakoribb félreértés forrása
                 // tesztelés közben: a saját kulcs megelőzi a backendet.

@@ -2,9 +2,7 @@ package hu.mealpilot.app.ui.screens
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -27,7 +25,6 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.LinearProgressIndicator
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.OutlinedButton
@@ -45,7 +42,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -73,6 +69,7 @@ import hu.mealpilot.app.ui.components.EmptyState
 import hu.mealpilot.app.ui.components.ReportDialog
 import hu.mealpilot.app.ui.components.SectionCard
 import hu.mealpilot.app.ui.containerFactory
+import hu.mealpilot.app.ui.icon
 import hu.mealpilot.app.ui.theme.LocalDarkTheme
 import hu.mealpilot.app.ui.theme.MealColors
 import hu.mealpilot.app.ui.theme.PlateShape
@@ -417,11 +414,13 @@ private fun DayCard(
                                 .padding(vertical = 10.dp),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
-                            Box(
-                                Modifier
-                                    .size(9.dp)
-                                    .clip(CircleShape)
-                                    .background(accent),
+                            // Itt is az étkezés saját ikonja, csak aprón — a színes pont
+                            // csak annyit mondott, hogy „ez egy másik étkezés".
+                            Icon(
+                                slot.icon,
+                                contentDescription = null,
+                                tint = accent,
+                                modifier = Modifier.size(17.dp),
                             )
                             Spacer(Modifier.width(11.dp))
                             NumberText(

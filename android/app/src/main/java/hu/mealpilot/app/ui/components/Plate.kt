@@ -17,7 +17,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -34,7 +33,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.semantics.Role
@@ -61,11 +60,13 @@ fun NumberText(
     modifier: Modifier = Modifier,
     style: TextStyle = MaterialTheme.typography.bodyMedium,
     color: Color = Color.Unspecified,
+    maxLines: Int = Int.MAX_VALUE,
 ) = Text(
     text = text,
     modifier = modifier,
     style = style.copy(fontFeatureSettings = TabularNums),
     color = color,
+    maxLines = maxLines,
 )
 
 /**
@@ -111,6 +112,10 @@ fun BudgetHero(
                     NumberText(
                         text = abs(remaining).toString(),
                         style = MaterialTheme.typography.displayLarge,
+                        // Egy sor, mindig. Nagy rendszerbetűvel a szám kinőné a
+                        // fél hasábot, és tördelve minden számjegy külön sorba
+                        // kerülne — abból torony lesz, nem szám.
+                        maxLines = 1,
                     )
                     Spacer(Modifier.height(6.dp))
                     Text(
@@ -119,8 +124,13 @@ fun BudgetHero(
                         color = onHero.copy(alpha = 0.8f),
                     )
                 }
+                // A makróhasáb SÚLYOZOTT, nem `widthIn(min=…)`. Súly nélkül a Compose a
+                // teljes elérhető szélességgel méri, a benne lévő sorok pedig
+                // fillMaxWidth-et kérnek — így az egész sort elfoglalta, a nagy számnak
+                // nulla hely maradt, és láthatatlanul, soronként egy karakterrel nyúlt
+                // le a képernyő aljáig.
                 Column(
-                    Modifier.widthIn(min = 124.dp),
+                    Modifier.weight(1f),
                     verticalArrangement = Arrangement.spacedBy(3.dp),
                 ) {
                     labels.lines.forEach { line ->
@@ -206,12 +216,13 @@ fun SectionHeading(title: String, trailing: String? = null, modifier: Modifier =
 }
 
 /**
- * Az étkezés színes bélyege: lekerekített négyzet a tányér jelével, sarkában pipa,
+ * Az étkezés színes bélyege: lekerekített négyzet az étkezés saját ikonjával, sarkában pipa,
  * ha már megette. A pipa körüli gyűrű a kártya színével rajzolódik, hogy a bélyeg
  * szélétől elváljon.
  */
 @Composable
 fun MealStamp(
+    icon: ImageVector,
     color: Color,
     done: Boolean,
     modifier: Modifier = Modifier,
@@ -228,7 +239,12 @@ fun MealStamp(
                 .background(color),
             contentAlignment = Alignment.Center,
         ) {
-            PlateMark(Modifier.size(size * 0.45f), MealColors.contentOn(color))
+            Icon(
+                icon,
+                contentDescription = null,
+                tint = MealColors.contentOn(color),
+                modifier = Modifier.size(size * 0.48f),
+            )
         }
         if (done) {
             Box(
@@ -250,16 +266,6 @@ fun MealStamp(
                 )
             }
         }
-    }
-}
-
-/** A tányér jele: két koncentrikus kör, ugyanaz, mint az app ikonján. */
-@Composable
-private fun PlateMark(modifier: Modifier = Modifier, tint: Color) {
-    androidx.compose.foundation.Canvas(modifier) {
-        val stroke = Stroke(width = size.minDimension * 0.058f)
-        drawCircle(color = tint, radius = size.minDimension * 0.342f, style = stroke)
-        drawCircle(color = tint, radius = size.minDimension * 0.142f, style = stroke)
     }
 }
 

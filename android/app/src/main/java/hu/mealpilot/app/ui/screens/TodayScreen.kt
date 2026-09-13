@@ -52,6 +52,7 @@ import hu.mealpilot.app.AppContainer
 import hu.mealpilot.app.R
 import hu.mealpilot.app.i18n.LocalAppLanguage
 import hu.mealpilot.app.ui.dayLabel
+import hu.mealpilot.app.ui.icon
 import hu.mealpilot.app.data.telemetry.TelemetryEvent
 import hu.mealpilot.app.data.local.LogStatus
 import hu.mealpilot.app.data.local.MealLogEntity
@@ -428,6 +429,7 @@ private fun MealRow(
         Column(Modifier.padding(horizontal = 18.dp, vertical = 16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 MealStamp(
+                    icon = mealSlot.icon,
                     color = accent,
                     done = status == LogStatus.EATEN || replaced,
                 )

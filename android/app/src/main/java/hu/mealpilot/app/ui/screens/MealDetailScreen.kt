@@ -48,6 +48,7 @@ import hu.mealpilot.app.ui.components.PlatePill
 import hu.mealpilot.app.ui.components.ReportDialog
 import hu.mealpilot.app.ui.components.SectionCard
 import hu.mealpilot.app.ui.containerFactory
+import hu.mealpilot.app.ui.icon
 import hu.mealpilot.app.ui.theme.LocalDarkTheme
 import hu.mealpilot.app.ui.theme.MealColors
 import hu.mealpilot.app.ui.theme.MealLabelStyle
@@ -115,7 +116,7 @@ fun MealDetailScreen(
         val slot = MealSlot.fromRaw(meal.slot)
         val accent = MealColors.of(slot.ordinal, LocalDarkTheme.current)
         Row(verticalAlignment = Alignment.CenterVertically) {
-            MealStamp(color = accent, done = false, size = 66.dp)
+            MealStamp(icon = slot.icon, color = accent, done = false, size = 66.dp)
             Spacer(Modifier.width(15.dp))
             Column(Modifier.weight(1f)) {
                 Text(
