@@ -18,6 +18,7 @@ import hu.mealpilot.app.i18n.AppStrings
 import hu.mealpilot.core.i18n.AppLanguage
 import hu.mealpilot.app.data.prefs.SecureKeyStore
 import hu.mealpilot.core.ai.ChatPrompts
+import hu.mealpilot.core.ai.EstimatePrompts
 import hu.mealpilot.core.ai.PlanPrompts
 import kotlinx.coroutines.CancellationException
 import kotlin.coroutines.coroutineContext
@@ -71,9 +72,16 @@ class AnthropicMealAi(
             .systemOfTextBlockParams(
                 listOf(
                     TextBlockParam.builder()
+                        // Kimerítő `when`, nem `if/else`: az else ág CSENDBEN a tervező
+                        // promptját küldte volna minden új feladattípushoz — a becslésre
+                        // egy egész étrendet kaptunk volna vissza. Így a fordító kényszerít
+                        // döntésre, valahányszor az AiTask bővül.
                         .text(
-                            if (task == AiTask.CHAT) ChatPrompts.system(language)
-                            else PlanPrompts.system(language)
+                            when (task) {
+                                AiTask.CHAT -> ChatPrompts.system(language)
+                                AiTask.ESTIMATE -> EstimatePrompts.system(language)
+                                AiTask.PLAN, AiTask.DAY -> PlanPrompts.system(language)
+                            }
                         )
                         // A rendszerprompt minden hívásnál azonos, ezért cache-elhető:
                         // a heti darabok és a javító körök után is olcsóbb lesz.
