@@ -331,7 +331,8 @@
     <string name="plan_days_title">A terv napjai</string>
     <string name="chat_needs_approval">Jóváhagyást kér</string>
     <string name="meal_kcal_value">%1$d kcal</string>
-    <string name="meal_servings_value">%1$d adag</string>
+    <string name="meal_servings_one">1 adag</string>
+    <string name="meal_servings_value">%1$s adag</string>
     <string name="budget_bmr_pill">alap %1$d</string>
     <string name="budget_tdee_pill">napi %1$d</string>
     <string name="budget_target_pill">cél %1$d</string>

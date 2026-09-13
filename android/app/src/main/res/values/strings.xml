@@ -333,7 +333,8 @@
     <string name="plan_days_title">The days</string>
     <string name="chat_needs_approval">Needs your approval</string>
     <string name="meal_kcal_value">%1$d kcal</string>
-    <string name="meal_servings_value">%1$d servings</string>
+    <string name="meal_servings_one">1 serving</string>
+    <string name="meal_servings_value">%1$s servings</string>
     <string name="budget_bmr_pill">base %1$d</string>
     <string name="budget_tdee_pill">daily %1$d</string>
     <string name="budget_target_pill">target %1$d</string>

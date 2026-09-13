@@ -146,7 +146,14 @@ fun MealDetailScreen(
                 content = MaterialTheme.colorScheme.onSecondaryContainer,
             )
             PlatePill(
-                stringResource(R.string.meal_servings_value, meal.servings),
+                // A servings Double (fél adag is lehet), ezért NEM mehet %d-be: a
+                // formázó IllegalFormatConversionException-nel száll el, és épp ezt
+                // a képernyőt viszi magával.
+                if (meal.servings == 1.0) {
+                    stringResource(R.string.meal_servings_one)
+                } else {
+                    stringResource(R.string.meal_servings_value, trimZeroDecimal(meal.servings))
+                },
                 container = MaterialTheme.colorScheme.secondaryContainer,
                 content = MaterialTheme.colorScheme.onSecondaryContainer,
             )
@@ -177,12 +184,10 @@ fun MealDetailScreen(
                     Modifier.padding(top = 6.dp, bottom = 2.dp),
                 )
                 items.forEach { ing ->
-                    val quantity = if (ing.quantity % 1.0 == 0.0) ing.quantity.toInt().toString()
-                    else ing.quantity.toString()
                     NutrientRow(
                         ing.name.replaceFirstChar(Char::uppercaseChar) +
                             if (ing.note.isNotBlank()) " (${ing.note})" else "",
-                        "$quantity ${Units.label(ing.unit, ing.quantity, language)}",
+                        "${trimZeroDecimal(ing.quantity)} ${Units.label(ing.unit, ing.quantity, language)}",
                     )
                 }
                 Spacer(Modifier.height(8.dp))
@@ -242,6 +247,10 @@ fun MealDetailScreen(
         )
     }
 }
+
+/** „2.0" helyett „2", de „0.5" marad „0.5" — a mennyiségek és az adagszám így olvashatók. */
+private fun trimZeroDecimal(value: Double): String =
+    if (value % 1.0 == 0.0) value.toInt().toString() else value.toString()
 
 /** Csak a fogás maga megy el a bejelentéssel — napló és testadat nem. */
 private fun mealReportPayload(data: MealWithIngredients): String = buildString {
