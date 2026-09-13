@@ -82,6 +82,7 @@ import hu.mealpilot.core.ai.PlanParser
 import hu.mealpilot.core.billing.PaidFeature
 import hu.mealpilot.core.energy.EnergyCalculator
 import hu.mealpilot.core.model.DietRestriction
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -102,6 +103,12 @@ class ChatViewModel(private val container: AppContainer) : ViewModel() {
     private val _busy = MutableStateFlow<ChatBusy>(ChatBusy.Idle)
     val busy: StateFlow<ChatBusy> = _busy.asStateFlow()
 
+    /** Rövid, elszálló üzenetek: miért nem történt meg, amit a felhasználó kért. */
+    private val _notice = MutableStateFlow<String?>(null)
+    val notice: StateFlow<String?> = _notice.asStateFlow()
+
+    fun consumeNotice() { _notice.value = null }
+
     /** A hosszú műveletek a közös koordinátoron futnak, hogy mindenhol látszódjanak. */
     val generation: StateFlow<GenerationCoordinator.Status> = container.generation.status
     val actionResult: StateFlow<String?> = container.generation.actionResult
@@ -111,21 +118,32 @@ class ChatViewModel(private val container: AppContainer) : ViewModel() {
     fun send(text: String) {
         if (_busy.value != ChatBusy.Idle) return
         viewModelScope.launch {
-            val entitlement = container.entitlements.current()
-            entitlement.blockReason(PaidFeature.CHAT)?.let { reason ->
-                container.generation.requestPaywall(reason)
-                return@launch
+            // A _busy visszaállítása finally-ben van. Korábban az utolsó sor volt: ha
+            // bármi közte kivételt dobott, a beszélgetés ÖRÖKRE „gondolkodik" állapotban
+            // ragadt, és minden további üzenet némán visszafordult a fenti őrnél.
+            try {
+                val entitlement = container.entitlements.current()
+                entitlement.blockReason(PaidFeature.CHAT)?.let { reason ->
+                    container.generation.requestPaywall(reason)
+                    return@launch
+                }
+                _busy.value = ChatBusy.Thinking
+                container.telemetry.record(TelemetryEvent.CHAT_MESSAGE)
+                val result = container.chatRepository.send(container.mealAi(), text, container.language)
+                if (result.isSuccess) container.entitlements.recordChatMessage()
+                // A helyi számláló megelőzi ezt, de a végső szó a szerveré: ha ő utasít el
+                // kvóta miatt, akkor is az előfizetést ajánljuk fel, ne hibaüzenetet.
+                (result.exceptionOrNull() as? QuotaExceededException)
+                    ?.takeIf { it.upgradeOffered }
+                    ?.let { container.generation.requestPaywall(it.message ?: "Elfogyott a havi keret.") }
+            } catch (error: Throwable) {
+                if (error is CancellationException) throw error
+                container.chatRepository.recordOutcome(
+                    error.message ?: container.appContext.getString(R.string.chat_action_failed)
+                )
+            } finally {
+                _busy.value = ChatBusy.Idle
             }
-            _busy.value = ChatBusy.Thinking
-            container.telemetry.record(TelemetryEvent.CHAT_MESSAGE)
-            val result = container.chatRepository.send(container.mealAi(), text, container.language)
-            if (result.isSuccess) container.entitlements.recordChatMessage()
-            // A helyi számláló megelőzi ezt, de a végső szó a szerveré: ha ő utasít el
-            // kvóta miatt, akkor is az előfizetést ajánljuk fel, ne hibaüzenetet.
-            (result.exceptionOrNull() as? QuotaExceededException)
-                ?.takeIf { it.upgradeOffered }
-                ?.let { container.generation.requestPaywall(it.message ?: "Elfogyott a havi keret.") }
-            _busy.value = ChatBusy.Idle
         }
     }
 
@@ -138,26 +156,56 @@ class ChatViewModel(private val container: AppContainer) : ViewModel() {
      * ne írjon át csendben egy egész hónapot.
      */
     fun confirm(message: ChatMessageEntity) {
-        if (_busy.value != ChatBusy.Idle || container.generation.isBusy) return
+        // Korábban mindhárom visszafordulás NÉMA volt: a felhasználó megnyomta a gombot,
+        // és nem történt semmi, magyarázat nélkül. Most mindegyik megmondja, miért.
+        if (_busy.value != ChatBusy.Idle || container.generation.isBusy) {
+            _notice.value = container.appContext.getString(R.string.chat_busy_wait)
+            return
+        }
         val action = runCatching {
             PlanParser.json.decodeFromString(AiChatAction.serializer(), message.actionJson)
-        }.getOrNull() ?: return
+        }.getOrNull()
+        if (action == null) {
+            _notice.value = container.appContext.getString(R.string.chat_action_unreadable)
+            return
+        }
 
         viewModelScope.launch {
-            container.telemetry.record(TelemetryEvent.CHAT_ACTION_CONFIRMED)
-            container.entitlements.current().blockReason(PaidFeature.CHAT_ACTIONS)?.let { reason ->
-                container.generation.requestPaywall(reason)
-                return@launch
+            try {
+                container.telemetry.record(TelemetryEvent.CHAT_ACTION_CONFIRMED)
+                container.entitlements.current().blockReason(PaidFeature.CHAT_ACTIONS)?.let { reason ->
+                    container.generation.requestPaywall(reason)
+                    return@launch
+                }
+                runConfirmed(message, action)
+            } catch (error: Throwable) {
+                if (error is CancellationException) throw error
+                // Az elindítás előtti hiba eddig kezeletlenül szállt fel a
+                // viewModelScope-ból, ami az app azonnali kilépését jelenti.
+                container.chatRepository.dismissAction(message.id)
+                container.chatRepository.recordOutcome(
+                    error.message ?: container.appContext.getString(R.string.chat_action_failed)
+                )
             }
-            runConfirmed(message, action)
         }
     }
 
     private fun runConfirmed(message: ChatMessageEntity, action: AiChatAction) {
         container.generation.runAction(message.actionLabel.ifBlank { "Dolgozom rajta" }) { progress ->
-            val result = execute(action, progress)
+            val outcome = runCatching { execute(action, progress) }
             container.chatRepository.dismissAction(message.id)
-            result
+            // Az eredmény a BESZÉLGETÉSBE is bekerül, nem csak egy villanó snackbarba.
+            // Enélkül a végrehajtásról nem maradt nyom az előzményben: a modell a
+            // következő körben a saját ígéretét látta és a végrehajtásról semmit, ezért
+            // újra és újra azt mondta, hogy még nem csinálta meg.
+            container.chatRepository.recordOutcome(
+                outcome.getOrElse {
+                    it.message ?: container.appContext.getString(R.string.chat_action_failed)
+                }
+            )
+            // Hiba esetén tovább is dobjuk: a koordinátor ebből ismeri fel a kvótahibát,
+            // és ajánlja fel az előfizetést hibaüzenet helyett.
+            outcome.getOrThrow()
         }
     }
 
@@ -316,6 +364,7 @@ fun ChatScreen(
     val busy by viewModel.busy.collectAsState()
     val generation by viewModel.generation.collectAsState()
     val actionResult by viewModel.actionResult.collectAsState()
+    val notice by viewModel.notice.collectAsState()
     val locked = busy != ChatBusy.Idle || generation.running
     var draft by remember { mutableStateOf("") }
     var reportedMessage by remember { mutableStateOf<String?>(null) }
@@ -330,6 +379,12 @@ fun ChatScreen(
         actionResult?.let {
             snackbarHostState.showSnackbar(it)
             viewModel.consumeActionResult()
+        }
+    }
+    LaunchedEffect(notice) {
+        notice?.let {
+            snackbarHostState.showSnackbar(it)
+            viewModel.consumeNotice()
         }
     }
 

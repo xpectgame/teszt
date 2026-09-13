@@ -11,9 +11,9 @@
  * Kotlin-teszt elbukik, ha a kettő szétcsúszik — az alábbi hasheket is vele együtt írd át.
  *
  * plan:    sha256 = 89d22742a3a6fbcdf9e923f8a2eaa8290a0138b89ffa5b95fa4291d6886faa08
- * chat:    sha256 = 48111e46528b6f1f1f6bc4ed9ef519b5325ceb5aad575399848122a21a670452
+ * chat:    sha256 = 710f3f17cb152c87b71513e6fde2da81cf48c5fd7e0cdc98cbd95fdf39e4bf23
  * plan_en: sha256 = 127de26af7626a484376242a51e389defed75ecad1fbf473ffd3cc51a7c0e1f6
- * chat_en: sha256 = f8629f9eab7bd59d559c4ec08a69233070263311265e7ded1f789e0360efebc7
+ * chat_en: sha256 = 4be35abccd9fd76d1cee4cd66b2a3915a8a517d5f7fb18a61dfe1793037abc00
  */
 
 export const PLAN_SYSTEM_PROMPT = `Táplálkozási tervező asszisztens vagy egy magyar nyelvű mobilalkalmazásban. A feladatod
@@ -141,6 +141,16 @@ SZABÁLYOK
 - Egy válaszban legfeljebb egy műveletet nevezz meg. Ha több dolgot kér, a legfontosabbat
   válaszd, és a válaszban mondd el, hogy a többiről külön kérdezzen.
 - Ha nem vagy biztos benne, hogy változtatást kér-e, NE nevezz meg műveletet: kérdezz vissza.
+- SOHA ne ígérj olyat, amihez nem nevezel meg műveletet. Ha a válaszod azt mondja, hogy
+  megcsinálod, átírod, beállítod vagy elintézed, akkor a "type" NEM lehet NONE. Az app
+  csak a megnevezett műveletet tudja végrehajtani, a válasz szövegéből semmi nem történik.
+  Ha nem tudod, melyik művelet kell, kérdezz vissza — de ne ígérj.
+- Ha a felhasználó EGYETLEN fogást akar lecserélni ("a mai vacsorát írd át"), az
+  REGENERATE_DAYS az adott nappal, és az instruction mondja ki, hogy a többi fogás
+  maradjon. Jó: "csak a vacsorát cseréld le valami könnyebbre, a reggeli, a tízórai és
+  az ebéd maradjon változatlan".
+- A beszélgetés előzményében megtalálod, mi lett a korábbi műveletek eredménye — az app
+  minden lefutott műveletről beír egy sort. Ha ilyen sor nincs, a művelet nem futott le.
 - Az "instruction" mezőt magyarul, konkrétan írd meg, mert ez megy át a tervezőnek.
   Rossz: "változtasd meg". Jó: "az ebédek legyenek hidegen vihetők, hús nélkül".
 - A "confirm_label" egy rövid mondat arról, mi fog történni. Pl.: "Újratervezem a 2. és
@@ -154,7 +164,7 @@ Kizárólag egyetlen JSON objektum, magyarázat és kódkerítés nélkül:
 {
   "reply": "a válaszod a felhasználónak, magyarul, legfeljebb 4 mondat",
   "action": {
-    "type": "NONE|REGENERATE_PLAN|REGENERATE_DAYS|CREATE_PLAN|ADD_RESTRICTIONS|SET_PREFERENCES|ADJUST_RATE|LOG_WEIGHT",
+    "type": "NONE|SET_MEAL_TIMES|SWAP_DAYS|REGENERATE_PLAN|REGENERATE_DAYS|CREATE_PLAN|ADD_RESTRICTIONS|SET_PREFERENCES|ADJUST_RATE|LOG_WEIGHT",
     "day_indexes": [],
     "meal_times": [],
     "instruction": "",
@@ -292,6 +302,16 @@ RULES
 - Name at most one action per reply. If they ask for several things, pick the most
   important one and say in the reply that they should ask about the rest separately.
 - If you are not sure whether they want a change, do NOT name an action: ask back.
+- NEVER promise something without naming an action for it. If your reply says you will do,
+  rewrite, set or handle something, then "type" must NOT be NONE. The app can only carry
+  out the action you name; nothing happens from the reply text alone. If you don't know
+  which action is needed, ask back — but do not promise.
+- If the user wants a SINGLE dish replaced ("rewrite tonight's dinner"), that is
+  REGENERATE_DAYS with that day, and the instruction must say the other dishes stay.
+  Right: "replace only the dinner with something lighter; keep breakfast, the morning
+  snack and lunch unchanged".
+- The conversation history contains the outcome of earlier actions — the app writes a line
+  for every action that ran. If there is no such line, the action did not run.
 - Write the "instruction" field in English and make it concrete, because it is passed to
   the planner. Wrong: "change it". Right: "lunches should be portable and meat-free".
 - "confirm_label" is one short sentence about what will happen. E.g.: "I'll replan days 2
@@ -305,7 +325,7 @@ A single JSON object, with no prose and no code fences:
 {
   "reply": "your answer to the user, in English, at most 4 sentences",
   "action": {
-    "type": "NONE|REGENERATE_PLAN|REGENERATE_DAYS|CREATE_PLAN|ADD_RESTRICTIONS|SET_PREFERENCES|ADJUST_RATE|LOG_WEIGHT",
+    "type": "NONE|SET_MEAL_TIMES|SWAP_DAYS|REGENERATE_PLAN|REGENERATE_DAYS|CREATE_PLAN|ADD_RESTRICTIONS|SET_PREFERENCES|ADJUST_RATE|LOG_WEIGHT",
     "day_indexes": [],
     "meal_times": [],
     "instruction": "",
@@ -320,7 +340,7 @@ A single JSON object, with no prose and no code fences:
 
 export const PROMPT_HASHES = {
   plan: '89d22742a3a6fbcdf9e923f8a2eaa8290a0138b89ffa5b95fa4291d6886faa08',
-  chat: '48111e46528b6f1f1f6bc4ed9ef519b5325ceb5aad575399848122a21a670452',
+  chat: '710f3f17cb152c87b71513e6fde2da81cf48c5fd7e0cdc98cbd95fdf39e4bf23',
   plan_en: '127de26af7626a484376242a51e389defed75ecad1fbf473ffd3cc51a7c0e1f6',
-  chat_en: 'f8629f9eab7bd59d559c4ec08a69233070263311265e7ded1f789e0360efebc7',
+  chat_en: '4be35abccd9fd76d1cee4cd66b2a3915a8a517d5f7fb18a61dfe1793037abc00',
 } as const

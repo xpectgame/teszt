@@ -340,4 +340,7 @@
     <string name="budget_tdee_pill">daily %1$d</string>
     <string name="budget_target_pill">target %1$d</string>
     <string name="budget_deficit_pill">deficit %1$d</string>
+    <string name="chat_action_failed">That did not go through. Try again, or say it differently.</string>
+    <string name="chat_busy_wait">Something is already running — wait for it to finish.</string>
+    <string name="chat_action_unreadable">I could not read this step any more. Ask for it again.</string>
 </resources>

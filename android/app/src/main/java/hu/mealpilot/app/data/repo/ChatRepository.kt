@@ -49,6 +49,26 @@ class ChatRepository(
     suspend fun dismissAction(messageId: Long) = chatDao.clearPending(messageId)
 
     /**
+     * Beírja a beszélgetésbe, mi lett a lefuttatott művelet eredménye.
+     *
+     * Enélkül a végrehajtásról SEMMI nyom nem maradt az előzményben: az eredmény egy
+     * villanó snackbarba ment, a beszélgetésbe soha. A modell a következő körben a saját
+     * ígéretét látta és a végrehajtásról semmit, ezért jogosan mondta, hogy „valóban nem
+     * csináltam meg" — és a felhasználó egy körben forgó beszélgetésben találta magát.
+     */
+    suspend fun recordOutcome(text: String) {
+        val body = text.trim()
+        if (body.isEmpty()) return
+        chatDao.insert(
+            ChatMessageEntity(
+                role = ChatTurn.Role.ASSISTANT.name,
+                body = body,
+                sentAtMillis = System.currentTimeMillis(),
+            )
+        )
+    }
+
+    /**
      * Elküld egy üzenetet, és elmenti a választ. A felismert műveletet NEM hajtja végre:
      * azt a felület kérdezi meg a felhasználótól, hogy egy félreértett mondat ne írjon át
      * csendben egy egész hónapot.

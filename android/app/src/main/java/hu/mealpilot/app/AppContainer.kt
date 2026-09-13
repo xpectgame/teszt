@@ -1,6 +1,7 @@
 package hu.mealpilot.app
 
 import android.content.Context
+import android.util.Log
 import hu.mealpilot.app.billing.BillingGateway
 import hu.mealpilot.app.billing.EntitlementRepository
 import hu.mealpilot.app.billing.NoBillingGateway
@@ -26,6 +27,7 @@ import hu.mealpilot.app.data.repo.TrackingRepository
 import hu.mealpilot.app.work.GenerationCoordinator
 import hu.mealpilot.core.ai.FallbackMealAi
 import hu.mealpilot.core.ai.MealAi
+import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -89,7 +91,21 @@ class AppContainer(context: Context) {
      * eltűnhet, ha a felhasználó elnavigál — a félig kész terv generálását viszont nem
      * szabad emiatt megszakítani.
      */
-    val backgroundScope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+    /**
+     * A háttérmunkák közös hatóköre.
+     *
+     * A kivételkezelő nem a hibakezelés HELYE — minden művelet maga felel a saját
+     * hibáiért, és a felhasználónak is maga válaszol. Ez a háló: egy hiányzó
+     * try-catch nélküle az egész appot kilövi (a SupervisorJob csak a testvér
+     * coroutine-okat védi, a folyamatot nem), méghozzá jellemzően akkor, amikor a
+     * felhasználó épp elindított valamit. A hiba naplózva marad, tehát nem tűnik el.
+     */
+    private val backgroundErrors = CoroutineExceptionHandler { _, error ->
+        Log.e("AppContainer", "Kezeletlen hiba a háttérmunkában.", error)
+    }
+
+    val backgroundScope: CoroutineScope =
+        CoroutineScope(SupervisorJob() + Dispatchers.Default + backgroundErrors)
 
     /** A hosszan futó tervezés egyetlen gazdája — minden képernyő ezt figyeli. */
     val generation: GenerationCoordinator by lazy { GenerationCoordinator(this) }

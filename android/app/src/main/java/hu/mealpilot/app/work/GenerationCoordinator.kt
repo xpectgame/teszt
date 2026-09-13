@@ -93,9 +93,9 @@ class GenerationCoordinator(private val container: AppContainer) {
             }
             val allowedDays = entitlement.allowedPlanDays(days)
 
-            container.telemetry.record(TelemetryEvent.PLAN_REQUESTED)
-            begin(totalDays = allowedDays, headline = "Összeállítom az étrended")
             try {
+                container.telemetry.record(TelemetryEvent.PLAN_REQUESTED)
+                begin(totalDays = allowedDays, headline = "Összeállítom az étrended")
                 val profile = container.settings.currentProfile()
                 val budget = EnergyCalculator.budget(profile, container.language)
                 // -1 = nem volt visszaesés; 0 vagy több = ennyi nap jött a szolgáltatástól,
@@ -145,8 +145,12 @@ class GenerationCoordinator(private val container: AppContainer) {
     fun runAction(headline: String, block: suspend (progress: (GenerationProgress) -> Unit) -> String) {
         if (isBusy) return
         job = container.backgroundScope.launch {
-            begin(totalDays = 0, headline = headline)
+            // A begin() a try-on BELÜL van. Kívül állva az innen induló kivétel
+            // kezeletlenül szállt volna fel a háttérhatókörből, ami az app azonnali
+            // kilépését jelenti — épp abban a pillanatban, amikor a felhasználó
+            // jóváhagyta a műveletet.
             try {
+                begin(totalDays = 0, headline = headline)
                 val message = block { progress -> publish(progress, _status.value.totalDays) }
                 _actionResult.value = message
             } catch (error: Throwable) {

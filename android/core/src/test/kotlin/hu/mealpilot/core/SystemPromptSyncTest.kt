@@ -32,7 +32,7 @@ class SystemPromptSyncTest {
     fun `a beszélgető rendszerprompt egyezik a backendbe másolt változattal`() {
         assertEquals(
             "A ChatPrompts.SYSTEM megváltozott — futtasd a backend/tools/gen-prompts.py szkriptet.",
-            "48111e46528b6f1f1f6bc4ed9ef519b5325ceb5aad575399848122a21a670452",
+            "710f3f17cb152c87b71513e6fde2da81cf48c5fd7e0cdc98cbd95fdf39e4bf23",
             sha256(ChatPrompts.SYSTEM),
         )
     }
@@ -50,7 +50,7 @@ class SystemPromptSyncTest {
     fun `az angol beszélgető rendszerprompt egyezik a backendbe másolt változattal`() {
         assertEquals(
             "A ChatPrompts.SYSTEM_EN megváltozott — futtasd a backend/tools/gen-prompts.py szkriptet.",
-            "f8629f9eab7bd59d559c4ec08a69233070263311265e7ded1f789e0360efebc7",
+            "4be35abccd9fd76d1cee4cd66b2a3915a8a517d5f7fb18a61dfe1793037abc00",
             sha256(ChatPrompts.SYSTEM_EN),
         )
     }

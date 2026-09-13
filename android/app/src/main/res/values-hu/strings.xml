@@ -339,4 +339,7 @@
     <string name="budget_tdee_pill">napi %1$d</string>
     <string name="budget_target_pill">cél %1$d</string>
     <string name="budget_deficit_pill">deficit %1$d</string>
+    <string name="chat_action_failed">Ez nem ment át. Próbáld újra, vagy mondd másképp.</string>
+    <string name="chat_busy_wait">Épp fut egy művelet — várd meg, amíg végez.</string>
+    <string name="chat_action_unreadable">Ezt a lépést már nem tudom értelmezni. Kérd meg újra.</string>
 </resources>
