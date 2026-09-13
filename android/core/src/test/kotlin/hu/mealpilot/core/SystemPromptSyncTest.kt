@@ -1,6 +1,7 @@
 package hu.mealpilot.core
 
 import hu.mealpilot.core.ai.ChatPrompts
+import hu.mealpilot.core.ai.EstimatePrompts
 import hu.mealpilot.core.ai.PlanPrompts
 import org.junit.Assert.assertEquals
 import org.junit.Test
@@ -52,6 +53,24 @@ class SystemPromptSyncTest {
             "A ChatPrompts.SYSTEM_EN megváltozott — futtasd a backend/tools/gen-prompts.py szkriptet.",
             "4be35abccd9fd76d1cee4cd66b2a3915a8a517d5f7fb18a61dfe1793037abc00",
             sha256(ChatPrompts.SYSTEM_EN),
+        )
+    }
+
+    @Test
+    fun `a becslő rendszerprompt egyezik a backendbe másolt változattal`() {
+        assertEquals(
+            "Az EstimatePrompts.SYSTEM megváltozott — futtasd a backend/tools/gen-prompts.py szkriptet.",
+            "74328383dea7e3509262e1f834081f88084ccdfd2011d487e949d9cfc59fa637",
+            sha256(EstimatePrompts.SYSTEM),
+        )
+    }
+
+    @Test
+    fun `az angol becslő rendszerprompt egyezik a backendbe másolt változattal`() {
+        assertEquals(
+            "Az EstimatePrompts.SYSTEM_EN megváltozott — futtasd a backend/tools/gen-prompts.py szkriptet.",
+            "933c185ac1b9bae7895323049c68ccad104ad19ee53e48a04da002cef6edba7b",
+            sha256(EstimatePrompts.SYSTEM_EN),
         )
     }
 

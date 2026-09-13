@@ -2,6 +2,7 @@ package hu.mealpilot.core
 
 import hu.mealpilot.core.ai.AiChatResponse
 import hu.mealpilot.core.ai.AiDay
+import hu.mealpilot.core.ai.AiMealEstimate
 import hu.mealpilot.core.ai.AiDayResponse
 import hu.mealpilot.core.ai.AiPlanResponse
 import hu.mealpilot.core.ai.ChatContext
@@ -40,6 +41,7 @@ class FallbackMealAiTest {
     /** Sablonos tervező: annyi napot ad, amennyit kérnek, a kért eltolástól. */
     private class Templates : MealAi {
         override val isConfigured = true
+        override val canEstimate = false
         override suspend fun generatePlan(
             request: PlanRequest,
             onProgress: (GenerationProgress) -> Unit,
@@ -60,11 +62,15 @@ class FallbackMealAiTest {
 
         override suspend fun chat(context: ChatContext, history: List<ChatTurn>, message: String) =
             Result.failure<AiChatResponse>(IllegalStateException("sablon"))
+
+        override suspend fun estimate(description: String) =
+            Result.failure<AiMealEstimate>(IllegalStateException("sablon"))
     }
 
     /** Elsődleges tervező, ami [deliver] nap után elhasal a megadott hibával. */
     private class Flaky(private val deliver: Int, private val error: Throwable) : MealAi {
         override val isConfigured = true
+        override val canEstimate = true
         override suspend fun generatePlan(
             request: PlanRequest,
             onProgress: (GenerationProgress) -> Unit,
@@ -88,6 +94,8 @@ class FallbackMealAiTest {
 
         override suspend fun chat(context: ChatContext, history: List<ChatTurn>, message: String) =
             Result.failure<AiChatResponse>(error)
+
+        override suspend fun estimate(description: String) = Result.failure<AiMealEstimate>(error)
     }
 
     private fun fallback(

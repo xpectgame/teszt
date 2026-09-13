@@ -6,11 +6,13 @@ import hu.mealpilot.app.i18n.AppStrings
 import hu.mealpilot.core.ai.AiChatResponse
 import hu.mealpilot.core.i18n.AppLanguage
 import hu.mealpilot.core.ai.AiDay
+import hu.mealpilot.core.ai.AiMealEstimate
 import hu.mealpilot.core.ai.AiDayResponse
 import hu.mealpilot.core.ai.AiPlanResponse
 import hu.mealpilot.core.ai.ChatContext
 import hu.mealpilot.core.ai.ChatPrompts
 import hu.mealpilot.core.ai.ChatTurn
+import hu.mealpilot.core.ai.EstimatePrompts
 import hu.mealpilot.core.ai.GenerationProgress
 import hu.mealpilot.core.ai.MealAi
 import hu.mealpilot.core.ai.MealSlot
@@ -49,6 +51,9 @@ abstract class StreamingMealAi(
 
     protected val language: AppLanguage get() = languageProvider()
 
+    /** Ahol valódi modell felel, ott a becslés is megy. */
+    override val canEstimate: Boolean get() = isConfigured
+
     /** Melyik rendszerprompttal és mekkora kerettel dolgozik a hívás. */
     enum class AiTask(val maxOutputTokens: Long) {
         /** Egy tervszakasz (néhány nap) legenerálása. */
@@ -59,6 +64,9 @@ abstract class StreamingMealAi(
 
         /** Beszélgetés — rövid válasz, kicsi keret. */
         CHAT(2_000),
+
+        /** Egy megevett étel tápértékének megbecslése — hat mező, semmi több. */
+        ESTIMATE(600),
     }
 
     /**
@@ -299,6 +307,28 @@ abstract class StreamingMealAi(
             Result.failure(translate(error))
         }
     }
+
+    final override suspend fun estimate(description: String): Result<AiMealEstimate> =
+        withContext(Dispatchers.IO) {
+            try {
+                val raw = call(
+                    task = AiTask.ESTIMATE,
+                    userText = EstimatePrompts.userPrompt(description, language),
+                )
+                val parsed = PlanParser.parseEstimate(raw).getOrThrow()
+                // A modell a nem-étel esetet üres névvel és 0 kcal-lal jelzi. Ezt itt
+                // hibává fordítjuk: a felület egy üres mezőhalmazból nem tudná
+                // megmondani a felhasználónak, hogy mi történt.
+                if (!parsed.isUsable) {
+                    throw MealAiException(strings[R.string.entry_estimate_failed])
+                }
+                Result.success(parsed)
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (error: Throwable) {
+                Result.failure(translate(error))
+            }
+        }
 
     protected companion object {
         const val TAG = "MealAi"

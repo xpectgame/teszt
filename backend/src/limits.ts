@@ -7,7 +7,7 @@
  */
 
 export type Tier = 'FREE' | 'PREMIUM' | 'OWNER'
-export type Task = 'PLAN' | 'DAY' | 'CHAT'
+export type Task = 'PLAN' | 'DAY' | 'CHAT' | 'ESTIMATE'
 
 export interface TierLimits {
   /** -1 = korlátlan */
@@ -135,6 +135,12 @@ export function checkQuota(input: CheckInput): Decision {
     }
     return ALLOW
   }
+
+  // Az ESTIMATE (egy megevett étel tápértéke) szándékosan NEM fogyaszt sem tervet, sem
+  // üzenetet. A naplózás az app napi alapművelete; ha a hónap közepén elfogy,
+  // a felhasználó abbahagyja a naplózást, és akkor az egész appnak nincs értelme.
+  // A költséget a kimeneti tokenkeret fogja meg: egy becslés néhány száz token, tehát
+  // az ingyenes keretből is több száz fér bele.
 
   if (task === 'PLAN') {
     // A hosszt ELUTASÍTJUK, nem csendben levágjuk: a promptot a kliens írja, tehát a

@@ -71,6 +71,7 @@ import hu.mealpilot.app.ui.theme.LocalDarkTheme
 import hu.mealpilot.app.ui.theme.MealColors
 import hu.mealpilot.app.ui.theme.MealLabelStyle
 import hu.mealpilot.app.ui.theme.PlateShape
+import hu.mealpilot.core.ai.AiMealEstimate
 import hu.mealpilot.core.ai.MealSlot
 import hu.mealpilot.core.i18n.label
 import hu.mealpilot.core.model.Nutrients
@@ -156,6 +157,21 @@ class TodayViewModel(private val container: AppContainer) : ViewModel() {
         container.trackingRepository.logCustomMeal(date.value, name, nutrients)
         refreshAchievements()
     }
+
+    /**
+     * Szavakkal leírt étkezés megbecslése. Null, ha nincs mivel — a felület ilyenkor
+     * meg sem mutatja a mezőt, nem egy működésképtelen gombot kínál.
+     */
+    // Egyszer dől el, a képernyő létrejöttekor. A mealAi() titkosított tárolót olvas,
+    // azt nem szabad minden újrarajzolásnál megtenni a fő szálon.
+    val estimator: (suspend (String) -> Result<AiMealEstimate>)? =
+        if (container.mealAi().canEstimate) {
+            // A hívás pillanatában oldjuk fel újra: ha közben kulcs került a gépre,
+            // az a következő becslésnél már érvényes.
+            { text -> container.mealAi().estimate(text) }
+        } else {
+            null
+        }
 
     fun deleteLog(id: Long) = viewModelScope.launch {
         container.trackingRepository.deleteMealLog(id)
@@ -330,6 +346,7 @@ fun TodayScreen(
                 viewModel.logReplaced(target.meal.id, name, nutrients)
                 replacing = null
             },
+            onEstimate = viewModel.estimator,
         )
     }
 
@@ -342,6 +359,7 @@ fun TodayScreen(
                 viewModel.logExtra(name, nutrients)
                 addingExtra = false
             },
+            onEstimate = viewModel.estimator,
         )
     }
 }

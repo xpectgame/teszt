@@ -342,4 +342,10 @@
     <string name="chat_action_failed">Ez nem ment át. Próbáld újra, vagy mondd másképp.</string>
     <string name="chat_busy_wait">Épp fut egy művelet — várd meg, amíg végez.</string>
     <string name="chat_action_unreadable">Ezt a lépést már nem tudom értelmezni. Kérd meg újra.</string>
+    <string name="entry_describe">Vagy mondd el, mit ettél</string>
+    <string name="entry_describe_hint">pl. egy gyros pita tzatzikivel és egy kis kóla</string>
+    <string name="entry_estimate">Számold ki</string>
+    <string name="entry_estimating">Számolom…</string>
+    <string name="entry_estimate_failed">Ezt nem sikerült kiszámolnom. Próbáld meg megnevezni a fogást és az adagot.</string>
+    <string name="offline_estimate_needs_network">A tápérték kiszámolásához kapcsolat kell. A számokat addig is beírhatod kézzel.</string>
 </resources>

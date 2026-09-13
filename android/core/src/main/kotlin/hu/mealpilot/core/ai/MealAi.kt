@@ -13,6 +13,16 @@ interface MealAi {
     val isConfigured: Boolean
 
     /**
+     * Tud-e egyáltalán megbecsülni egy szavakkal leírt étkezést.
+     *
+     * Ez NEM ugyanaz, mint az [isConfigured]: a beépített sablontervező konfigurálva van
+     * — tervet tud adni hálózat nélkül is —, de arról fogalma sincs, mit evett a
+     * felhasználó. A felület ebből dönti el, hogy megmutatja-e a mezőt; egy sosem működő
+     * gomb rosszabb, mint a hiányzó funkció.
+     */
+    val canEstimate: Boolean
+
+    /**
      * @param onChunk minden elkészült szakasz után lefut, még a teljes terv megérkezése
      *   előtt. Erre épül az, hogy az első napok azonnal használhatók, miközben a többi
      *   még töltődik — egy hónapos tervnél ez perceket takarít meg a felhasználónak.
@@ -35,6 +45,15 @@ interface MealAi {
         history: List<ChatTurn>,
         message: String,
     ): Result<AiChatResponse>
+
+    /**
+     * Szavakkal leírt étkezés tápértékének megbecslése.
+     *
+     * A naplózás a leggyakoribb művelet az appban, és eddig négy számot kért kézzel
+     * attól, aki épp evett valamit. Aki tudja fejből a gyros makróit, az nem ezt az
+     * appot használja.
+     */
+    suspend fun estimate(description: String): Result<AiMealEstimate>
 }
 
 data class GenerationProgress(

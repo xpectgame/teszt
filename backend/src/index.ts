@@ -8,6 +8,8 @@ import { checkQuota, periodKey, usageDelta, type Task } from './limits.js'
 import {
   CHAT_SYSTEM_PROMPT,
   CHAT_SYSTEM_PROMPT_EN,
+  ESTIMATE_SYSTEM_PROMPT,
+  ESTIMATE_SYSTEM_PROMPT_EN,
   PLAN_SYSTEM_PROMPT,
   PLAN_SYSTEM_PROMPT_EN,
 } from './prompts.js'
@@ -42,6 +44,14 @@ const TASK_CONFIG: Record<
     maxPromptChars: 16_000,
     system: CHAT_SYSTEM_PROMPT,
     systemEn: CHAT_SYSTEM_PROMPT_EN,
+  },
+  // Hat mező a válasz, semmi több. A szűk keret nem takarékosság: ha a modell
+  // hosszabb válaszra készül, elkezd magyarázni, és a JSON elé szöveget ír.
+  ESTIMATE: {
+    maxTokens: 600,
+    maxPromptChars: 2_000,
+    system: ESTIMATE_SYSTEM_PROMPT,
+    systemEn: ESTIMATE_SYSTEM_PROMPT_EN,
   },
 }
 

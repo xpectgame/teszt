@@ -15,11 +15,17 @@ def extract(path, name='SYSTEM'):
 
 PLAN_KT = 'android/core/src/main/kotlin/hu/mealpilot/core/ai/PlanPrompts.kt'
 CHAT_KT = 'android/core/src/main/kotlin/hu/mealpilot/core/ai/ChatPrompts.kt'
+EST_KT = 'android/core/src/main/kotlin/hu/mealpilot/core/ai/EstimatePrompts.kt'
 
-plan = extract(PLAN_KT)
-chat = extract(CHAT_KT)
-plan_en = extract(PLAN_KT, 'SYSTEM_EN')
-chat_en = extract(CHAT_KT, 'SYSTEM_EN')
+SOURCES = (
+    ('plan', PLAN_KT, 'SYSTEM'),
+    ('chat', CHAT_KT, 'SYSTEM'),
+    ('estimate', EST_KT, 'SYSTEM'),
+    ('plan_en', PLAN_KT, 'SYSTEM_EN'),
+    ('chat_en', CHAT_KT, 'SYSTEM_EN'),
+    ('estimate_en', EST_KT, 'SYSTEM_EN'),
+)
+prompts = {key: extract(path, name) for key, path, name in SOURCES}
 
 def sha(s): return hashlib.sha256(s.encode('utf-8')).hexdigest()
 
@@ -32,33 +38,24 @@ out.write('''/**
  * módosított app sem tudja a hívást általános célú asszisztenssé alakítani a te
  * Anthropic-kulcsodon — a válasz mindig étrend-JSON lesz.
  *
- * FIGYELEM: ez a két szöveg a kliens `core/ai/PlanPrompts.kt` és `core/ai/ChatPrompts.kt`
- * fájljából származik. Ha ott változik, ITT is frissítsd. A `SystemPromptSyncTest`
- * Kotlin-teszt elbukik, ha a kettő szétcsúszik — az alábbi hasheket is vele együtt írd át.
+ * FIGYELEM: EZT A FÁJLT GÉP ÍRJA. A forrás a kliens core/ai/*Prompts.kt fájljaiban van;
+ * ha ott változik valami, futtasd a backend/tools/gen-prompts.py szkriptet, és írd át a
+ * SystemPromptSyncTest hasheit is. A Kotlin-teszt elbukik, ha a kettő szétcsúszik.
  *
- * plan:    sha256 = %s
- * chat:    sha256 = %s
- * plan_en: sha256 = %s
- * chat_en: sha256 = %s
- */
+%s */
 
-''' % (sha(plan), sha(chat), sha(plan_en), sha(chat_en)))
+''' % ''.join(' * %-12s sha256 = %s\n' % (key + ':', sha(text)) for key, text in prompts.items()))
 
 def emit(name, text):
     out.write('export const %s = `%s`\n\n' % (name, text.replace('\\', '\\\\').replace('`', '\\`').replace('${', '\\${')))
 
-emit('PLAN_SYSTEM_PROMPT', plan)
-emit('CHAT_SYSTEM_PROMPT', chat)
-emit('PLAN_SYSTEM_PROMPT_EN', plan_en)
-emit('CHAT_SYSTEM_PROMPT_EN', chat_en)
+for key, text in prompts.items():
+    emit(key.upper().replace('_EN', '') + '_SYSTEM_PROMPT' + ('_EN' if key.endswith('_en') else ''), text)
 
-out.write('''export const PROMPT_HASHES = {
-  plan: '%s',
-  chat: '%s',
-  plan_en: '%s',
-  chat_en: '%s',
-} as const
-''' % (sha(plan), sha(chat), sha(plan_en), sha(chat_en)))
+out.write('export const PROMPT_HASHES = {\n')
+for key, text in prompts.items():
+    out.write("  %s: '%s',\n" % (key, sha(text)))
+out.write('} as const\n')
 out.close()
-for name, text in (('plan', plan), ('chat', chat), ('plan_en', plan_en), ('chat_en', chat_en)):
-    print(name, "sha", sha(text), "chars", len(text))
+for key, text in prompts.items():
+    print(key, "sha", sha(text), "chars", len(text))

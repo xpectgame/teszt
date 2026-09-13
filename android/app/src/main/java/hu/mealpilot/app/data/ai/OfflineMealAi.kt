@@ -9,6 +9,7 @@ import hu.mealpilot.core.ai.AiDayResponse
 import hu.mealpilot.core.ai.AiIngredient
 import hu.mealpilot.core.ai.AiMeal
 import hu.mealpilot.core.ai.AiNutrition
+import hu.mealpilot.core.ai.AiMealEstimate
 import hu.mealpilot.core.ai.AiChatResponse
 import hu.mealpilot.core.ai.AiPlanResponse
 import hu.mealpilot.core.ai.ChatContext
@@ -35,6 +36,9 @@ class OfflineMealAi(
     private val language: AppLanguage get() = languageProvider()
 
     override val isConfigured: Boolean = true
+
+    /** Sablonokból nem lehet megmondani, hány kalória egy gyros. */
+    override val canEstimate: Boolean = false
 
     override suspend fun generatePlan(
         request: PlanRequest,
@@ -100,6 +104,10 @@ class OfflineMealAi(
         message: String,
     ): Result<AiChatResponse> = Result.failure(
         MealAiException(strings[R.string.offline_chat_needs_network])
+    )
+
+    override suspend fun estimate(description: String): Result<AiMealEstimate> = Result.failure(
+        MealAiException(strings[R.string.offline_estimate_needs_network])
     )
 
     override suspend fun refineDay(

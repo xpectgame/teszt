@@ -44,6 +44,9 @@ class FallbackMealAi(
 
     override val isConfigured: Boolean get() = primary.isConfigured || fallback.isConfigured
 
+    /** Csak az elsődleges tud becsülni — a sablonok nem. */
+    override val canEstimate: Boolean get() = primary.canEstimate
+
     override suspend fun generatePlan(
         request: PlanRequest,
         onProgress: (GenerationProgress) -> Unit,
@@ -148,4 +151,12 @@ class FallbackMealAi(
         history: List<ChatTurn>,
         message: String,
     ): Result<AiChatResponse> = primary.chat(context, history, message)
+
+    /**
+     * A becslés sem esik vissza: a beépített sablonoknak fogalmuk sincs arról, mit evett
+     * a felhasználó. Egy kitalált szám rosszabb, mint a bevallott kudarc — a naplóban
+     * évekig ott maradna.
+     */
+    override suspend fun estimate(description: String): Result<AiMealEstimate> =
+        primary.estimate(description)
 }
