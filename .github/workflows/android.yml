@@ -87,6 +87,19 @@ jobs:
           MEALPILOT_BACKEND_URL: https://ci.example.invalid
         run: ./gradlew :app:assembleRelease --stacktrace
 
+      # A séma a build könyvtárában keletkezik, és a futás végén eltűnik. Letölteni
+      # a csomagot nem mindig lehet (a letöltés blob-tárolóra irányít át, amit
+      # hálózati szabály blokkolhat), ezért a tartalma a NAPLÓBA is kikerül: onnan
+      # bármikor visszaolvasható és verziókezelésbe tehető. Néhány kilobájt.
+      - name: Adatbázis-séma kiírása
+        if: success()
+        run: |
+          for f in app/schemas/*/*.json; do
+            echo "=== $f ==="
+            cat "$f"
+            echo
+          done
+
       # A Room a fordításkor kiírja az adatbázis pontos sémáját. Ez nincs a repóban,
       # pedig a következő verzió migrációját EHHEZ kell írni: enélkül csak tippelni
       # lehetne, milyen táblák vannak a felhasználók telefonján. Amíg nincs bekötve a
