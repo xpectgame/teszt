@@ -119,7 +119,9 @@
     <string name="action_save">Mentés</string>
     <string name="tab_today">Ma</string>
     <string name="tab_plan">Terv</string>
-    <string name="tab_shopping">Bevásárlás</string>
+    <!-- Rövid, mert öt fül osztozik a sáv szélességén: a „Bevásárlás" egymáshoz
+         préseli a szomszédait. A képernyő címe marad a hosszú alak. -->
+    <string name="tab_shopping">Bolt</string>
     <string name="tab_chat">Beszéljünk</string>
     <string name="tab_profile">Én</string>
     <string name="app_working">Dolgozom rajta</string>

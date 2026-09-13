@@ -34,6 +34,9 @@ object Plate {
     val greenDark = Color(0xFF6FC79E)
     val greenSoftDark = Color(0xFF1E3A2E)
     val clayDark = Color(0xFFF0996A)
+    // A zöld lapon ülő szöveg sötét témában. Nem a paperDark: a vászon egy hajszállal
+    // zöldre húzott feketét ad meg, hogy a hős dobozban ne hasson idegen foltnak.
+    val onGreenDark = Color(0xFF101B16)
     val claySoftDark = Color(0xFF3A2318)
 
     val error = Color(0xFFBA1A1A)

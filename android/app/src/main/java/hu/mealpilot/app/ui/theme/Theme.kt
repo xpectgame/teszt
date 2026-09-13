@@ -39,7 +39,7 @@ private val LightColors = lightColorScheme(
 
 private val DarkColors = darkColorScheme(
     primary = Plate.greenDark,
-    onPrimary = Plate.paperDark,
+    onPrimary = Plate.onGreenDark,
     primaryContainer = Plate.greenSoftDark,
     onPrimaryContainer = Plate.greenDark,
     secondary = Plate.clayDark,

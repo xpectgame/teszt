@@ -121,7 +121,8 @@
     <string name="action_save">Save</string>
     <string name="tab_today">Today</string>
     <string name="tab_plan">Plan</string>
-    <string name="tab_shopping">Shopping</string>
+    <!-- Rövid, mert öt fül osztozik a sáv szélességén. A képernyő címe marad a hosszú alak. -->
+    <string name="tab_shopping">Shop</string>
     <string name="tab_chat">Let\'s talk</string>
     <string name="tab_profile">Me</string>
     <string name="app_working">Working on it</string>
