@@ -87,26 +87,31 @@ jobs:
           MEALPILOT_BACKEND_URL: https://ci.example.invalid
         run: ./gradlew :app:assembleRelease --stacktrace
 
-      # A séma a build könyvtárában keletkezik, és a futás végén eltűnik. Letölteni
-      # a csomagot nem mindig lehet (a letöltés blob-tárolóra irányít át, amit
-      # hálózati szabály blokkolhat), ezért a tartalma a NAPLÓBA is kikerül: onnan
-      # bármikor visszaolvasható és verziókezelésbe tehető. Néhány kilobájt.
-      - name: Adatbázis-séma kiírása
+      # A séma MOST MÁR a repóban van (app/schemas). Ez az a fájl, amihez a
+      # következő verzió migrációját írni kell: enélkül csak tippelni lehetne,
+      # milyen táblák vannak a felhasználók telefonján.
+      #
+      # Ezért nem elég feltölteni — egyeznie is kell. Ha valaki hozzányúl egy
+      # @Entity-hez és elfelejti emelni az adatbázis verzióját, az itt bukik el,
+      # nem a felhasználó telefonján egy migrációs hibával.
+      - name: Az adatbázis-séma egyezzen a verziókezelttel
         if: success()
         run: |
+          if git diff --quiet -- app/schemas; then
+            echo "Rendben: a lefordított séma megegyezik a repóban lévővel."
+            exit 0
+          fi
+          echo "HIBA: a lefordított séma eltér a verziókezelttől."
+          git diff --stat -- app/schemas
+          echo
+          echo "Ha az adatbázis szándékosan változott: emeld a verziót, írj migrációt,"
+          echo "és tedd be az új sémafájlt. Az alábbi blokk a friss séma, base64-ben:"
           sha256sum app/schemas/*/*.json
-          # Tömörítve és base64-ben: a nyers JSON több tízezer karakter, abból
-          # kézzel átmásolni HIBÁS sémát szülne — és a hibás séma rosszabb, mint a
-          # hiányzó, mert a következő migrációt egy hazugságra írnánk. Így viszont
-          # gépileg visszafejthető, és a fenti ellenőrzőösszeg igazolja.
-          echo "--- séma tar.gz base64 ---"
           tar czf - app/schemas | base64 -w 100
-          echo "--- séma vége ---"
+          exit 1
 
-      # A Room a fordításkor kiírja az adatbázis pontos sémáját. Ez nincs a repóban,
-      # pedig a következő verzió migrációját EHHEZ kell írni: enélkül csak tippelni
-      # lehetne, milyen táblák vannak a felhasználók telefonján. Amíg nincs bekötve a
-      # verziókezelésbe, legalább legyen letölthető minden futásból.
+      # Letölthetően is, hogy egy külső eszközzel (például sémaösszehasonlítóval)
+      # se kelljen a repót klónozni hozzá.
       - name: Adatbázis-séma feltöltése
         if: success()
         uses: actions/upload-artifact@v4
