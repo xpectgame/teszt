@@ -430,13 +430,14 @@ More on the <a href="support.html">support page</a>.</p>
 
 <div class="draft">
   <strong>Draft.</strong> This text was written from how the app actually works, but it
-  needs a legal review before publication. The controller's details (name, address,
-  registration number) still have to be filled in.
+  needs a legal review before publication.
 </div>
 
 <h2>1. The controller</h2>
 <p>
-  <em>[Controller's name, registered address, registration number]</em><br>
+  <strong>Máté Teke</strong>, a private individual acting as data controller<br>
+  Neptun utca 88., 4th floor, door 18, Budapest, Hungary<br>
+  The controller is a private individual and has no company registration number.<br>
   Contact: <a href="mailto:mate.teke@gmail.com">mate.teke@gmail.com</a>
 </p>
 
@@ -675,14 +676,15 @@ Switched off, the app does not even collect them.</p>
 <p class="meta">MealPilot mobile app · In force: 11 September 2026</p>
 
 <div class="draft">
-  <strong>Draft.</strong> Needs a legal review before publication. The provider's details
-  still have to be filled in.
+  <strong>Draft.</strong> Needs a legal review before publication.
 </div>
 
 <h2>1. The service</h2>
 <p>MealPilot is a mobile app that works out a calorie target from the body data you give
 it, builds meal plans, makes a shopping list, and helps you track your meals and your
-weight. Provider: <em>[name, registered address, tax number]</em>.</p>
+weight. Provider: <strong>Máté Teke</strong>, a private individual,
+Neptun utca 88., 4th floor, door 18, Budapest, Hungary.
+Contact: <a href="mailto:mate.teke@gmail.com">mate.teke@gmail.com</a>.</p>
 
 <div class="warn">
   <h2 style="margin-top:0">2. Not medical advice</h2>
@@ -879,13 +881,14 @@ Részletek a <a href="support.html">támogatási oldalon</a>.</p>
 
 <div class="draft">
   <strong>Tervezet.</strong> Ez a szöveg a valós működés alapján készült, de közzététel előtt
-  jogi felülvizsgálatot igényel. Az adatkezelő adatait (név, cím, nyilvántartási szám) ki kell
-  tölteni.
+  jogi felülvizsgálatot igényel.
 </div>
 
 <h2>1. Az adatkezelő</h2>
 <p>
-  <em>[Adatkezelő neve, székhelye, nyilvántartási száma]</em><br>
+  <strong>Teke Máté</strong> természetes személy adatkezelő<br>
+  Budapest, Neptun utca 88., 4. emelet 18.<br>
+  Az adatkezelő magánszemélyként jár el, cégjegyzék- vagy nyilvántartási számmal nem rendelkezik.<br>
   Kapcsolat: <a href="mailto:mate.teke@gmail.com">mate.teke@gmail.com</a>
 </p>
 
@@ -1123,14 +1126,15 @@ kapcsoló. Kikapcsolva az alkalmazás nem is gyűjti ezeket.</p>
 <p class="meta">MealPilot mobilalkalmazás · Hatályos: 2026. szeptember 11.</p>
 
 <div class="draft">
-  <strong>Tervezet.</strong> Közzététel előtt jogi felülvizsgálatot igényel. A szolgáltató
-  adatait ki kell tölteni.
+  <strong>Tervezet.</strong> Közzététel előtt jogi felülvizsgálatot igényel.
 </div>
 
 <h2>1. A szolgáltatás</h2>
 <p>A MealPilot egy mobilalkalmazás, amely a megadott testadataid alapján kalóriacélt számol,
 étrendet állít össze, bevásárlólistát készít, és segít nyomon követni az étkezéseidet és
-a testsúlyodat. Szolgáltató: <em>[név, székhely, adószám]</em>.</p>
+a testsúlyodat. Szolgáltató: <strong>Teke Máté</strong> természetes személy,
+Budapest, Neptun utca 88., 4. emelet 18.
+Kapcsolat: <a href="mailto:mate.teke@gmail.com">mate.teke@gmail.com</a>.</p>
 
 <div class="warn">
   <h2 style="margin-top:0">2. Nem orvosi tanács</h2>
