@@ -150,20 +150,49 @@ export async function verifySubscription(
     throw new Error(`A Play ellenőrzés hibát adott: ${response.status}`)
   }
 
-  const body = (await response.json()) as {
-    subscriptionState?: string
-    linkedPurchaseToken?: string
-    lineItems?: Array<{ expiryTime?: string }>
-  }
+  const body = (await response.json()) as PurchaseBody
+  return readPurchase(body, env.PREMIUM_PRODUCT_ID, Date.now())
+}
 
+export interface PurchaseBody {
+  subscriptionState?: string
+  linkedPurchaseToken?: string
+  lineItems?: Array<{ expiryTime?: string; productId?: string }>
+}
+
+/**
+ * A Play válaszából olvassa ki, jár-e a prémium — hálózat nélkül, hogy tesztelhető legyen.
+ *
+ * A TERMÉKET is nézi, nem csak az állapotot. A hívás a csomagnévre van szűkítve, tehát
+ * ma — egyetlen termékkel — minden érvényes token úgyis a prémiumra szól. A második
+ * termék bevezetésekor viszont (éves csomag, olcsóbb sáv) e nélkül BÁRMELYIKRE szóló
+ * előfizetés teljes prémiumot adna. Ez pénzügyi hiba, és a bevezetés pillanatában
+ * senkinek nem tűnne fel.
+ *
+ * Ha a [productId] üres, nem szűrünk: így egy elgépelt beállítás nem veszi el mindenkitől
+ * az előfizetést, csak visszaáll a korábbi, engedékenyebb viselkedésre.
+ */
+export function readPurchase(
+  body: PurchaseBody,
+  productId: string | undefined,
+  now: number,
+): VerifiedSubscription {
   const state = mapState(body.subscriptionState)
-  const expiryIso = body.lineItems?.map((item) => item.expiryTime).filter(Boolean).sort().pop()
-  const expiresAt = expiryIso ? Date.parse(expiryIso) : null
+
+  const items = body.lineItems ?? []
+  const matching = productId ? items.filter((item) => item.productId === productId) : items
+
+  const expiryIso = matching.map((item) => item.expiryTime).filter(Boolean).sort().pop()
+  const parsed = expiryIso ? Date.parse(expiryIso) : NaN
+  const expiresAt = Number.isFinite(parsed) ? parsed : null
+
+  // Nincs a keresett termékre szóló tétel: az előfizetés létezik, de nem ezé.
+  const forThisProduct = matching.length > 0
 
   return {
     state,
-    entitled: isEntitled(state, expiresAt, Date.now()),
-    expiresAt: Number.isFinite(expiresAt) ? expiresAt : null,
+    entitled: forThisProduct && isEntitled(state, expiresAt, now),
+    expiresAt,
     linkedPurchaseToken: body.linkedPurchaseToken ?? null,
   }
 }
