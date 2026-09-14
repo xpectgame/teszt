@@ -18,6 +18,10 @@ on:
         description: "Migrációk futtatása az éles D1 adatbázison a deploy előtt"
         type: boolean
         default: false
+      subdomain:
+        description: "workers.dev aldomain regisztrálása (csak egyszer, üresen hagyva kimarad)"
+        type: string
+        default: ""
 
 permissions:
   contents: read
@@ -85,6 +89,27 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           WRANGLER_SEND_METRICS: "false"
+
+      # A Worker csak akkor kaphat nyilvános címet, ha a fióknak van workers.dev
+      # aldomainje. Ez egyszeri beállítás; a dashboard menüje változik, az API nem.
+      - name: workers.dev aldomain
+        if: inputs.subdomain != ''
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          SUBDOMAIN: ${{ inputs.subdomain }}
+        run: |
+          response=$(curl -sS -X PUT \
+            "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/subdomain" \
+            -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+            -H "Content-Type: application/json" \
+            --data "{\"subdomain\":\"$SUBDOMAIN\"}")
+          echo "$response"
+          if ! echo "$response" | grep -q '"success":true'; then
+            echo "::error::Az aldomain regisztrálása nem sikerült. A fenti válasz mondja meg, miért — foglalt név vagy hiányzó jogosultság a leggyakoribb."
+            exit 1
+          fi
+          echo "Az aldomain beállítva: $SUBDOMAIN.workers.dev"
 
       - name: Deploy
         run: npx wrangler deploy
