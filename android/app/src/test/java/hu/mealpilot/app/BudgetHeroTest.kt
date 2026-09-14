@@ -1,5 +1,6 @@
 package hu.mealpilot.app
 
+import android.app.Application
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
@@ -22,7 +23,7 @@ import org.robolectric.annotation.Config
  * lint átment — csak épp a legfontosabb szám nem látszott.
  */
 @RunWith(RobolectricTestRunner::class)
-@Config(qualifiers = "w390dp-h844dp-xhdpi")
+@Config(application = Application::class, qualifiers = "w390dp-h844dp-xhdpi")
 class BudgetHeroTest {
 
     @get:Rule

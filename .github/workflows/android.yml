@@ -52,8 +52,12 @@ jobs:
       # és egy beszélgetés, ami azt állította, elvégezte a munkát.
       #
       # A tesztek Robolectrickel JVM-en futnak, tehát nem kell hozzájuk emulátor.
+      #
+      # --stacktrace NÉLKÜL: egy elbukó teszt mellé a Gradle kétszáz sornyi belső
+      # vermet írt, amiben az egyetlen érdemi sor — melyik teszt és milyen kivétellel
+      # bukott — elveszett.
       - name: Az app tesztjei
-        run: ./gradlew :app:testDebugUnitTest --stacktrace
+        run: ./gradlew :app:testDebugUnitTest
 
       - name: Debug APK
         env:

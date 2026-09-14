@@ -1,5 +1,6 @@
 package hu.mealpilot.app
 
+import android.app.Application
 import android.content.Context
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
@@ -20,6 +21,7 @@ import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
 
 /**
  * A beszélgetés tárolása.
@@ -28,7 +30,16 @@ import org.robolectric.RobolectricTestRunner
  * beszélgetés körözni kezdett: a lefuttatott művelet eredménye sehol nem került be az
  * előzménybe, tehát a modell a következő körben azt látta, hogy nem történt semmi.
  */
+/**
+ * A tesztek üres `Application`-nel futnak, nem a `MealPilotApp`-pal.
+ *
+ * A valódi induló osztály WorkManager-munkákat ütemez, értesítési csatornákat hoz létre
+ * és telemetriát indít — a Robolectric alatt ezek közül az első rögtön el is száll
+ * („WorkManager is not initialized properly"). Ezeknek a teszteknek nincs is szükségük
+ * rájuk: a saját függőségeiket maguk építik fel.
+ */
 @RunWith(RobolectricTestRunner::class)
+@Config(application = Application::class)
 class ChatRepositoryTest {
 
     private lateinit var db: AppDatabase
