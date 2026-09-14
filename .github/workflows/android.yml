@@ -73,12 +73,32 @@ jobs:
       - name: Lint
         run: ./gradlew :app:lintDebug --stacktrace
 
-      # A védelem csak kiadáskor lép működésbe, tehát pont akkor derülne ki, hogy
-      # elromlott, amikor a legdrágább. A --dry-run felépíti a feladatgráfot, de nem
-      # futtat semmit, így ez másodpercekbe kerül.
+      # A backend címe a gradle.properties-ből jön, tehát a debug APK-ba be KELL kerülnie.
+      # Ha valaki elírja vagy törli a beállítást, az app csendben visszaesne a saját
+      # kulcsot kérő fejlesztői útra — a telepítőn semmi nem látszana belőle.
+      - name: A backend címe bekerült az APK-ba
+        run: |
+          generated=$(find app/build/generated/source/buildConfig -name BuildConfig.java | head -1)
+          if [ -z "$generated" ]; then
+            echo "HIBA: nem találom a generált BuildConfig fájlt."
+            exit 1
+          fi
+          if ! grep -q 'BACKEND_URL = "https://' "$generated"; then
+            echo "HIBA: a BACKEND_URL üres vagy nem https címre mutat."
+            grep BACKEND_URL "$generated" || true
+            exit 1
+          fi
+          grep BACKEND_URL "$generated"
+
+      # A Play kötelezően kér egy betöltő adatvédelmi címet, ezért kiadási build nem
+      # készülhet cím nélkül. A védelem csak kiadáskor lép működésbe, tehát pont akkor
+      # derülne ki, hogy elromlott, amikor a legdrágább — ezért próbáljuk itt. A címnek
+      # már van alapértéke, így a próbához KIÜRÍTJÜK: ez mutatja meg, hogy a hibaág maga
+      # működik-e még. A --dry-run felépíti a feladatgráfot, de nem futtat semmit, így
+      # ez másodpercekbe kerül.
       - name: Kiadási build jogi cím nélkül nem mehet ki
         run: |
-          if ./gradlew :app:assembleRelease --dry-run > guard.log 2>&1; then
+          if ./gradlew :app:assembleRelease --dry-run -Pmealpilot.backendUrl= > guard.log 2>&1; then
             echo "HIBA: a kiadási build cím nélkül is elindult."
             cat guard.log
             exit 1
