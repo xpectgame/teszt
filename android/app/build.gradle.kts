@@ -157,6 +157,16 @@ android {
         buildConfig = true
     }
 
+    testOptions {
+        unitTests {
+            // A képernyőtesztekhez kellenek a valódi erőforrások: a Robolectric ezekből
+            // olvassa a szövegeket, színeket és betűket. Enélkül minden stringResource
+            // hívás elszállna a teszt alatt.
+            isIncludeAndroidResources = true
+            isReturnDefaultValues = true
+        }
+    }
+
     lint {
         // A lint alapból csak az ELSŐ hibát írja a konzolra, a teljes riportot egy
         // build-könyvtárbeli fájlba. A CI naplójában emiatt minden körben csak egy
@@ -220,7 +230,18 @@ dependencies {
     coreLibraryDesugaring(libs.desugar.jdk.libs)
 
     debugImplementation(libs.androidx.compose.ui.tooling)
+    // A tesztek JVM-en futnak, Robolectrickel — nincs szükség emulátorra, tehát a
+    // rendes CI-futásba is beleférnek. Ez az :app modul ELSŐ tesztkörnyezete: eddig
+    // csak a :core volt lefedve, vagyis épp az a rész nem, ahol a hibák születtek.
     testImplementation(libs.junit)
+    testImplementation(libs.robolectric)
+    testImplementation(libs.androidx.test.core)
+    testImplementation(libs.kotlinx.coroutines.test)
+    testImplementation(libs.androidx.room.testing)
+    testImplementation(platform(libs.androidx.compose.bom))
+    testImplementation(libs.androidx.compose.ui.test.junit4)
+    debugImplementation(libs.androidx.compose.ui.test.manifest)
+
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
 }

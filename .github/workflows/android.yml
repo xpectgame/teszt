@@ -46,6 +46,15 @@ jobs:
       - name: A számítási mag tesztjei
         run: ./gradlew :core:test
 
+      # Az :app tesztjei. Amíg ez a lépés nem volt, a CI csak azt bizonyította, hogy a
+      # kód LEFORDUL — a képernyők, a ViewModelek és a tárolók viselkedéséről semmit.
+      # A legutóbbi három hiba mind ott élt: egy szétesett elrendezés, egy összeomlás
+      # és egy beszélgetés, ami azt állította, elvégezte a munkát.
+      #
+      # A tesztek Robolectrickel JVM-en futnak, tehát nem kell hozzájuk emulátor.
+      - name: Az app tesztjei
+        run: ./gradlew :app:testDebugUnitTest --stacktrace
+
       - name: Debug APK
         env:
           MEALPILOT_BUILD: "build ${{ github.run_number }}"
