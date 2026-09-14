@@ -70,7 +70,44 @@ const app = new Hono<{ Bindings: Env }>()
 
 app.use('/v1/*', cors({ origin: '*', allowHeaders: ['authorization', 'content-type', 'x-play-purchase-token', 'x-app-version'] }))
 
-app.get('/healthz', (c) => c.json({ ok: true }))
+/**
+ * Beüzemelési ellenőrzés.
+ *
+ * Nem csak azt mondja meg, hogy fut-e a szolgáltatás, hanem azt is, hogy a
+ * beállítások a helyükön vannak-e. Ennek oka gyakorlati: a titkokat a Cloudflare
+ * felületén kézzel kell elnevezni, és egy elgépelt NÉV pontosan úgy viselkedik,
+ * mintha a titok nem is létezne — de csak az első valódi AI-hívásnál, egy semmitmondó
+ * hibaüzenet formájában. Itt öt másodperc alatt kiderül.
+ *
+ * Csak logikai értékeket ad vissza, a titkok tartalmát soha. Az adatbázist egy
+ * olcsó lekérdezéssel piszkálja meg, mert a binding megléte még nem jelenti azt,
+ * hogy a migrációk le is futottak.
+ */
+app.get('/healthz', async (c) => {
+  const env = c.env
+  let database: 'ok' | 'nincs migrálva' | 'elérhetetlen' = 'elérhetetlen'
+  try {
+    await env.DB.prepare('SELECT 1 FROM events LIMIT 1').all()
+    database = 'ok'
+  } catch (error) {
+    // A hiányzó tábla más eset, mint az elérhetetlen adatbázis: az elsőt a migráció
+    // javítja, a másodikat a binding.
+    database = /no such table/i.test(String(error)) ? 'nincs migrálva' : 'elérhetetlen'
+  }
+
+  const ready = database === 'ok' && Boolean(env.ANTHROPIC_API_KEY)
+  return c.json({
+    ok: ready,
+    database,
+    // Nélküle minden AI-hívás hibát ad.
+    anthropicKey: Boolean(env.ANTHROPIC_API_KEY),
+    // Opcionális: a fejlesztői build korlátlan kvótájához kell.
+    ownerKey: Boolean(env.OWNER_KEY),
+    // Opcionális: az előfizetés ellenőrzéséhez kell, a Play bekötésekor.
+    playServiceAccount: Boolean(env.PLAY_SERVICE_ACCOUNT_JSON),
+    rtdnSecret: Boolean(env.RTDN_SHARED_SECRET),
+  }, ready ? 200 : 503)
+})
 
 /**
  * A nyilvános oldalak (adatkezelés, feltételek, támogatás, adattörlés).

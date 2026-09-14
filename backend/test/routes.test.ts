@@ -32,10 +32,70 @@ describe('útvonalak', () => {
     },
   )
 
-  it('az életjelet nem takarja el', async () => {
-    const r = await get('/healthz')
-    expect(r.status).toBe(200)
-    expect(await r.json()).toEqual({ ok: true })
+  describe('életjel', () => {
+    // A /healthz nem csak fut-e kérdésre válaszol, hanem arra is, hogy a beüzemelés
+    // teljes-e. Ezért a három állapotot külön nézzük: kész, hiányzó migráció, hiányzó
+    // kulcs. Az utolsó kettő a valóságban elgépelt titoknévként jelentkezik.
+    function envWith(overrides: Record<string, unknown>, dbError?: string) {
+      return {
+        ANDROID_PACKAGE: 'hu.mealpilot.app',
+        DB: {
+          prepare: () => ({
+            all: async () => {
+              if (dbError) throw new Error(dbError)
+              return { results: [] }
+            },
+          }),
+        },
+        ...overrides,
+      } as any
+    }
+
+    async function health(env: any) {
+      const r = await app.fetch(new Request('https://example.workers.dev/healthz'), env, ctx)
+      return { status: r.status, body: (await r.json()) as Record<string, unknown> }
+    }
+
+    it('beüzemelve 200-at ad', async () => {
+      const { status, body } = await health(envWith({ ANTHROPIC_API_KEY: 'x', OWNER_KEY: 'y' }))
+      expect(status).toBe(200)
+      expect(body.ok).toBe(true)
+      expect(body.database).toBe('ok')
+      expect(body.anthropicKey).toBe(true)
+      expect(body.ownerKey).toBe(true)
+      // A Play bekötése külön lépés, ezért hiányozhat anélkül, hogy a szolgáltatás
+      // használhatatlan lenne.
+      expect(body.playServiceAccount).toBe(false)
+    })
+
+    it('a titkok tartalmát soha nem adja ki', async () => {
+      const { body } = await health(envWith({ ANTHROPIC_API_KEY: 'sk-titkos-ertek' }))
+      expect(JSON.stringify(body)).not.toContain('sk-titkos-ertek')
+    })
+
+    it('hiányzó Anthropic kulcsnál 503', async () => {
+      const { status, body } = await health(envWith({}))
+      expect(status).toBe(503)
+      expect(body.ok).toBe(false)
+      expect(body.anthropicKey).toBe(false)
+    })
+
+    it('lefuttatatlan migrációt megkülönböztet az elérhetetlen adatbázistól', async () => {
+      const missing = await health(
+        envWith({ ANTHROPIC_API_KEY: 'x' }, 'D1_ERROR: no such table: events'),
+      )
+      expect(missing.status).toBe(503)
+      expect(missing.body.database).toBe('nincs migrálva')
+
+      const down = await health(envWith({ ANTHROPIC_API_KEY: 'x' }, 'network is unreachable'))
+      expect(down.body.database).toBe('elérhetetlen')
+    })
+
+    it('hiányzó binding mellett sem dől el', async () => {
+      const { status, body } = await health({ ANDROID_PACKAGE: 'hu.mealpilot.app' } as any)
+      expect(status).toBe(503)
+      expect(body.database).toBe('elérhetetlen')
+    })
   })
 
   it('ismeretlen cím 404', async () => {
