@@ -312,11 +312,10 @@ Hogy mit kell előre kifizetned és mit nem, arról külön írás szól:
 
 - [ ] Előfizetői élmény finomhangolása: emlékeztető a próbaidőszak végéről
 - [ ] Play Integrity API, ha az ingyenes sáv csapolása gonddá válik
-- [ ] **Az adatbázis sémáját tedd be a verziókezelésbe.** A Room fordításkor kiírja az
-      `android/app/schemas/` alá, de az most nincs a repóban. A következő verzió
-      migrációját ehhez kell írni — enélkül csak tippelni lehet, milyen táblák vannak a
-      már kiadott appban, és egy rossz tipp a felhasználók naplóját viszi el. A CI
-      minden futásban feltölti `room-schemas` néven: töltsd le, és commitold.
+- [x] ~~Az adatbázis sémáját tedd be a verziókezelésbe.~~ **Kész.** Az
+      `android/app/schemas/…/3.json` a repóban van, és a CI elbukik, ha a lefordított
+      séma eltér tőle — vagyis egy elfelejtett verzióemelés itt derül ki, nem a
+      felhasználó telefonján egy migrációs hibával.
 - [ ] A release build `mapping.txt`-jét tedd el minden kiadáshoz. Az összeomlás-jelentés
       obfuszkált hívási láncot küld; visszaolvasni az R8 `retrace` eszközével lehet:
       `retrace mapping.txt stack.txt`. A Play Console-ba is érdemes feltölteni.
@@ -326,10 +325,53 @@ Hogy mit kell előre kifizetned és mit nem, arról külön írás szól:
 
 ---
 
+## 6/a. A minőségi háló — ez hiányzik a legjobban
+
+Ez a szakasz egy nap valódi használatból származik. A tesztelés ~20 perce alatt három
+hiba jött elő: szétesett elrendezés a fő képernyőn, összeomlás az étkezés megnyitásakor,
+és egy beszélgetés, ami azt állította, elvégezte a munkát, holott nem.
+
+Mindhárom UGYANABBAN a modulban élt: az `:app`-ban. A repóban tizenöt tesztfájl van, és
+**mind a tizenöt a `:core`-t fedi** — a tiszta logikát, ami soha nem romlott el. Az
+`:app`-ban, ahol a képernyők, a ViewModelek és a tárolók élnek, nulla teszt van.
+
+A CI ma azt bizonyítja, hogy a kód LEFORDUL. Azt nem, hogy működik.
+
+- [ ] **ViewModel- és tárolótesztek.** Ezek sima JVM-tesztek, hamisított `MealAi`-val és
+      memóriabeli Roommal. A mai „a beszélgetés köröz" hibát ez elkapta volna: az állítás
+      egy mondat — egy lefuttatott művelet után legyen bejegyzés a beszélgetésben.
+- [ ] **Képernyő-renderelő tesztek** (Robolectric + Compose). A másik két hibát ez fogta
+      volna meg: a hős doboz esetében „a nagy szám látszik", az összeomlásnál pedig már
+      a puszta megnyitás elszállt volna a teszten is.
+- [ ] **Egy formázási csapda, amire nincs gépi védelem.** A lint elkapja a
+      `getString(id, doubleValue)` típushibát, a `stringResource`-ot viszont NEM nézi.
+      A mai összeomlás pontosan ez volt. Amíg nincs rá ellenőrzés, minden új `%d`
+      sztringnél kézzel kell megnézni az argumentum típusát.
+
+## 6/b. Az AI minőségének mérése
+
+Az app terméke nem a felület, hanem a terv, amit ad. Ma semmi nem méri, hogy ez a terv jó-e.
+A promptok változnak — ma is változtak —, és nincs mihez hasonlítani.
+
+- [ ] **Egy kis értékelőkészlet.** 8–10 valódi profil (férfi/nő, eltérő cél, laktózmentes,
+      vegetáriánus, kevés idő), mindegyikre generált terv, és néhány gépi állítás: a napi
+      kalória a kereten belül van-e, a kizárások tényleg kimaradtak-e, nincs-e ugyanaz a
+      fogás háromszor egy héten, a bevásárlólista mennyiségei emberi méretűek-e.
+- [ ] Ez **valódi pénzbe kerül** futtatásonként (~1 USD), tehát nem a CI-ba való: kiadás
+      előtt, kézzel. Cserébe ez az egyetlen módja annak, hogy egy promptmódosításról
+      megtudd, javított vagy rontott.
+
+---
+
 ## 7. Sorrend, amit javaslok
 
-1. Backend deploy + szolgáltatásfiók + RTDN (2. és 4.3 pont)
-2. Release keystore, aláírt release build kipróbálása valódi eszközön (3. pont)
+0. **Minőségi háló** (6/a) — mielőtt bármi új funkció jön. Egy nap valódi használat
+   három hibát adott; a következő tíz nap többet fog, és javítás közben újakat okozni
+   teszt nélkül szinte biztos.
+1. Backend deploy + szolgáltatásfiók + RTDN (2. és 4.3 pont). **Enélkül az app nem
+   eladható**: fizető felhasználónak nincs tervezője, csak a beépített sablonok.
+2. Release keystore, aláírt release build kipróbálása VALÓDI eszközön (3. pont). A CI
+   csak azt bizonyítja, hogy az R8 lefut — azt nem, hogy a lefordított app elindul.
 3. A jogi szövegekben a `[…]` helyőrzők kitöltése (adatkezelő, szolgáltató), majd
    `cd backend && npm run pages`
 4. Play Console: termék létrehozása, licenctesztelők, teljes vásárlás végigpróbálása
