@@ -436,7 +436,7 @@ More on the <a href="support.html">support page</a>.</p>
 <h2>1. The controller</h2>
 <p>
   <strong>Máté Teke</strong>, a private individual acting as data controller<br>
-  Neptun utca 88., 4th floor, door 18, Budapest, Hungary<br>
+  Neptun utca 88., 4th floor, door 18, 1158 Budapest, Hungary<br>
   The controller is a private individual and has no company registration number.<br>
   Contact: <a href="mailto:mate.teke@gmail.com">mate.teke@gmail.com</a>
 </p>
@@ -683,7 +683,7 @@ Switched off, the app does not even collect them.</p>
 <p>MealPilot is a mobile app that works out a calorie target from the body data you give
 it, builds meal plans, makes a shopping list, and helps you track your meals and your
 weight. Provider: <strong>Máté Teke</strong>, a private individual,
-Neptun utca 88., 4th floor, door 18, Budapest, Hungary.
+Neptun utca 88., 4th floor, door 18, 1158 Budapest, Hungary.
 Contact: <a href="mailto:mate.teke@gmail.com">mate.teke@gmail.com</a>.</p>
 
 <div class="warn">
@@ -887,7 +887,7 @@ Részletek a <a href="support.html">támogatási oldalon</a>.</p>
 <h2>1. Az adatkezelő</h2>
 <p>
   <strong>Teke Máté</strong> természetes személy adatkezelő<br>
-  Budapest, Neptun utca 88., 4. emelet 18.<br>
+  1158 Budapest, Neptun utca 88., 4. emelet 18.<br>
   Az adatkezelő magánszemélyként jár el, cégjegyzék- vagy nyilvántartási számmal nem rendelkezik.<br>
   Kapcsolat: <a href="mailto:mate.teke@gmail.com">mate.teke@gmail.com</a>
 </p>
@@ -1133,7 +1133,7 @@ kapcsoló. Kikapcsolva az alkalmazás nem is gyűjti ezeket.</p>
 <p>A MealPilot egy mobilalkalmazás, amely a megadott testadataid alapján kalóriacélt számol,
 étrendet állít össze, bevásárlólistát készít, és segít nyomon követni az étkezéseidet és
 a testsúlyodat. Szolgáltató: <strong>Teke Máté</strong> természetes személy,
-Budapest, Neptun utca 88., 4. emelet 18.
+1158 Budapest, Neptun utca 88., 4. emelet 18.
 Kapcsolat: <a href="mailto:mate.teke@gmail.com">mate.teke@gmail.com</a>.</p>
 
 <div class="warn">
