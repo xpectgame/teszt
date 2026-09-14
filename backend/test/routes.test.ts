@@ -109,3 +109,96 @@ describe('útvonalak', () => {
     }
   })
 })
+
+describe('globális napi mennyezet a kérés útján', () => {
+  // A mennyezet a tiszta függvényben tesztelve van; itt az a kérdés, hogy a kérés
+  // útjába tényleg be van-e kötve — az Anthropic hívása ELŐTT. Ezért nincs hálózati
+  // utánzat: ha a mennyezet nem fogna, a teszt valódi hívással szállna el.
+  function envWithUsage(outputTokensToday: number, ceiling = '250000') {
+    return {
+      ANDROID_PACKAGE: 'hu.mealpilot.app',
+      ANTHROPIC_API_KEY: 'nem-hasznaljuk',
+      PLAN_MODEL: 'claude-sonnet-5',
+      CHAT_MODEL: 'claude-sonnet-5',
+      DAILY_OUTPUT_TOKEN_CEILING: ceiling,
+      DB: {
+        prepare: (sql: string) => ({
+          bind: (...args: unknown[]) => ({
+            run: async () => ({}),
+            first: async () => {
+              if (sql.includes('FROM usage')) {
+                // Csak a közös alany áll a plafonon; a hívó saját kerete érintetlen.
+                return args[0] === 'global:daily'
+                  ? { plans: 0, messages: 0, input_tokens: 0, output_tokens: outputTokensToday }
+                  : { plans: 0, messages: 0, input_tokens: 0, output_tokens: 0 }
+              }
+              return null
+            },
+            all: async () => ({ results: [] }),
+          }),
+        }),
+      },
+    } as any
+  }
+
+  async function generate(env: any) {
+    return app.fetch(
+      new Request('https://example.workers.dev/v1/generate', {
+        method: 'POST',
+        headers: {
+          authorization: 'Bearer aaaaaaaaaaaaaaaaaaaaaaaa',
+          'content-type': 'application/json',
+        },
+        body: JSON.stringify({ task: 'PLAN', prompt: 'kérek egy tervet', days: 1 }),
+      }),
+      env,
+      ctx,
+    )
+  }
+
+  it('a keret elfogyásakor 503, az AI hívása nélkül', async () => {
+    const r = await generate(envWithUsage(250_000))
+    expect(r.status).toBe(503)
+    const body = (await r.json()) as Record<string, unknown>
+    expect(body.error).toBe('SERVICE_BUSY')
+    // Ez nem fizetési fal: a felhasználónak nincs mit vennie ettől.
+    expect(body.upgrade).toBe(false)
+  })
+
+  it('a tulajdonost nem zárja ki a saját szolgáltatásából', async () => {
+    const env = envWithUsage(250_000)
+    env.OWNER_KEY = 'tulajdonosi-kulcs'
+
+    // A hálózatot elzárjuk, és a hívás tényét mérjük: ha a mennyezet megfogná a
+    // tulajdonost, ide sosem jutna el a vezérlés. Így a teszt nem függ külső
+    // szolgáltatástól, és pont azt állítja, amit akarunk.
+    const original = globalThis.fetch
+    let calledAnthropic = false
+    globalThis.fetch = (async (input: any) => {
+      calledAnthropic = String(input?.url ?? input).includes('anthropic.com')
+      return new Response('', { status: 500 })
+    }) as typeof fetch
+
+    try {
+      const r = await app.fetch(
+        new Request('https://example.workers.dev/v1/generate', {
+          method: 'POST',
+          headers: {
+            authorization: 'Bearer aaaaaaaaaaaaaaaaaaaaaaaa',
+            'x-owner-key': 'tulajdonosi-kulcs',
+            'content-type': 'application/json',
+          },
+          body: JSON.stringify({ task: 'PLAN', prompt: 'kérek egy tervet', days: 1 }),
+        }),
+        env,
+        ctx,
+      )
+      expect(r.status).not.toBe(503)
+      // A választ ki kell olvasni: a hívás a folyam belsejében indul.
+      await r.text()
+      expect(calledAnthropic).toBe(true)
+    } finally {
+      globalThis.fetch = original
+    }
+  })
+})

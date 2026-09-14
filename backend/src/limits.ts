@@ -181,3 +181,32 @@ export function usageDelta(
   if (task === 'CHAT') return { plans: 0, messages: 1 }
   return { plans: 0, messages: 0 }
 }
+
+/**
+ * A globális napi mennyezet könyvelési alanya.
+ *
+ * A felhasználói alanyok mind előtaggal jönnek (`owner:`, `sub:`, `user:`), és mindet
+ * egy hexadecimális hash zárja — ez a kulcs tehát nem tud ütközni velük. Így a
+ * mennyezet elfér a meglévő `usage` táblában, migráció nélkül.
+ */
+export const GLOBAL_SUBJECT = 'global:daily'
+
+/** UTC nap, a globális számláló kulcsa. A havi periódustól szándékosan eltér. */
+export function dayKey(at: Date = new Date()): string {
+  return at.toISOString().slice(0, 10)
+}
+
+/**
+ * Elfogyott-e a napi közös keret.
+ *
+ * Miért kell: a telepítési azonosító nem jogosultság, bárki generálhat újat, és minden
+ * új azonosítóhoz új ingyenes keret jár. A felhasználónkénti korlátok tehát egy
+ * szkriptelt visszaéléssel megkerülhetők — ez a mennyezet az, ami nem.
+ *
+ * Nem védelem a visszaélés ELLEN, hanem a számla felső korlátja: rossz esetben a
+ * szolgáltatás leáll a nap hátralévő részére, nem pedig a kártya ürül ki.
+ */
+export function globalCeilingReached(outputTokensToday: number, ceiling: number): boolean {
+  if (!Number.isFinite(ceiling) || ceiling <= 0) return false
+  return outputTokensToday >= ceiling
+}

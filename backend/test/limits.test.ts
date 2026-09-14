@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { DEFAULT_LIMITS, EMPTY_USAGE, checkQuota, periodKey, usageDelta } from '../src/limits.js'
+import { DEFAULT_LIMITS, EMPTY_USAGE, GLOBAL_SUBJECT, checkQuota, dayKey, globalCeilingReached, periodKey, usageDelta } from '../src/limits.js'
 import { isEntitled } from '../src/play.js'
 import { costMicros } from '../src/anthropic.js'
 import {
@@ -179,5 +179,40 @@ describe('rendszerpromptok', () => {
     expect(await hash(CHAT_SYSTEM_PROMPT)).toBe(PROMPT_HASHES.chat)
     expect(await hash(PLAN_SYSTEM_PROMPT_EN)).toBe(PROMPT_HASHES.plan_en)
     expect(await hash(CHAT_SYSTEM_PROMPT_EN)).toBe(PROMPT_HASHES.chat_en)
+  })
+})
+
+describe('globális napi mennyezet', () => {
+  it('a küszöb alatt átenged', () => {
+    expect(globalCeilingReached(249_999, 250_000)).toBe(false)
+  })
+
+  it('a küszöbön és fölötte megállít', () => {
+    expect(globalCeilingReached(250_000, 250_000)).toBe(true)
+    expect(globalCeilingReached(900_000, 250_000)).toBe(true)
+  })
+
+  // Egy elgépelt vagy törölt beállítás nem állíthatja le a szolgáltatást mindenkinek:
+  // a hiányzó plafon azt jelenti, hogy nincs mennyezet, nem azt, hogy nulla.
+  it('értelmetlen plafon esetén nem korlátoz', () => {
+    for (const bad of [Number.NaN, 0, -1]) {
+      expect(globalCeilingReached(10_000_000, bad)).toBe(false)
+    }
+  })
+
+  it('a napi kulcs UTC nap, a havitól eltérő alakban', () => {
+    const at = new Date('2026-09-14T23:30:00Z')
+    expect(dayKey(at)).toBe('2026-09-14')
+    expect(periodKey(at)).toBe('2026-09')
+  })
+
+  // A közös számláló ugyanabban a táblában lakik, mint a felhasználóké. Ha egy valódi
+  // alany elő tudná állítani ezt a kulcsot, elrontaná vagy kiolvashatná a mennyezetet.
+  it('a fenntartott alany nem ütközhet felhasználóival', () => {
+    const userSubjects = ['owner:abc123', 'user:abc123', 'sub:abc123']
+    expect(userSubjects).not.toContain(GLOBAL_SUBJECT)
+    for (const subject of userSubjects) {
+      expect(subject.startsWith('global:')).toBe(false)
+    }
   })
 })

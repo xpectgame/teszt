@@ -30,6 +30,16 @@ PREMIUM_OUTPUT_TOKEN_CAP = "400000"
 # A fejlesztő saját buildje sem költhet korlátlanul — egy elszabadult ciklus vagy egy
 # kiszivárgott kulcs itt akad meg.
 OWNER_OUTPUT_TOKEN_CAP = "1500000"
+# Napi közös plafon, MINDEN hívóra összesítve. Ez a számla felső korlátja.
+#
+# A telepítési azonosító nem jogosultság: bárki generálhat újat, és minden újhoz új
+# ingyenes keret jár. A felhasználónkénti korlátok tehát megkerülhetők egy szkripttel,
+# ez a szám viszont nem. Rossz esetben a szolgáltatás leáll a nap végéig — ez a jó
+# kimenetel ahhoz képest, hogy a kulcs mögötti számla fut fel.
+#
+# 250 000 kimeneti token ≈ 2,50 USD naponta Sonnet 5 áron. Az egyetlen jelenlegi
+# felhasználó (a fejlesztő) ennek a töredékét használja, tehát van benne tartalék.
+DAILY_OUTPUT_TOKEN_CEILING = "250000"
 
 # Titkok — NEM ide, hanem:
 #   wrangler secret put ANTHROPIC_API_KEY

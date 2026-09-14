@@ -4,7 +4,15 @@ import { AnthropicError, costMicros, streamMessage } from './anthropic.js'
 import { AuthError, resolveCaller, type Caller } from './auth.js'
 import { addUsage, logRequest, readSubscription, readUsage, sha256Hex, writeSubscription } from './db.js'
 import type { Env } from './env.js'
-import { checkQuota, periodKey, usageDelta, type Task } from './limits.js'
+import {
+  checkQuota,
+  dayKey,
+  globalCeilingReached,
+  GLOBAL_SUBJECT,
+  periodKey,
+  usageDelta,
+  type Task,
+} from './limits.js'
 import {
   CHAT_SYSTEM_PROMPT,
   CHAT_SYSTEM_PROMPT_EN,
@@ -238,6 +246,26 @@ app.post('/v1/generate', async (c) => {
     )
   }
 
+  // A közös napi keret. A tulajdonos átmehet rajta: az ő fogyasztását a havi
+  // OWNER plafon már korlátozza, és egy incidens közben pont ő az, akinek látnia
+  // kell, mi történik — a saját szolgáltatásából kizárva ezt nem tudná megtenni.
+  const today = dayKey()
+  if (caller.tier !== 'OWNER') {
+    const globalUsage = await readUsage(c.env, GLOBAL_SUBJECT, today)
+    const ceiling = Number(c.env.DAILY_OUTPUT_TOKEN_CEILING ?? '')
+    if (globalCeilingReached(globalUsage.outputTokens, ceiling)) {
+      return c.json(
+        {
+          error: 'SERVICE_BUSY',
+          message: 'A szolgáltatás mára elérte a napi keretét. Próbáld újra holnap.',
+          tier: caller.tier,
+          upgrade: false,
+        },
+        503,
+      )
+    }
+  }
+
   const model = task === 'CHAT' ? c.env.CHAT_MODEL : c.env.PLAN_MODEL
   // A Haiku nem fogadja el az effort paramétert.
   const effort = model.includes('haiku') ? null : c.env.PLAN_EFFORT
@@ -303,6 +331,13 @@ app.post('/v1/generate', async (c) => {
       const tokens = result ?? { inputTokens: 0, outputTokens: 0, cacheReadTokens: 0, cacheWriteTokens: 0 }
       const cost = result ? costMicros(model, result) : 0
       const bookkeeping = Promise.all([
+        // A közös napi számláló MINDENKIT számol, a tulajdonost is: a mennyezet
+        // célja a számla felső korlátja, és abba az ő fogyasztása is beleszámít.
+        addUsage(c.env, GLOBAL_SUBJECT, today, {
+          inputTokens: tokens.inputTokens,
+          outputTokens: tokens.outputTokens,
+          costMicros: cost,
+        }),
         addUsage(c.env, caller.subject, period, {
           // Sikertelen hívás nem fogyaszt darabszám-kvótát, tokent viszont igen:
           // azt tényleg elhasználta.

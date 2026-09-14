@@ -17,6 +17,11 @@ export interface Env {
 
   // Beállítások (wrangler.toml [vars])
   ANDROID_PACKAGE: string
+  /**
+   * Napi közös kimeneti token plafon, minden hívóra összesítve. A felhasználónkénti
+   * korlátok megkerülhetők új azonosítóval; ez nem.
+   */
+  DAILY_OUTPUT_TOKEN_CEILING?: string
   PREMIUM_PRODUCT_ID: string
   PLAN_MODEL: string
   CHAT_MODEL: string
