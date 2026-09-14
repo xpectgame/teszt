@@ -411,8 +411,14 @@ private fun ExtraRow(log: MealLogEntity, onDelete: () -> Unit) {
     }
 }
 
+/**
+ * A nap egy étkezésének lapkája.
+ *
+ * `internal`, hogy a modul tesztjei is meg tudják jeleníteni. Semmilyen tárolót nem
+ * ismer — adatot és visszahívásokat kap, tehát önmagában vizsgálható.
+ */
 @Composable
-private fun MealRow(
+internal fun MealRow(
     meal: MealWithIngredients,
     log: MealLogEntity?,
     status: LogStatus?,
