@@ -3,12 +3,12 @@ main = "src/index.ts"
 compatibility_date = "2024-12-18"
 compatibility_flags = ["nodejs_compat"]
 
-# Az adatbázis azonosítóját a `wrangler d1 create mealpilot` adja vissza.
-# Írd be ide, mielőtt először deployolsz.
+# Az adatbázis azonosítója. Nem titok — a Cloudflare dokumentációja is a repóba
+# teszi —, csak ezzel találja meg a Worker a saját D1 adatbázisát.
 [[d1_databases]]
 binding = "DB"
 database_name = "mealpilot"
-database_id = "PASTE_D1_DATABASE_ID_HERE"
+database_id = "8697531c-a3d5-4903-9513-d0f8788603a9"
 
 [vars]
 # A Play Console-ban szereplő csomagnév. Éles kiadásnál ez a release applicationId,
