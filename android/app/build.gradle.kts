@@ -33,8 +33,15 @@ android {
         // (fejlesztői út), vagy az offline tervezőt használja — tehát build nélkül is fut.
         // Bolti kiadáshoz KÖTELEZŐ beállítani, mert egy fizető felhasználó nem szerez
         // Anthropic-kulcsot, és a kvótát sem dönthetné el a telefon.
+        //
+        // Az alapértéket a gradle.properties adja (mealpilot.backendUrl), így minden
+        // build — a CI-é és a sajátod is — ugyanazt a kiadott Workert hívja, külön
+        // beállítás nélkül. Nem titok: a cím minden telefon hálózati forgalmában látszik.
+        // Környezeti változóval felülírható, például egy próbakörnyezetre:
         //   MEALPILOT_BACKEND_URL=https://... ./gradlew :app:assembleRelease
-        val backendUrl = System.getenv("MEALPILOT_BACKEND_URL")?.trim()?.trimEnd('/').orEmpty()
+        val backendUrl = (System.getenv("MEALPILOT_BACKEND_URL")
+            ?: project.findProperty("mealpilot.backendUrl") as String?)
+            ?.trim()?.trimEnd('/').orEmpty()
         buildConfigField("String", "BACKEND_URL", "\"$backendUrl\"")
 
         // A jogi oldalak és a támogatás címe.
