@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { DEFAULT_LIMITS, EMPTY_USAGE, GLOBAL_SUBJECT, checkQuota, dayKey, globalCeilingReached, periodKey, usageDelta } from '../src/limits.js'
+import { DEFAULT_LIMITS, EMPTY_USAGE, GLOBAL_SUBJECT, TRIAL_PERIOD, checkQuota, dayKey, globalCeilingReached, periodFor, periodKey, usageDelta } from '../src/limits.js'
 import { isEntitled } from '../src/play.js'
 import { costMicros } from '../src/anthropic.js'
 import {
@@ -32,8 +32,8 @@ describe('kvóta', () => {
     expect(check({}).allowed).toBe(true)
   })
 
-  it('a második terv már elutasítás ugyanabban a hónapban', () => {
-    const decision = check({ usage: { ...EMPTY_USAGE, plans: 1 } })
+  it('a próbakeret kimerítése után elutasítás', () => {
+    const decision = check({ usage: { ...EMPTY_USAGE, plans: free.aiPlans } })
     expect(decision.allowed).toBe(false)
     expect(decision.code).toBe('PLAN_QUOTA')
   })
@@ -54,13 +54,14 @@ describe('kvóta', () => {
   })
 
   it('a javító kör sem számít új tervnek', () => {
-    const usage = { ...EMPTY_USAGE, plans: 1 }
+    // A keret tetején állunk: innen egy javító kör még mehet, egy ÚJ terv már nem.
+    const usage = { ...EMPTY_USAGE, plans: free.aiPlans }
     expect(check({ usage, chunkIndex: 0, isRetry: true }).allowed).toBe(true)
     expect(check({ usage, chunkIndex: 0, isRetry: false }).code).toBe('PLAN_QUOTA')
   })
 
   it('az üzenetkeret elfogyása elutasítás', () => {
-    const decision = check({ task: 'CHAT', usage: { ...EMPTY_USAGE, messages: free.chatMessagesPerMonth } })
+    const decision = check({ task: 'CHAT', usage: { ...EMPTY_USAGE, messages: free.chatMessages } })
     expect(decision.code).toBe('MESSAGE_QUOTA')
   })
 
@@ -214,5 +215,58 @@ describe('globális napi mennyezet', () => {
     for (const subject of userSubjects) {
       expect(subject.startsWith('global:')).toBe(false)
     }
+  })
+})
+
+describe('próbaidőszak az ingyenes sávban', () => {
+  // Ez a különbség a fenntartható működés és az örökös veszteség között: az ingyenes
+  // keret EGYSZER jár, nem havonta. Az azonosító nem jogosultság, tehát egy havi keret
+  // havonta újratölthető lenne — korlátlan ingyenes kiszolgálás, bevétel nélkül.
+  it('az ingyenes sáv kulcsa állandó, nem dátumfüggő', () => {
+    const january = periodFor('FREE', new Date('2026-01-15T10:00:00Z'))
+    const december = periodFor('FREE', new Date('2026-12-15T10:00:00Z'))
+    expect(january).toBe(TRIAL_PERIOD)
+    expect(january).toBe(december)
+  })
+
+  it('a fizetős sávok havonta fordulnak', () => {
+    expect(periodFor('PREMIUM', new Date('2026-01-15T10:00:00Z'))).toBe('2026-01')
+    expect(periodFor('PREMIUM', new Date('2026-02-15T10:00:00Z'))).toBe('2026-02')
+    // A tulajdonos is havi, különben a saját tesztelése egyszer elfogyna örökre.
+    expect(periodFor('OWNER', new Date('2026-02-15T10:00:00Z'))).toBe('2026-02')
+  })
+
+  it('a próbakeret három terv, és a harmadik után elfogy', () => {
+    const free = DEFAULT_LIMITS.FREE
+    expect(free.aiPlans).toBe(3)
+
+    const afterTwo = checkQuota({
+      tier: 'FREE', limits: free, usage: { ...EMPTY_USAGE, plans: 2 },
+      task: 'PLAN', requestedDays: 3, chunkIndex: 0, isRetry: false,
+    })
+    expect(afterTwo.allowed).toBe(true)
+
+    const afterThree = checkQuota({
+      tier: 'FREE', limits: free, usage: { ...EMPTY_USAGE, plans: 3 },
+      task: 'PLAN', requestedDays: 3, chunkIndex: 0, isRetry: false,
+    })
+    expect(afterThree.allowed).toBe(false)
+    expect(afterThree.allowed === false && afterThree.code).toBe('PLAN_QUOTA')
+  })
+
+  // Egy elfogyott próbaidőszak SOHA nem tölt újra. Ha az üzenet havi nullázódást
+  // ígérne, a felhasználó hiába várna rá — ez az apró hazugság a bizalmat viszi el.
+  it('az elutasítás nem ígér havi újratöltést', () => {
+    const denied = checkQuota({
+      tier: 'FREE', limits: DEFAULT_LIMITS.FREE, usage: { ...EMPTY_USAGE, plans: 3 },
+      task: 'PLAN', requestedDays: 3, chunkIndex: 0, isRetry: false,
+    })
+    const message = denied.allowed === false ? denied.message : ''
+    expect(message).not.toMatch(/havi|hónap/i)
+    expect(message).toContain('3')
+  })
+
+  it('a próbakeret tokenben is szűkebb, mint a fizetős', () => {
+    expect(DEFAULT_LIMITS.FREE.outputTokenCap).toBeLessThan(DEFAULT_LIMITS.PREMIUM.outputTokenCap)
   })
 })

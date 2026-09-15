@@ -9,7 +9,7 @@ import {
   dayKey,
   globalCeilingReached,
   GLOBAL_SUBJECT,
-  periodKey,
+  periodFor,
   usageDelta,
   type Task,
 } from './limits.js'
@@ -157,10 +157,12 @@ function entitlementPayload(caller: Caller, usage: { plans: number; messages: nu
     tier: caller.tier,
     subscription_state: caller.subscriptionState,
     expires_at: caller.expiresAt,
-    period: periodKey(),
+    period: periodFor(caller.tier),
     limits: {
-      ai_plans_per_month: limits.aiPlansPerMonth,
-      chat_messages_per_month: limits.chatMessagesPerMonth,
+      // A mezőnév szándékosan nem tartalmaz "per_month"-ot: az ingyenes sávban ezek
+      // egyszeri próbakeretek, és a `period` mondja meg, melyik értelmezés érvényes.
+      ai_plans: limits.aiPlans,
+      chat_messages: limits.chatMessages,
       max_plan_days: limits.maxPlanDays,
       can_refine_days: limits.canRefineDays,
     },
@@ -169,10 +171,8 @@ function entitlementPayload(caller: Caller, usage: { plans: number; messages: nu
       messages: usage.messages,
     },
     remaining: {
-      plans: unlimited(limits.aiPlansPerMonth) ? -1 : Math.max(0, limits.aiPlansPerMonth - usage.plans),
-      messages: unlimited(limits.chatMessagesPerMonth)
-        ? -1
-        : Math.max(0, limits.chatMessagesPerMonth - usage.messages),
+      plans: unlimited(limits.aiPlans) ? -1 : Math.max(0, limits.aiPlans - usage.plans),
+      messages: unlimited(limits.chatMessages) ? -1 : Math.max(0, limits.chatMessages - usage.messages),
       output_tokens: Math.max(0, limits.outputTokenCap - usage.outputTokens),
     },
   }
@@ -184,7 +184,7 @@ function entitlementPayload(caller: Caller, usage: { plans: number; messages: nu
  */
 app.post('/v1/session', async (c) => {
   const caller = await resolveCaller(c.env, c.req.raw)
-  const usage = await readUsage(c.env, caller.subject, periodKey())
+  const usage = await readUsage(c.env, caller.subject, periodFor(caller.tier))
   return c.json(entitlementPayload(caller, usage))
 })
 
@@ -220,7 +220,7 @@ app.post('/v1/generate', async (c) => {
     return c.json({ error: 'PROMPT_TOO_LONG', message: 'A kérés túl hosszú.' }, 413)
   }
 
-  const period = periodKey()
+  const period = periodFor(caller.tier)
   const usage = await readUsage(c.env, caller.subject, period)
   const requestedDays = Number.isFinite(body.days) ? Number(body.days) : 1
   const chunkIndex = Number.isFinite(body.chunk_index) ? Number(body.chunk_index) : 0

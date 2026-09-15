@@ -54,7 +54,6 @@ import hu.mealpilot.app.ui.components.SectionHeading
 import hu.mealpilot.app.ui.theme.PlateShape
 import hu.mealpilot.app.data.telemetry.TelemetryEvent
 import hu.mealpilot.app.billing.PREMIUM_SUBSCRIPTION_ID
-import hu.mealpilot.core.billing.BillingPeriod
 import hu.mealpilot.core.billing.Tiers
 
 /**
@@ -303,7 +302,6 @@ fun PaywallScreen(
                         R.string.settings_quota_left,
                         current.remainingPlans(),
                         current.remainingMessages(),
-                        BillingPeriod.daysUntilReset(),
                     ),
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,

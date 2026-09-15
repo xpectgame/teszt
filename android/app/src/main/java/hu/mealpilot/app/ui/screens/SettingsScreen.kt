@@ -65,7 +65,6 @@ import hu.mealpilot.app.ui.components.WarningNote
 import hu.mealpilot.app.ui.containerFactory
 import hu.mealpilot.core.i18n.AppLanguage
 import hu.mealpilot.core.i18n.label
-import hu.mealpilot.core.billing.BillingPeriod
 import hu.mealpilot.core.model.UserProfile
 import kotlinx.coroutines.launch
 
@@ -169,7 +168,6 @@ fun SettingsScreen(
                         R.string.settings_quota_left,
                         plan.remainingPlans(),
                         plan.remainingMessages(),
-                        BillingPeriod.daysUntilReset(),
                     ),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,

@@ -289,8 +289,8 @@ data class BackendSession(
 
 @Serializable
 data class BackendLimits(
-    @SerialName("ai_plans_per_month") val aiPlansPerMonth: Int = 1,
-    @SerialName("chat_messages_per_month") val chatMessagesPerMonth: Int = 10,
+    @SerialName("ai_plans") val aiPlans: Int = 3,
+    @SerialName("chat_messages") val chatMessages: Int = 20,
     @SerialName("max_plan_days") val maxPlanDays: Int = 3,
     @SerialName("can_refine_days") val canRefineDays: Boolean = false,
 )

@@ -147,7 +147,7 @@
     <string name="report_submit">Jelentem</string>
     <string name="settings_title">Beállítások</string>
     <string name="settings_plan">Csomag</string>
-    <string name="settings_quota_left">Ebben a hónapban még %1$d étrend és %2$d üzenet maradt. A keret %3$d nap múlva nullázódik.</string>
+    <string name="settings_quota_left">A próbaidőszakodból még %1$d étrend és %2$d üzenet maradt.</string>
     <string name="settings_go_premium">Teljes csomag</string>
     <string name="settings_premium_thanks">Korlátlan étrend és beszélgetés. Köszönjük!</string>
     <string name="settings_manage_subscription">Előfizetés kezelése</string>

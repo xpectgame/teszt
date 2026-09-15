@@ -10,26 +10,41 @@ export type Tier = 'FREE' | 'PREMIUM' | 'OWNER'
 export type Task = 'PLAN' | 'DAY' | 'CHAT' | 'ESTIMATE'
 
 export interface TierLimits {
-  /** -1 = korlátlan */
-  aiPlansPerMonth: number
-  chatMessagesPerMonth: number
+  /**
+   * -1 = korlátlan.
+   *
+   * A számok ÉRTELMEZÉSE csomagfüggő, és ezt a `periodFor` dönti el: az ingyenes
+   * sávban EGYSZERI keret (a próbaidőszak egésze), a fizetősben havi. Ezért nincs
+   * a nevükben "PerMonth" — az az ingyenes sávra hazugság lenne.
+   */
+  aiPlans: number
+  chatMessages: number
   maxPlanDays: number
   canRefineDays: boolean
-  /** Havi kimeneti token plafon — ez a kemény, megkerülhetetlen korlát. */
+  /** Kimeneti token plafon a csomag időszakára. A kemény, megkerülhetetlen korlát. */
   outputTokenCap: number
 }
 
 export const DEFAULT_LIMITS: Record<Tier, TierLimits> = {
+  // Próbaidőszak, nem havi keret. Ez EGYSZER jár egy telepítésnek, és nem töltődik
+  // újra — különben minden ingyenes felhasználó örökös, visszatérő költség lenne
+  // bevétel nélkül, és a szolgáltatás annál többet veszítene, minél népszerűbb.
+  //
+  // Három terv elég ahhoz, hogy valaki eldöntse, kell-e neki: egy első terv, egy
+  // igazítás utáni, és egy harmadik a következő hétre. Ennél kevesebb nem mutatja
+  // meg a terméket, ennél több már ingyen kiszolgálás.
   FREE: {
-    aiPlansPerMonth: 1,
-    chatMessagesPerMonth: 10,
+    aiPlans: 3,
+    chatMessages: 20,
     maxPlanDays: 3,
     canRefineDays: false,
-    outputTokenCap: 80_000,
+    // ≈ 0,60 USD egyszeri költség telepítésenként. Ezt szerzési költségnek tekintjük,
+    // nem kiszolgálásnak: egyszer fizetjük ki egy emberért, nem havonta.
+    outputTokenCap: 60_000,
   },
   PREMIUM: {
-    aiPlansPerMonth: -1,
-    chatMessagesPerMonth: -1,
+    aiPlans: -1,
+    chatMessages: -1,
     maxPlanDays: 30,
     canRefineDays: true,
     // 400k kimeneti token ≈ 4 USD Sonnet 5-ön, nagyjából az előfizetés nettó ára.
@@ -41,8 +56,8 @@ export const DEFAULT_LIMITS: Record<Tier, TierLimits> = {
   // kvótán — de tokenplafont ez is kap, hogy egy elszabadult ciklus vagy egy kiszivárgott
   // kulcs se tudjon korlátlanul költeni.
   OWNER: {
-    aiPlansPerMonth: -1,
-    chatMessagesPerMonth: -1,
+    aiPlans: -1,
+    chatMessages: -1,
     maxPlanDays: 30,
     canRefineDays: true,
     // ≈ 15 USD/hó. Bőven elég saját használatra és teszteléshez, de egy elszabadult
@@ -59,6 +74,25 @@ export interface UsageRow {
 }
 
 export const EMPTY_USAGE: UsageRow = { plans: 0, messages: 0, inputTokens: 0, outputTokens: 0 }
+
+/**
+ * Az ingyenes sáv elszámolási kulcsa.
+ *
+ * Nem dátum, hanem állandó: a próbakeret SOHA nem nullázódik. Ez az egy sor a
+ * különbség a fenntartható működés és az örökös veszteség között — az azonosító
+ * ugyanis nem jogosultság, tehát egy havi keret havonta újratölthető lenne.
+ */
+export const TRIAL_PERIOD = 'trial'
+
+/**
+ * Melyik elszámolási időszak vonatkozik egy csomagra.
+ *
+ * FREE: egyszeri próbaidőszak. PREMIUM és OWNER: naptári hónap, mert az előfizetés is
+ * havonta fordul — amit kifizetett, azt minden hónapban megkapja.
+ */
+export function periodFor(tier: Tier, at: Date = new Date()): string {
+  return tier === 'FREE' ? TRIAL_PERIOD : periodKey(at)
+}
 
 /** Naptári hónap kulcsa, UTC szerint. A kliens `BillingPeriod.keyFor` ugyanezt adja. */
 export function periodKey(at: Date = new Date()): string {
@@ -113,7 +147,7 @@ export function checkQuota(input: CheckInput): Decision {
       message:
         tier === 'PREMIUM'
           ? 'Ebben a hónapban szokatlanul sok kérés futott le erről a fiókról. Írj nekünk, ha ez tévedés.'
-          : 'Elfogyott a havi ingyenes keret. Az előfizetéssel újra tudsz tervezni.',
+          : 'Elfogyott az ingyenes próbakeret. Az előfizetéssel újra tudsz tervezni.',
     }
   }
 
@@ -126,11 +160,11 @@ export function checkQuota(input: CheckInput): Decision {
   }
 
   if (task === 'CHAT') {
-    if (limits.chatMessagesPerMonth >= 0 && usage.messages >= limits.chatMessagesPerMonth) {
+    if (limits.chatMessages >= 0 && usage.messages >= limits.chatMessages) {
       return {
         allowed: false,
         code: 'MESSAGE_QUOTA',
-        message: `Elfogyott a havi ${limits.chatMessagesPerMonth} üzenet. Az előfizetéssel korlátlanul beszélgethetsz.`,
+        message: `Elfogyott a próbaidőszak ${limits.chatMessages} üzenete. Az előfizetéssel korlátlanul beszélgethetsz.`,
       }
     }
     return ALLOW
@@ -153,11 +187,11 @@ export function checkQuota(input: CheckInput): Decision {
       }
     }
     const isNewPlan = chunkIndex <= 0 && !input.isRetry
-    if (isNewPlan && limits.aiPlansPerMonth >= 0 && usage.plans >= limits.aiPlansPerMonth) {
+    if (isNewPlan && limits.aiPlans >= 0 && usage.plans >= limits.aiPlans) {
       return {
         allowed: false,
         code: 'PLAN_QUOTA',
-        message: `Ebben a hónapban elhasználtad az ingyenes tervet (${limits.aiPlansPerMonth} db). Az előfizetéssel korlátlanul tervezhetsz.`,
+        message: `Elhasználtad mind a ${limits.aiPlans} ingyenes tervet. Az előfizetéssel korlátlanul tervezhetsz.`,
       }
     }
     return { allowed: true, allowedDays: Math.max(requestedDays, 1) }

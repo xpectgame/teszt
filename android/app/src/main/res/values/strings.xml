@@ -148,7 +148,7 @@
     <string name="report_submit">Report it</string>
     <string name="settings_title">Settings</string>
     <string name="settings_plan">Your plan</string>
-    <string name="settings_quota_left">This month you have %1$d plans and %2$d messages left. The allowance resets in %3$d days.</string>
+    <string name="settings_quota_left">%1$d meal plans and %2$d messages left from your free trial.</string>
     <string name="settings_go_premium">Full plan</string>
     <string name="settings_premium_thanks">Unlimited plans and chat. Thank you!</string>
     <string name="settings_manage_subscription">Manage subscription</string>

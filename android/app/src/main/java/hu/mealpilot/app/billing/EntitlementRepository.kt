@@ -72,7 +72,7 @@ class EntitlementRepository(
     /** Tesztekhez és a „minden adat törlése" művelethez. */
     suspend fun resetUsage() {
         store.edit { prefs ->
-            prefs[K_PERIOD] = BillingPeriod.currentKey()
+            prefs[K_PERIOD] = BillingPeriod.TRIAL
             prefs[K_PLANS] = 0
             prefs[K_MESSAGES] = 0
         }
@@ -83,8 +83,11 @@ class EntitlementRepository(
     }
 
     private suspend fun bumpUsage(transform: (UsageCounters) -> UsageCounters) {
-        val period = BillingPeriod.currentKey()
         store.edit { prefs ->
+            // A csomag dönti el, melyik időszakba könyvelünk: a próbakeret sosem fordul,
+            // az előfizetőé havonta. A szerver `periodFor` függvénye ugyanez.
+            // A tranzakción BELÜL olvassuk ki, hogy ne egy közben elavult csomagot lássunk.
+            val period = BillingPeriod.keyFor(prefs.tier())
             val stored = UsageCounters(
                 periodKey = prefs[K_PERIOD] ?: period,
                 aiPlans = prefs[K_PLANS] ?: 0,
@@ -97,19 +100,29 @@ class EntitlementRepository(
         }
     }
 
-    private fun Preferences.toEntitlement(): Entitlement {
+    /**
+     * A hatályos csomag. A fejlesztői kapcsoló és a saját build felülírja a tároltat,
+     * és ezt a kvóta könyvelésének is ugyanígy kell látnia — különben a fejlesztői
+     * teljes csomag a próbakeretbe könyvelne.
+     */
+    private fun Preferences.tier(): PlanTier {
         val devPremium = ownerBuild || (this[K_DEV_PREMIUM] ?: false)
-        val storedTier = runCatching { PlanTier.valueOf(this[K_TIER] ?: PlanTier.FREE.name) }
+        if (devPremium) return PlanTier.PREMIUM
+        return runCatching { PlanTier.valueOf(this[K_TIER] ?: PlanTier.FREE.name) }
             .getOrDefault(PlanTier.FREE)
+    }
+
+    private fun Preferences.toEntitlement(): Entitlement {
+        val tier = tier()
         return Entitlement(
-            tier = if (devPremium) PlanTier.PREMIUM else storedTier,
+            tier = tier,
             expiresAtMillis = this[K_EXPIRES],
             pending = this[K_PENDING] ?: false,
             usage = UsageCounters(
-                periodKey = this[K_PERIOD] ?: BillingPeriod.currentKey(),
+                periodKey = this[K_PERIOD] ?: BillingPeriod.keyFor(tier),
                 aiPlans = this[K_PLANS] ?: 0,
                 chatMessages = this[K_MESSAGES] ?: 0,
-            ).normalizedFor(BillingPeriod.currentKey()),
+            ).normalizedFor(BillingPeriod.keyFor(tier)),
         )
     }
 
