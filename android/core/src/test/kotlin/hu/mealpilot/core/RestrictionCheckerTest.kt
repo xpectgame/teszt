@@ -246,4 +246,75 @@ class RestrictionCheckerTest {
         assertTrue(en("oat milk", DietRestriction.LACTOSE).isEmpty())
         assertTrue(en("lactose-free milk", DietRestriction.LACTOSE).isEmpty())
     }
+
+    // ---------------------------------------------------------------------------
+    // Magyar szóalaktan. Mindhárom eset ÉLES HIBA volt: az allergén átcsúszott a
+    // szűrőn, és a felhasználóhoz jutott volna.
+    // ---------------------------------------------------------------------------
+
+    @Test
+    fun `stem lengthening does not hide an allergen`() {
+        // A magyar tővégi magánhangzó nyúlik toldalékoláskor: tészta -> tésztával.
+        // A „tészta" végig benne volt a gluténlistában, a „húsleves tésztával" mégis
+        // átment, mert nem a kulcsszó karaktersorával kezdődik.
+        assertEquals(listOf(DietRestriction.GLUTEN), hits("húsleves tésztával", DietRestriction.GLUTEN))
+        assertEquals(listOf(DietRestriction.GLUTEN), hits("palacsintával", DietRestriction.GLUTEN))
+        assertEquals(listOf(DietRestriction.GLUTEN), hits("zsemlét", DietRestriction.GLUTEN))
+        assertEquals(listOf(DietRestriction.FODMAP), hits("hagymával", DietRestriction.FODMAP))
+        assertEquals(listOf(DietRestriction.NO_POULTRY), hits("csirkével", DietRestriction.NO_POULTRY))
+    }
+
+    @Test
+    fun `an allergen at the end of a compound is caught`() {
+        // A magyar mindkét irányban összetesz. A „tejföl" elöl hordozza az allergént,
+        // a „krémsajt" és a „juhtúró" hátul — utóbbiakat a csak szóeleji egyezés
+        // némán átengedte.
+        assertEquals(listOf(DietRestriction.LACTOSE), hits("krémsajt", DietRestriction.LACTOSE))
+        assertEquals(listOf(DietRestriction.LACTOSE), hits("juhtúró", DietRestriction.LACTOSE))
+        assertEquals(listOf(DietRestriction.NO_PORK), hits("zsírszalonna", DietRestriction.NO_PORK))
+    }
+
+    @Test
+    fun `breaded dishes are gluten, scrambled eggs are not`() {
+        // A „rántott" (panírozott) és a „rántotta" (tojásétel) ugyanazzal a hét
+        // betűvel kezdődik. Ha a gluténkulcsszó szóköz nélkül állna, minden rántottát
+        // gluténesnek jelölnénk — az pedig minden reggelis tervet javító körbe küldene.
+        assertEquals(listOf(DietRestriction.GLUTEN), hits("rántott csirkemell", DietRestriction.GLUTEN))
+        assertEquals(emptyList<DietRestriction>(), hits("rántotta", DietRestriction.GLUTEN))
+        assertEquals(emptyList<DietRestriction>(), hits("rántotta paradicsommal", DietRestriction.GLUTEN))
+        // A rántotta viszont tojás, és azt meg kell fognia.
+        assertEquals(listOf(DietRestriction.EGG), hits("rántotta", DietRestriction.EGG))
+    }
+
+    @Test
+    fun `common hungarian dishes are matched to the right allergen`() {
+        assertEquals(listOf(DietRestriction.GLUTEN), hits("túrós csusza", DietRestriction.GLUTEN))
+        assertEquals(listOf(DietRestriction.GLUTEN), hits("pirítós", DietRestriction.GLUTEN))
+        assertEquals(listOf(DietRestriction.GLUTEN), hits("spagetti", DietRestriction.GLUTEN))
+        assertEquals(listOf(DietRestriction.LACTOSE), hits("trappista", DietRestriction.LACTOSE))
+        assertEquals(listOf(DietRestriction.EGG), hits("tiramisu", DietRestriction.EGG))
+        assertEquals(listOf(DietRestriction.EGG), hits("habcsók", DietRestriction.EGG))
+        assertEquals(listOf(DietRestriction.EGG), hits("aioli", DietRestriction.EGG))
+        assertEquals(listOf(DietRestriction.NO_PORK), hits("tepertő", DietRestriction.NO_PORK))
+        assertEquals(listOf(DietRestriction.NO_PORK), hits("disznósajt", DietRestriction.NO_PORK))
+    }
+
+    @Test
+    fun `the widened rule does not start flagging innocent food`() {
+        // A lazítás ára a fals riasztás lenne: minden téves találat fölösleges javító
+        // kört jelent, ami időbe és pénzbe kerül. Ezek maradjanak tiszták.
+        for (name in listOf("rizs", "burgonyapüré", "kukoricakása", "paradicsom", "padlizsán", "banán")) {
+            assertEquals(
+                "$name nem ütközhet semmivel",
+                emptyList<DietRestriction>(),
+                hits(name, DietRestriction.GLUTEN, DietRestriction.LACTOSE, DietRestriction.EGG),
+            )
+        }
+        // A mentes termékek jelzése továbbra is erősebb a kulcsszónál.
+        assertEquals(emptyList<DietRestriction>(), hits("gluténmentes tészta", DietRestriction.GLUTEN))
+        assertEquals(emptyList<DietRestriction>(), hits("laktózmentes sajt", DietRestriction.LACTOSE))
+        assertEquals(emptyList<DietRestriction>(), hits("mandulatej", DietRestriction.LACTOSE))
+        // A mogyoró dióféle, nem földimogyoró — a kettő külön allergia.
+        assertEquals(emptyList<DietRestriction>(), hits("mogyoró", DietRestriction.PEANUT))
+    }
 }

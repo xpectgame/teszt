@@ -26,7 +26,7 @@ enum class ActivityLevel(
 }
 
 enum class DietStyle(override val hu: String, override val en: String) : Localized {
-    OMNIVORE("Mindenevő", "Everything"),
+    OMNIVORE("Mindenevő", "Omnivore"),
     VEGETARIAN("Vegetáriánus", "Vegetarian"),
     VEGAN("Vegán", "Vegan"),
     PESCATARIAN("Pescatariánus", "Pescatarian"),

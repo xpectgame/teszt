@@ -73,6 +73,12 @@ jobs:
       - name: Lint
         run: ./gradlew :app:lintDebug --stacktrace
 
+      # A Compose `stringResource` hívásait a lint StringFormatMatches szabálya NEM
+      # nézi — csak a getString-et. Ezen a résen már átment egy hiba, ami a felhasználó
+      # telefonján omlasztotta össze az appot. Ez a lépés zárja be, és másodpercekbe kerül.
+      - name: A szövegek formátumhelyőrzői
+        run: python3 tools/check-string-formats.py
+
       # A backend címe a gradle.properties-ből jön, tehát a debug APK-ba be KELL kerülnie.
       # Ha valaki elírja vagy törli a beállítást, az app csendben visszaesne a saját
       # kulcsot kérő fejlesztői útra — a telepítőn semmi nem látszana belőle.

@@ -58,6 +58,11 @@ enum class DietRestriction(
             "bulgur", "kuszkusz", "árpa", "arpa", "rozs", "tönköly", "tonkoly", "szeitán", "szeitan",
             "morzsa", "gríz", "griz", "tarhonya", "keksz", "ostya", "pékáru", "pekaru", "sör",
             "durum", "búzadara", "buzadara", "palacsinta", "piskóta", "piskota",
+            "spagetti", "makaróni", "makaroni", "csusza", "galuska", "nokedli",
+            "pirítós", "piritos", "panír", "panir", "panírozott", "panirozott",
+            // Szóközzel: a „rántotta" is ezzel kezdődik, azt viszont a tojás kizárása
+            // fogja meg, nem a gluténé.
+            "rántott ", "rantott ",
         ),
         safeMarkers = listOf("gluténmentes", "glutenmentes", "gluténmentesen", "gm "),
         en = "Gluten",
@@ -87,7 +92,7 @@ enum class DietRestriction(
         listOf(
             "tej", "tejföl", "tejfol", "tejszín", "tejszin", "joghurt", "sajt", "vaj", "túró", "turo",
             "kefir", "író", "mascarpone", "ricotta", "feta", "mozzarella", "parmezán", "parmezan",
-            "camembert", "cottage", "tejpor", "körözött", "korozott",
+            "camembert", "cottage", "tejpor", "trappista", "gouda", "cheddar", "brie", "eidami", "körözött", "korozott",
         ),
         safeMarkers = listOf("laktózmentes", "laktozmentes", "növényi", "novenyi", "zabtej", "szójatej", "szojatej", "mandulatej", "rizstej"),
         en = "Lactose",
@@ -119,7 +124,7 @@ enum class DietRestriction(
         listOf(
             "tej", "tejföl", "tejfol", "tejszín", "tejszin", "joghurt", "sajt", "vaj", "túró", "turo",
             "kefir", "író", "mascarpone", "ricotta", "feta", "mozzarella", "parmezán", "parmezan",
-            "camembert", "cottage", "tejpor", "kazein", "tejsavó", "tejsavo", "körözött", "korozott",
+            "camembert", "cottage", "tejpor", "kazein", "tejsavó", "tejsavo", "trappista", "gouda", "cheddar", "brie", "eidami", "körözött", "korozott",
         ),
         safeMarkers = listOf("növényi", "novenyi", "zabtej", "szójatej", "szojatej", "mandulatej", "rizstej", "kókusztej", "kokusztej"),
         en = "Milk protein (casein)",
@@ -143,7 +148,11 @@ enum class DietRestriction(
     EGG(
         "Tojás", Group.ANIMAL, Severity.STRICT, "",
         "Tojás és tojástartalmú termék (majonéz, tojásos tészta) nem szerepelhet.",
-        listOf("tojás", "tojas", "majonéz", "majonez", "tojásfehérje", "tojassárgája", "rántotta", "rantotta", "omlett"),
+        listOf(
+            "tojás", "tojas", "majonéz", "majonez", "tojásfehérje", "tojassárgája",
+            "rántotta", "rantotta", "omlett", "habcsók", "habcsok", "piskóta", "piskota",
+            "tiramisu", "aioli", "madártej", "madartej",
+        ),
         en = "Egg",
         noteEn = "",
         ruleEn = "No eggs or egg-containing products (mayonnaise, egg pasta).",
@@ -198,7 +207,7 @@ enum class DietRestriction(
     PEANUT(
         "Földimogyoró", Group.NUTS_SEEDS, Severity.STRICT, "",
         "Földimogyoró, mogyoróvaj, arachisolaj nem szerepelhet.",
-        listOf("földimogyoró", "foldimogyoro", "mogyoróvaj", "mogyorovaj", "arachis", "arasz"),
+        listOf("földimogyoró", "foldimogyoro", "mogyoróvaj", "mogyorovaj", "arachis"),
         en = "Peanut",
         noteEn = "",
         ruleEn = "No peanuts, peanut butter or arachis oil.",
@@ -356,7 +365,11 @@ enum class DietRestriction(
     NO_PORK(
         "Sertéshús nélkül", Group.CHOICE, Severity.PREFERENCE, "",
         "Sertéshús és sertésből készült termék (szalonna, sonka, kolbász) nem szerepelhet.",
-        listOf("sertés", "sertes", "szalonna", "sonka", "bacon", "tarja", "karaj", "csülök", "csulok", "kolbász", "kolbasz"),
+        listOf(
+            "sertés", "sertes", "szalonna", "sonka", "bacon", "tarja", "karaj",
+            "csülök", "csulok", "kolbász", "kolbasz", "disznó", "diszno",
+            "tepertő", "teperto", "szalámi", "szalami",
+        ),
         en = "No pork",
         noteEn = "",
         ruleEn = "No pork or pork products (bacon, ham, sausage).",
@@ -372,7 +385,12 @@ enum class DietRestriction(
         "Vörös hús nélkül", Group.CHOICE, Severity.PREFERENCE,
         "Baromfi és hal maradhat.",
         "Marha, sertés, bárány, borjú és vadhús nem szerepelhet. Baromfi és hal használható.",
-        listOf("marha", "sertés", "sertes", "bárány", "barany", "birka", "borjú", "borju", "vadhús", "vadhus", "szarvas", "őz", "szalonna", "sonka"),
+        listOf(
+            "marha", "sertés", "sertes", "bárány", "barany", "birka", "borjú", "borju",
+            "vadhús", "vadhus", "szarvas", "őz", "szalonna", "sonka", "disznó", "diszno",
+            "kolbász", "kolbasz", "szalámi", "szalami", "tepertő", "teperto",
+            "tarja", "karaj", "csülök", "csulok",
+        ),
         en = "No red meat",
         noteEn = "Poultry and fish stay in.",
         ruleEn = "No beef, pork, lamb, veal or game. Poultry and fish are fine.",
@@ -417,7 +435,11 @@ enum class DietRestriction(
     HALAL(
         "Halal", Group.CHOICE, Severity.PREFERENCE, "",
         "Sertés, sertészsír, zselatin és alkohol nem szerepelhet; a hús halal legyen.",
-        listOf("sertés", "sertes", "szalonna", "sonka", "bacon", "zselatin", "vörösbor", "vorosbor", "sör", "rum"),
+        listOf(
+            "sertés", "sertes", "szalonna", "sonka", "bacon", "zselatin", "vörösbor",
+            "vorosbor", "sör", "rum", "disznó", "diszno", "kolbász", "kolbasz",
+            "szalámi", "szalami", "tepertő", "teperto",
+        ),
         en = "Halal",
         noteEn = "",
         ruleEn = "No pork, lard, gelatine or alcohol; meat must be halal.",

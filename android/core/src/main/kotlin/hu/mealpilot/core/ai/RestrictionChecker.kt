@@ -93,13 +93,25 @@ object RestrictionChecker {
     /**
      * Az egyezés szabálya nyelvenként MÁS, mert a két nyelv máshol hordozza a lényeget.
      *
-     * A magyar összetett szó elöl: „tejföl", „csirkemell", „búzaliszt" — ott a szóeleji
-     * egyezés a helyes. Az angol viszont hátul: „wholewheat", „buttermilk", „breadcrumbs"
-     * — ott a szóeleji egyezés pont a lényeget hagyná ki.
+     * Az angol összetett szó hátul viszi a lényeget: „wholewheat", „buttermilk",
+     * „breadcrumbs" — ott a szóvégi egyezés kell.
+     *
+     * A magyar MINDKÉT irányban összetesz, és ezt korábban félreértettük. A „tejföl" és
+     * a „búzaliszt" elöl hordozza az allergént, de a „krémsajt", a „juhtúró" és a
+     * „zsírszalonna" hátul — ezeket a csak szóeleji egyezés némán átengedte.
+     *
+     * A másik magyar sajátosság a TŐVÉGI NYÚLÁS: toldalékoláskor a szóvégi a → á,
+     * e → é. A „tészta" benne volt a gluténlistában, a „húsleves tésztával" mégis
+     * átcsúszott, mert a „tésztával" nem a „tészta" karaktersorral kezdődik. Ugyanez
+     * érinti a hagymát, az almát, a csirkét és minden más a/e végű kulcsszót.
      *
      * A rövid kulcsszavak külön elbánást kapnak, mert beolvadnak más szavakba: a „ham"
      * benne van a „chamomile"-ban, az „oat" a „goat"-ban, az „egg" az „eggplant"-ben.
      * Ezeknél csak a pontos szó és a többes száma számít találatnak.
+     *
+     * ISMERT KORLÁT: a hasonuló toldalékokat (kolbász → kolbásszal) ez nem fedi le.
+     * Azokra a kulcsszólista bővítése való, nem a szabály további lazítása — a
+     * lazítás fals riasztást hozna, ami minden tervet fölösleges javító körbe küld.
      */
     private fun matches(
         fullName: String,
@@ -116,9 +128,28 @@ object RestrictionChecker {
                 else word.startsWith(keyword) || word.endsWith(keyword)
             }
         }
+
+        // A két karakternél rövidebb kulcsszó bármibe beleolvadna, ezért pontos egyezés.
+        if (keyword.length <= 2) return words.any { it == keyword }
+
+        val lengthened = lengthenedStem(keyword)
         return words.any { word ->
-            if (keyword.length <= 2) word == keyword else word.startsWith(keyword)
+            word.startsWith(keyword) ||
+                (lengthened != null && word.startsWith(lengthened)) ||
+                // A szóvégi egyezés csak elég hosszú kulcsszónál biztonságos: rövidnél
+                // véletlen szóvégekre is illeszkedne.
+                (keyword.length >= 4 && word.endsWith(keyword))
         }
+    }
+
+    /**
+     * A kulcsszó toldalékolt töve, ha a magyar tővégi nyúlás érinti: tészta → tésztá,
+     * körte → körté. Null, ha a szó nem a-ra vagy e-re végződik.
+     */
+    private fun lengthenedStem(keyword: String): String? = when (keyword.last()) {
+        'a' -> keyword.dropLast(1) + 'á'
+        'e' -> keyword.dropLast(1) + 'é'
+        else -> null
     }
 
     private val NON_LETTER = Regex("[^\\p{L}]+")
