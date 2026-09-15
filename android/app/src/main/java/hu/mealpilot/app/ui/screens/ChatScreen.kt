@@ -215,7 +215,9 @@ class ChatViewModel(private val container: AppContainer) : ViewModel() {
     ): String {
         val profile = container.settings.currentProfile()
         val budget = EnergyCalculator.budget(profile, container.language)
-        fun text(resId: Int, vararg args: Any) = container.strings[resId, *args]
+        // Névvel hívjuk, nem szögletes zárójellel: a szórásoperátor (*args) az
+        // indexelő alakban nem használható.
+        fun text(resId: Int, vararg args: Any) = container.strings.get(resId, *args)
 
         return when (action.actionType) {
             ChatActionType.NONE -> text(R.string.chat_nothing_to_do)
