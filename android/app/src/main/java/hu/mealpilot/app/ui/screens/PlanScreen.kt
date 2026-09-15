@@ -153,7 +153,7 @@ class PlanViewModel(private val container: AppContainer) : ViewModel() {
                 language = container.language,
             )
             onResult(result.getOrElse {
-                it.message ?: container.appContext.getString(R.string.plan_refine_failed)
+                it.message ?: container.strings[R.string.plan_refine_failed]
             })
             ReminderRefreshWorker.refreshNow(container.appContext)
         }

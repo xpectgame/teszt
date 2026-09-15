@@ -44,7 +44,11 @@ def read_strings(path: pathlib.Path) -> dict[str, str]:
 
 def count_arguments(text: str, start: int) -> int:
     """
-    Hány argumentum áll a megadott pozíciótól a hívás záró zárójeléig.
+    Hány argumentum áll a megadott pozíciótól a hívás lezárásáig.
+
+    A lezárás lehet ")" vagy "]": a lokalizált szövegforrás szögletes zárójellel hívódik
+    (`strings[R.string.x, arg]`), a Compose és a Context kerekkel. Mindkettőt nézni kell,
+    különben az egyik alak némán kimaradna az ellenőrzésből.
 
     A Kotlin megengedi a záró vesszőt a többsoros hívásokban, azt nem számoljuk
     argumentumnak — enélkül minden többsoros hívás eggyel többnek látszana.
@@ -89,11 +93,16 @@ def main() -> int:
     calls = collections.defaultdict(list)
     for kt in sorted(SRC.rglob('*.kt')):
         text = kt.read_text(encoding='utf-8')
+        # Három hívási alak: Compose, Context és a lokalizált szövegforrás. Az utóbbi
+        # szögletes zárójellel hívódik, és a minta kiterjesztése nélkül kimaradna.
         for m in re.finditer(
-            r'(?:stringResource|getString)\(\s*R\.string\.([A-Za-z0-9_]+)\s*(,)?', text
+            r'(?:stringResource|getString)\(\s*R\.string\.([A-Za-z0-9_]+)\s*(,)?'
+            r'|strings\[\s*R\.string\.([A-Za-z0-9_]+)\s*(,)?',
+            text,
         ):
-            key = m.group(1)
-            given = count_arguments(text, m.end(2)) if m.group(2) else 0
+            key = m.group(1) or m.group(3)
+            comma = 2 if m.group(1) else 4
+            given = count_arguments(text, m.end(comma)) if m.group(comma) else 0
             line = text.count('\n', 0, m.start()) + 1
             calls[key].append((f'{kt.relative_to(ROOT)}:{line}', given))
 

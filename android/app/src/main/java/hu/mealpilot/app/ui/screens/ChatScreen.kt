@@ -139,7 +139,7 @@ class ChatViewModel(private val container: AppContainer) : ViewModel() {
             } catch (error: Throwable) {
                 if (error is CancellationException) throw error
                 container.chatRepository.recordOutcome(
-                    error.message ?: container.appContext.getString(R.string.chat_action_failed)
+                    error.message ?: container.strings[R.string.chat_action_failed]
                 )
             } finally {
                 _busy.value = ChatBusy.Idle
@@ -159,14 +159,14 @@ class ChatViewModel(private val container: AppContainer) : ViewModel() {
         // Korábban mindhárom visszafordulás NÉMA volt: a felhasználó megnyomta a gombot,
         // és nem történt semmi, magyarázat nélkül. Most mindegyik megmondja, miért.
         if (_busy.value != ChatBusy.Idle || container.generation.isBusy) {
-            _notice.value = container.appContext.getString(R.string.chat_busy_wait)
+            _notice.value = container.strings[R.string.chat_busy_wait]
             return
         }
         val action = runCatching {
             PlanParser.json.decodeFromString(AiChatAction.serializer(), message.actionJson)
         }.getOrNull()
         if (action == null) {
-            _notice.value = container.appContext.getString(R.string.chat_action_unreadable)
+            _notice.value = container.strings[R.string.chat_action_unreadable]
             return
         }
 
@@ -184,7 +184,7 @@ class ChatViewModel(private val container: AppContainer) : ViewModel() {
                 // viewModelScope-ból, ami az app azonnali kilépését jelenti.
                 container.chatRepository.dismissAction(message.id)
                 container.chatRepository.recordOutcome(
-                    error.message ?: container.appContext.getString(R.string.chat_action_failed)
+                    error.message ?: container.strings[R.string.chat_action_failed]
                 )
             }
         }
@@ -200,7 +200,7 @@ class ChatViewModel(private val container: AppContainer) : ViewModel() {
             // újra és újra azt mondta, hogy még nem csinálta meg.
             container.chatRepository.recordOutcome(
                 outcome.getOrElse {
-                    it.message ?: container.appContext.getString(R.string.chat_action_failed)
+                    it.message ?: container.strings[R.string.chat_action_failed]
                 }
             )
             // Hiba esetén tovább is dobjuk: a koordinátor ebből ismeri fel a kvótahibát,
@@ -215,7 +215,7 @@ class ChatViewModel(private val container: AppContainer) : ViewModel() {
     ): String {
         val profile = container.settings.currentProfile()
         val budget = EnergyCalculator.budget(profile, container.language)
-        fun text(resId: Int, vararg args: Any) = container.appContext.getString(resId, *args)
+        fun text(resId: Int, vararg args: Any) = container.strings[resId, *args]
 
         return when (action.actionType) {
             ChatActionType.NONE -> text(R.string.chat_nothing_to_do)
