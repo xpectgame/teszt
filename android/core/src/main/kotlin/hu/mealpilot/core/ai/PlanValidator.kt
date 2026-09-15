@@ -50,6 +50,10 @@ object PlanValidator {
         // A kizárások mennek elöl: ezek egészségügyi kockázatot jelentenek,
         // és a javító promptban is ezeket lássa először a modell.
         problems += RestrictionChecker.check(plan, restrictions, language)
+
+        // Az angol maradványok. A rendszerprompt kéri a magyar szöveget, de a kérés nem
+        // garancia — ez az ellenőrzés az, ami miatt a hibás terv nem jut ki a felhasználóig.
+        problems += LanguageChecker.check(plan, language)
         if (plan.days.size != expectedDays) {
             problems += s(
                 "$expectedDays napot kértem, de ${plan.days.size} érkezett.",

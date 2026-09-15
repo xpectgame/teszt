@@ -24,7 +24,7 @@ class SystemPromptSyncTest {
     fun `a tervező rendszerprompt egyezik a backendbe másolt változattal`() {
         assertEquals(
             "A PlanPrompts.SYSTEM megváltozott — futtasd a backend/tools/gen-prompts.py szkriptet.",
-            "89d22742a3a6fbcdf9e923f8a2eaa8290a0138b89ffa5b95fa4291d6886faa08",
+            "2b3561f227e3baf35c85138491b338e6e550dcbec5a8dedd544cd101a3fbcb8e",
             sha256(PlanPrompts.SYSTEM),
         )
     }
@@ -33,7 +33,7 @@ class SystemPromptSyncTest {
     fun `a beszélgető rendszerprompt egyezik a backendbe másolt változattal`() {
         assertEquals(
             "A ChatPrompts.SYSTEM megváltozott — futtasd a backend/tools/gen-prompts.py szkriptet.",
-            "710f3f17cb152c87b71513e6fde2da81cf48c5fd7e0cdc98cbd95fdf39e4bf23",
+            "6fe0ce49af8a2d0cbe9e862f89aecb12513a00498e99e9ddf4dd4974948c4e00",
             sha256(ChatPrompts.SYSTEM),
         )
     }
@@ -60,7 +60,7 @@ class SystemPromptSyncTest {
     fun `a becslő rendszerprompt egyezik a backendbe másolt változattal`() {
         assertEquals(
             "Az EstimatePrompts.SYSTEM megváltozott — futtasd a backend/tools/gen-prompts.py szkriptet.",
-            "74328383dea7e3509262e1f834081f88084ccdfd2011d487e949d9cfc59fa637",
+            "443769ed2f44c08fb1ca208f8607a66859e3bed11f615f60fb30b4a575be51be",
             sha256(EstimatePrompts.SYSTEM),
         )
     }

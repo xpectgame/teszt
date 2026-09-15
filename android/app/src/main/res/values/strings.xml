@@ -73,7 +73,7 @@
     <string name="plan_len_1_week">1 week</string>
     <string name="plan_len_2_weeks">2 weeks</string>
     <string name="plan_len_1_month">1 month</string>
-    <string name="plan_length_locked">The free plan allows at most %1$d days.</string>
+    <string name="plan_length_locked">The free trial allows at most %1$d days.</string>
     <string name="plan_start_tomorrow">Start from tomorrow</string>
     <string name="plan_free_text_label">Anything I should keep in mind?</string>
     <string name="plan_free_text_hint">e.g. I\'m lactose intolerant, I don\'t eat fish, max 20 minutes cooking on weekdays, cheap ingredients</string>
@@ -306,7 +306,7 @@
     <string name="offline_tip_protein">Spread your protein evenly across the day.</string>
     <string name="offline_chat_needs_network">Chatting needs an internet connection.</string>
     <string name="offline_cannot_refine">This version can\'t rewrite days. Try again when you have an internet connection.</string>
-    <string name="error_quota_exhausted">You\'ve used up this month\'s allowance.</string>
+    <string name="error_quota_exhausted">You\'ve used up your free trial.</string>
     <string name="profile_activity">How much do you move?</string>
     <string name="achievement_unlocked">Unlocked</string>
     <!-- „Ma" képernyő — a Tányér dizájn hős doboza és étkezéslapkái -->

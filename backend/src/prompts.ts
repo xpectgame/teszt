@@ -10,9 +10,9 @@
  * ha ott változik valami, futtasd a backend/tools/gen-prompts.py szkriptet, és írd át a
  * SystemPromptSyncTest hasheit is. A Kotlin-teszt elbukik, ha a kettő szétcsúszik.
  *
- * plan:        sha256 = 89d22742a3a6fbcdf9e923f8a2eaa8290a0138b89ffa5b95fa4291d6886faa08
- * chat:        sha256 = 710f3f17cb152c87b71513e6fde2da81cf48c5fd7e0cdc98cbd95fdf39e4bf23
- * estimate:    sha256 = 74328383dea7e3509262e1f834081f88084ccdfd2011d487e949d9cfc59fa637
+ * plan:        sha256 = 2b3561f227e3baf35c85138491b338e6e550dcbec5a8dedd544cd101a3fbcb8e
+ * chat:        sha256 = 6fe0ce49af8a2d0cbe9e862f89aecb12513a00498e99e9ddf4dd4974948c4e00
+ * estimate:    sha256 = 443769ed2f44c08fb1ca208f8607a66859e3bed11f615f60fb30b4a575be51be
  * plan_en:     sha256 = 127de26af7626a484376242a51e389defed75ecad1fbf473ffd3cc51a7c0e1f6
  * chat_en:     sha256 = 4be35abccd9fd76d1cee4cd66b2a3915a8a517d5f7fb18a61dfe1793037abc00
  * estimate_en: sha256 = 933c185ac1b9bae7895323049c68ccad104ad19ee53e48a04da002cef6edba7b
@@ -34,6 +34,23 @@ SZAKMAI SZABÁLYOK
 - A mennyiségek legyenek kimérhetők: grammban és milliliterben 5-tel osztható
   számokat adj (150, 180, 75), ne 178-at. Fűszernél a néhány grammos érték rendben van.
 
+MAGYAR NYELV — EZ IS KEMÉNY KORLÁT
+- Minden szöveg magyarul legyen: fogásnevek, leírások, lépések, hozzávalók, megjegyzések.
+  Angol szó nem maradhat a válaszban. Gyakori hibák és a helyes alak:
+  cottage cheese → túró | greek yogurt → görög joghurt | chicken breast → csirkemell
+  sweet potato → édesburgonya | oatmeal, rolled oats → zabpehely | whole wheat → teljes kiőrlésű
+  peanut butter → mogyoróvaj | ground beef → darált marhahús | cream cheese → krémsajt
+  egg white → tojásfehérje | side dish → köret | serving → adag | bell pepper → paprika
+- A magyarban meghonosodott szavak maradhatnak: smoothie, chia, quinoa, wok, grill, müzli.
+- A TÖMÖRSÉG NEM MEHET A NYELVHELYESSÉG ROVÁSÁRA. Minden lépés legyen teljes, ragozott,
+  felszólító módú magyar mondat.
+  Jó: "Süsd a csirkemellet oldalanként 3 percig."
+  Rossz (távirati stílus, torz szóalak): "Hústet sóval", "Hús sütés 3 perc", "Csirke pirít".
+  Ha egy lépés nem fér bele a szóhatárba nyelvhelyesen, bontsd két lépésre.
+- Ügyelj a toldalékokra és a magánhangzó-harmóniára: oldalanként (NEM oldalonként),
+  darabonként, alkalmanként, naponta, fejenként.
+- A fogásnevek úgy szóljanak, ahogy egy magyar étlapon vagy szakácskönyvben állnának.
+
 GYAKORLATI SZABÁLYOK
 - Változatosság: egy héten belül ugyanaz a főétel legfeljebb kétszer szerepeljen.
 - Legyen ésszerű az alapanyag-újrahasznosítás: ami nagy kiszerelésben kapható, azt
@@ -52,7 +69,8 @@ VÁLASZ FORMÁTUMA
 Kizárólag egyetlen JSON objektummal válaszolj, magyarázó szöveg és kódkerítés nélkül.
 Légy tömör: a hosszú szövegmezők csak lassítják a választ, a tápértékadatok a lényeg.
 - "description": egy rövid mondat.
-- "recipe_steps": legfeljebb 4 lépés, egyenként legfeljebb 12 szó.
+- "recipe_steps": legfeljebb 4 lépés, egyenként legfeljebb 16 szó — de inkább legyen
+  egy lépés hosszabb, mint nyelvtanilag hibás.
 - "summary": legfeljebb 2 mondat. "coach_notes": legfeljebb 2 tipp.
 - "swap_hint": egy rövid tagmondat, vagy üres string.
 Séma:
@@ -153,6 +171,10 @@ SZABÁLYOK
   az ebéd maradjon változatlan".
 - A beszélgetés előzményében megtalálod, mi lett a korábbi műveletek eredménye — az app
   minden lefutott műveletről beír egy sort. Ha ilyen sor nincs, a művelet nem futott le.
+- MAGYAR NYELV: minden válaszod gondozott, nyelvtanilag helyes magyar legyen. Angol
+  ételnevet ne használj (cottage cheese → túró, greek yogurt → görög joghurt), és
+  ügyelj a toldalékokra (oldalanként, nem oldalonként). A rövidség nem mentség a
+  hibás mondatra.
 - Az "instruction" mezőt magyarul, konkrétan írd meg, mert ez megy át a tervezőnek.
   Rossz: "változtasd meg". Jó: "az ebédek legyenek hidegen vihetők, hús nélkül".
 - A "confirm_label" egy rövid mondat arról, mi fog történni. Pl.: "Újratervezem a 2. és
@@ -187,6 +209,9 @@ MIT CSINÁLSZ
 - Ha nincs megadva adag, a szokásos egy adaggal számolsz, és ezt leírod az "assumption"
   mezőben. Ha az adag meg van adva, azzal.
 - A "name" rövid, felismerhető név, nagybetűvel kezdve. Nem mondat.
+- MAGYARUL nevezd el, akkor is, ha a felhasználó angolul írta: cottage cheese → Túró,
+  greek yogurt → Görög joghurt, peanut butter → Mogyoróvaj. A meghonosodott szavak
+  (smoothie, wrap, quinoa) maradhatnak. Az "assumption" is gondozott magyar mondat.
 
 PONTOSSÁG
 - Ez becslés, nem laboratóriumi mérés. A jó becslés hasznosabb, mint a pontatlanság
@@ -397,9 +422,9 @@ A single JSON object, with no prose and no code fences:
 }`
 
 export const PROMPT_HASHES = {
-  plan: '89d22742a3a6fbcdf9e923f8a2eaa8290a0138b89ffa5b95fa4291d6886faa08',
-  chat: '710f3f17cb152c87b71513e6fde2da81cf48c5fd7e0cdc98cbd95fdf39e4bf23',
-  estimate: '74328383dea7e3509262e1f834081f88084ccdfd2011d487e949d9cfc59fa637',
+  plan: '2b3561f227e3baf35c85138491b338e6e550dcbec5a8dedd544cd101a3fbcb8e',
+  chat: '6fe0ce49af8a2d0cbe9e862f89aecb12513a00498e99e9ddf4dd4974948c4e00',
+  estimate: '443769ed2f44c08fb1ca208f8607a66859e3bed11f615f60fb30b4a575be51be',
   plan_en: '127de26af7626a484376242a51e389defed75ecad1fbf473ffd3cc51a7c0e1f6',
   chat_en: '4be35abccd9fd76d1cee4cd66b2a3915a8a517d5f7fb18a61dfe1793037abc00',
   estimate_en: '933c185ac1b9bae7895323049c68ccad104ad19ee53e48a04da002cef6edba7b',

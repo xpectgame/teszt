@@ -5,7 +5,7 @@
     <string name="channel_summary_name">Napi összefoglaló</string>
     <string name="channel_summary_desc">Esti visszajelzés a napról.</string>
     <string name="channel_achievements_name">Eredmények</string>
-    <string name="channel_achievements_desc">Értesítés új achievement feloldásakor.</string>
+    <string name="channel_achievements_desc">Értesítés új eredmény feloldásakor.</string>
     <string name="channel_generation_name">Étrend készítése</string>
     <string name="channel_generation_desc">Haladás, amíg a terved összeáll.</string>
     <string name="shopping_title">Bevásárlólista</string>
@@ -63,7 +63,7 @@
     <string name="plan_partial_ready">%1$d nap kész — a többi közben töltődik.</string>
     <string name="plan_done">Kész az étrended!</string>
     <string name="plan_done_fallback">Az étrend elkészült, de a tervező nem volt elérhető — a hiányzó napok sablonból készültek.</string>
-    <string name="plan_partial">%1$d nap készült el a(z) %2$d-ból.</string>
+    <string name="plan_partial">A kért %2$d napból %1$d készült el.</string>
     <string name="plan_failed">Nem sikerült elkészíteni a tervet.</string>
     <string name="plan_background_hint">Nyugodtan zárd be — a háttérben tovább készül, és szólok, ha megvan.</string>
     <string name="plan_length_question">Meddig tervezzek?</string>
@@ -71,7 +71,7 @@
     <string name="plan_len_1_week">1 hét</string>
     <string name="plan_len_2_weeks">2 hét</string>
     <string name="plan_len_1_month">1 hónap</string>
-    <string name="plan_length_locked">Az ingyenes csomagban legfeljebb %1$d napos terv kérhető.</string>
+    <string name="plan_length_locked">A próbaidőszakban legfeljebb %1$d napos terv kérhető.</string>
     <string name="plan_start_tomorrow">Holnaptól induljon</string>
     <string name="plan_free_text_label">Mit vegyek figyelembe?</string>
     <string name="plan_free_text_hint">pl. laktózérzékeny vagyok, nem eszem halat, hétköznap max 20 perc főzés, olcsó alapanyagok</string>
@@ -166,7 +166,7 @@
     <string name="settings_legal">Jogi tudnivalók és adatok</string>
     <string name="settings_terms">Felhasználási feltételek</string>
     <string name="settings_privacy">Adatkezelési tájékoztató</string>
-    <string name="settings_delete_data">Adatok törlése — mi hol van</string>
+    <string name="settings_delete_data">Adatok törlése — mi hol tárolódik</string>
     <string name="settings_support">Támogatás és gyakori kérdések</string>
     <string name="settings_contact">Kapcsolat: %1$s</string>
     <string name="settings_data_note">Az étrended, a naplóid és a testadataid a telefonodon maradnak. Tervezéskor a profilodból származó adatok (nem, életkor, testadatok, étrendi kizárások, kéréseid) kimennek a tervezőszolgáltatáshoz.</string>
@@ -193,7 +193,7 @@
     <string name="budget_macros">Fehérje %1$d g · Szénhidrát %2$d g · Zsír %3$d g</string>
     <string name="budget_macros_fiber">Fehérje %1$d g · Szénhidrát %2$d g · Zsír %3$d g · Rost %4$d g</string>
     <string name="budget_rate">Várható ütem: %1$s kg/hét</string>
-    <string name="budget_days_to_target">A célsúlyig ennyi kell: kb. %1$d nap (%2$s)</string>
+    <string name="budget_days_to_target">A célsúlyt kb. %1$d nap múlva éred el (%2$s)</string>
     <string name="weight_card_title">Súly</string>
     <string name="weight_body_fat">testzsír %</string>
     <string name="weight_optional">opcionális</string>
@@ -296,7 +296,7 @@
     <string name="notif_summary_title">Napi összefoglaló</string>
     <string name="notif_summary_nothing">Ma még nem naplóztál semmit</string>
     <string name="notif_summary_within">Szép nap! A kereten belül maradtál</string>
-    <string name="notif_summary_over">Ma %1$d kcal-lal léptél túl</string>
+    <string name="notif_summary_over">Ma %1$d kcal-lal túllépted a kereted</string>
     <string name="offline_plan_title">Heti étrend</string>
     <string name="offline_plan_summary">Ez a terv internetkapcsolat nélkül, beépített receptekből készült. A napi kalória és a makrók a te célodhoz vannak méretezve, de a szabad szöveges kéréseidet ez a változat nem veszi figyelembe — internettel újragenerálva személyre szabottabb tervet kapsz.</string>
     <string name="offline_day_title">%1$d. nap</string>
@@ -305,7 +305,7 @@
     <string name="offline_tip_protein">A fehérjét oszd el egyenletesen a nap folyamán.</string>
     <string name="offline_chat_needs_network">A beszélgetéshez internetkapcsolat kell.</string>
     <string name="offline_cannot_refine">Ez a változat nem tudja átírni a napokat. Próbáld újra, ha van internetkapcsolatod.</string>
-    <string name="error_quota_exhausted">Elfogyott a havi keret.</string>
+    <string name="error_quota_exhausted">Elfogyott az ingyenes próbakeret.</string>
     <string name="profile_activity">Mennyit mozogsz?</string>
     <string name="achievement_unlocked">Megvan</string>
     <!-- „Ma" képernyő — a Tányér dizájn hős doboza és étkezéslapkái -->

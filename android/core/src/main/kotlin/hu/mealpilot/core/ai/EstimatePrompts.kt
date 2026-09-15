@@ -35,6 +35,9 @@ MIT CSINÁLSZ
 - Ha nincs megadva adag, a szokásos egy adaggal számolsz, és ezt leírod az "assumption"
   mezőben. Ha az adag meg van adva, azzal.
 - A "name" rövid, felismerhető név, nagybetűvel kezdve. Nem mondat.
+- MAGYARUL nevezd el, akkor is, ha a felhasználó angolul írta: cottage cheese → Túró,
+  greek yogurt → Görög joghurt, peanut butter → Mogyoróvaj. A meghonosodott szavak
+  (smoothie, wrap, quinoa) maradhatnak. Az "assumption" is gondozott magyar mondat.
 
 PONTOSSÁG
 - Ez becslés, nem laboratóriumi mérés. A jó becslés hasznosabb, mint a pontatlanság
