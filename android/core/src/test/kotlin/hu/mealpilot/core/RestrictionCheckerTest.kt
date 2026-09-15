@@ -317,4 +317,15 @@ class RestrictionCheckerTest {
         // A mogyoró dióféle, nem földimogyoró — a kettő külön allergia.
         assertEquals(emptyList<DietRestriction>(), hits("mogyoró", DietRestriction.PEANUT))
     }
+
+    @Test
+    fun `a space inside a keyword carries meaning and must survive`() {
+        // A kulcsszavak korábban trimmelve mentek az összehasonlításba, és ezzel két
+        // szándék némán elveszett. Az egyik a „rántott " (fent). A másik a „gm "
+        // gluténmentes-jelölő: szóköz nélkül a rövidítés beleolvadna más szavakba, és
+        // egy TÉVES biztonsági jelölő elrejtené az allergént — ez a veszélyesebb irány.
+        assertEquals(emptyList<DietRestriction>(), hits("gm tészta", DietRestriction.GLUTEN))
+        // A jelölő nélkül viszont ugyanaz a hozzávaló ütközik.
+        assertEquals(listOf(DietRestriction.GLUTEN), hits("tészta", DietRestriction.GLUTEN))
+    }
 }

@@ -34,17 +34,17 @@ object RestrictionChecker {
         val words = name.split(NON_LETTER).filter { it.isNotBlank() }
 
         return restrictions.mapNotNull { restriction ->
-            if (restriction.safeMarkers(language).any { name.contains(normalize(it)) }) {
+            if (restriction.safeMarkers(language).any { name.contains(normalizeKeyword(it)) }) {
                 return@mapNotNull null
             }
-            val exceptions = restriction.exceptions(language).map(::normalize)
+            val exceptions = restriction.exceptions(language).map(::normalizeKeyword)
             // A kivétel a TELJES névre is vonatkozhat („milk thistle"), nem csak egy szóra.
             if (exceptions.any { it.contains(' ') && name.contains(it) }) return@mapNotNull null
             val candidates = words.filterNot { word ->
                 exceptions.any { word == it || word.startsWith(it) }
             }
             val hit = restriction.keywords(language).firstOrNull { keyword ->
-                matches(name, candidates, normalize(keyword), language)
+                matches(name, candidates, normalizeKeyword(keyword), language)
             }
             hit?.let { Violation(restriction, ingredientName.trim(), it) }
         }
@@ -154,5 +154,19 @@ object RestrictionChecker {
 
     private val NON_LETTER = Regex("[^\\p{L}]+")
 
+    /** A vizsgált hozzávalónév: a széleken lévő szóköz nem hordoz jelentést. */
     private fun normalize(value: String): String = value.trim().lowercase()
+
+    /**
+     * A kulcsszó. Itt SZÁNDÉKOSAN nincs trim: a szóköz a kulcsszó része lehet, és
+     * pont az különbözteti meg a hasonló szavakat.
+     *
+     * A „rántott " (panírozott) szóközzel áll, mert a „rántotta" (tojásétel) ugyanazzal
+     * a hét betűvel kezdődik. A gluténmentes jelölők közötti „gm " ugyanígy: szóköz
+     * nélkül a rövidítés beolvadna más szavakba — és az a veszélyesebb irány, mert egy
+     * téves biztonsági jelölő ELREJTI az allergént.
+     *
+     * Ez korábban trimmelt, és mindkét szándék némán elveszett.
+     */
+    private fun normalizeKeyword(value: String): String = value.lowercase()
 }
