@@ -467,4 +467,51 @@ class RestrictionCheckerTest {
         // A „rák" három betű, ezért a szóvégi egyezés nem futott rá az összetételekre.
         assertEquals(listOf(DietRestriction.CRUSTACEAN), hits("tarisznyarák", DietRestriction.CRUSTACEAN))
     }
+
+    @Test
+    fun `a free-from label beats the keyword in both languages`() {
+        // A mentesség jelölése eddig CSAK ott működött, ahol valaki kézzel felvette:
+        // a gluténnál igen, a szójánál, a földimogyorónál és a tojásnál nem. Így a
+        // „soy-free dressing" szójaütközésnek számított — fölösleges javító kör.
+        assertEquals(emptyList<DietRestriction>(), en("soy-free dressing", DietRestriction.SOY))
+        assertEquals(emptyList<DietRestriction>(), en("peanut-free granola", DietRestriction.PEANUT))
+        assertEquals(emptyList<DietRestriction>(), en("egg-free mayo", DietRestriction.EGG))
+        assertEquals(emptyList<DietRestriction>(), hits("szójamentes szósz", DietRestriction.SOY))
+        assertEquals(emptyList<DietRestriction>(), hits("tejmentes margarin", DietRestriction.LACTOSE))
+    }
+
+    @Test
+    fun `a free-from label only covers what it names`() {
+        // Ez a szabály veszélyes határa: ha bármilyen „free" szó elnyelné a találatot,
+        // a „sugar-free milk" tejmentesnek látszana. A jelölés a MEGTALÁLT kulcsszóhoz
+        // van kötve, ezért ez továbbra is találat.
+        assertEquals(listOf(DietRestriction.LACTOSE), en("sugar-free milk", DietRestriction.LACTOSE))
+        assertEquals(listOf(DietRestriction.LACTOSE), hits("cukormentes tej", DietRestriction.LACTOSE))
+        assertEquals(listOf(DietRestriction.SOY), en("gluten-free soy sauce", DietRestriction.SOY))
+    }
+
+    @Test
+    fun `butter is not always dairy in english`() {
+        // A mogyoróvaj a SAJÁT angol sablonjainkban is szerepel, és tejtermékként jött
+        // ki. A butternut tök és a vajsaláta zöldség.
+        for (name in listOf("peanut butter", "almond butter", "butternut squash", "butter lettuce", "butter beans")) {
+            assertEquals(name, emptyList<DietRestriction>(), en(name, DietRestriction.LACTOSE))
+            assertEquals(name, emptyList<DietRestriction>(), en(name, DietRestriction.MILK_PROTEIN))
+        }
+        // A valódi vaj és az író továbbra is találat.
+        assertEquals(listOf(DietRestriction.LACTOSE), en("salted butter", DietRestriction.LACTOSE))
+        assertEquals(listOf(DietRestriction.LACTOSE), en("buttermilk", DietRestriction.LACTOSE))
+    }
+
+    @Test
+    fun `english bakery items missing from the list are caught`() {
+        // A magyar listán megvoltak, az angolról hiányoztak — a két lista külön adat,
+        // és külön is tud hiányos lenni.
+        for (name in listOf("wholemeal toast", "sourdough loaf", "ciabatta", "focaccia")) {
+            assertEquals(name, listOf(DietRestriction.GLUTEN), en(name, DietRestriction.GLUTEN))
+        }
+        // A hajdina nem búza — a gluténnál kivétel volt, a FODMAP-nál lemaradt.
+        assertEquals(emptyList<DietRestriction>(), en("buckwheat flour", DietRestriction.FODMAP))
+        assertEquals(emptyList<DietRestriction>(), en("buckwheat pancake", DietRestriction.GLUTEN))
+    }
 }

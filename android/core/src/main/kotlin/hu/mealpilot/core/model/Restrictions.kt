@@ -76,7 +76,9 @@ enum class DietRestriction(
             "croissant", "bulgur", "couscous", "barley", "rye", "spelt", "seitan", "breadcrumb",
             "crumb", "semolina", "farro", "cracker", "biscuit", "cookie", "cake", "pastry", "pie",
             "pancake", "waffle", "beer", "durum", "malt", "tortilla", "wrap", "pita", "bagel",
-            "muffin", "brioche", "orzo", "gnocchi", "dumpling"
+            "muffin", "brioche", "orzo", "gnocchi", "dumpling",
+            // Ezek hiányoztak: a „wholemeal toast" és a „sourdough" is tisztán jött ki.
+            "wholemeal", "wholewheat", "sourdough", "ciabatta", "focaccia", "naan", "toast"
         ),
         safeMarkersEn = listOf(
             "gluten-free", "gluten free", "glutenfree", "certified gluten",
@@ -118,7 +120,12 @@ enum class DietRestriction(
             "almondmilk"
         ),
         exceptionsEn = listOf(
-            "milk thistle", "coconut milk"
+            "milk thistle", "coconut milk",
+            // A „butter" angolul nem csak vaj: a mogyoróvaj, a sheavaj és a kakaóvaj
+            // nem tejtermék, a butternut tök és a vajsaláta pedig zöldség. A mogyoróvaj
+            // a saját sablonjainkban is szerepel.
+            "butternut", "peanut butter", "almond butter", "cashew butter", "nut butter",
+            "shea butter", "cocoa butter", "butter lettuce", "butter bean",
         ),
     ),
     MILK_PROTEIN(
@@ -147,7 +154,12 @@ enum class DietRestriction(
             "plant based", "oatmilk", "soymilk", "almondmilk"
         ),
         exceptionsEn = listOf(
-            "milk thistle", "coconut milk"
+            "milk thistle", "coconut milk",
+            // A „butter" angolul nem csak vaj: a mogyoróvaj, a sheavaj és a kakaóvaj
+            // nem tejtermék, a butternut tök és a vajsaláta pedig zöldség. A mogyoróvaj
+            // a saját sablonjainkban is szerepel.
+            "butternut", "peanut butter", "almond butter", "cashew butter", "nut butter",
+            "shea butter", "cocoa butter", "butter lettuce", "butter bean",
         ),
     ),
 
@@ -402,7 +414,9 @@ enum class DietRestriction(
             "leek", "wheat", "rye", "honey", "cashew", "pistachio"
         ),
         exceptionsEn = listOf(
-            "pineapple", "green bean", "vanilla bean", "coffee bean", "cocoa bean"
+            "pineapple", "green bean", "vanilla bean", "coffee bean", "cocoa bean",
+            // A hajdina nem búza — a gluténnál már kivétel volt, itt lemaradt.
+            "buckwheat",
         ),
     ),
 

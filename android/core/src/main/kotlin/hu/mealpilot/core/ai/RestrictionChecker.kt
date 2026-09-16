@@ -45,8 +45,14 @@ object RestrictionChecker {
             }
             val hit = restriction.keywords(language).firstOrNull { keyword ->
                 matches(name, candidates, normalizeKeyword(keyword), language)
-            }
-            hit?.let { Violation(restriction, ingredientName.trim(), it) }
+            } ?: return@mapNotNull null
+            // A MENTESSÉG jelölése erősebb a kulcsszónál: a „soy-free dressing" nem szója,
+            // a „tejmentes margarin" nem tejtermék. Eddig ez kizárólag azoknál a
+            // kizárásoknál működött, amelyeknél valaki kézzel felvette a jelölést — a
+            // gluténnál igen, a szójánál, a földimogyorónál és a tojásnál nem. Ez a
+            // szabály a kulcsszóból képzi a mentes alakot, tehát mindegyiknél működik.
+            if (declaredFree(name, normalizeKeyword(hit), language)) return@mapNotNull null
+            Violation(restriction, ingredientName.trim(), hit)
         }
     }
 
@@ -175,6 +181,20 @@ object RestrictionChecker {
      * A kulcsszó toldalékolt töve, ha a magyar tővégi nyúlás érinti: tészta → tésztá,
      * körte → körté. Null, ha a szó nem a-ra vagy e-re végződik.
      */
+    /**
+     * „X-mentes" alak a MEGTALÁLT kulcsszóra.
+     *
+     * Szándékosan a találatot adó kulcsszóhoz kötve, nem általános „free" kereséssel:
+     * a „sugar-free milk" továbbra is tejtermék, mert nem a „milk" van mentesnek
+     * jelölve. Így a szabály nem tud véletlenül elnyelni egy valódi találatot.
+     */
+    private fun declaredFree(name: String, keyword: String, language: AppLanguage): Boolean =
+        if (language == AppLanguage.EN) {
+            name.contains("$keyword-free") || name.contains("$keyword free") || name.contains("${keyword}free")
+        } else {
+            name.contains("${keyword}mentes")
+        }
+
     private fun lengthenedStem(keyword: String): String? = when (keyword.last()) {
         'a' -> keyword.dropLast(1) + 'á'
         'e' -> keyword.dropLast(1) + 'é'
