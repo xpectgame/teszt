@@ -20,6 +20,7 @@ import hu.mealpilot.app.data.repo.ReportRepository
 import hu.mealpilot.app.data.telemetry.CrashReporter
 import hu.mealpilot.app.data.telemetry.Telemetry
 import hu.mealpilot.app.data.telemetry.TelemetryEvent
+import hu.mealpilot.app.notify.MealAlarmScheduler
 import hu.mealpilot.app.i18n.AppStrings
 import hu.mealpilot.app.i18n.LanguageStore
 import hu.mealpilot.app.data.repo.StatsRepository
@@ -267,6 +268,11 @@ class AppContainer(context: Context) {
      * Az előfizetést ez nem mondja le: az a Google fiókhoz tartozik.
      */
     suspend fun wipeAllData() {
+        // Az ébresztők előbb: a táblák kiürítése után az emlékeztető már nem találná
+        // az étkezést, a napi összefoglaló viszont továbbra is szólna — egy olyan
+        // embernek, aki épp most kérte az adatai törlését.
+        MealAlarmScheduler.cancelAllMeals(appContext)
+        MealAlarmScheduler.cancelDailySummary(appContext)
         database.clearAllTables()
         settings.clearAll()
         entitlements.clearAll()

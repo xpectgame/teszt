@@ -52,6 +52,9 @@ class MealReminderReceiver : BroadcastReceiver() {
     private suspend fun showMealReminder(context: Context, mealId: Long) {
         if (mealId <= 0) return
         val container = context.appContainer
+        // A kitett ébresztőket a kikapcsolás visszavonja, de egy épp úton lévő
+        // értesítést már nem lehet visszahívni. Ez a sor zárja azt a rést.
+        if (!container.settings.currentSettings().remindersEnabled) return
         val meal = container.database.mealDao().byId(mealId) ?: return
 
         // Ha már naplózva lett (pl. korábban megette), ne emlékeztessünk rá újra.
@@ -126,16 +129,14 @@ class MealReminderReceiver : BroadcastReceiver() {
         if (mealId <= 0) return
         val meal = context.appContainer.database.mealDao().byId(mealId) ?: return
         NotificationManagerCompat.from(context).cancel(Notifications.mealNotificationId(mealId))
-        MealAlarmScheduler.scheduleMeals(
-            context = context,
-            meals = listOf(meal.copy(scheduledAtMillis = System.currentTimeMillis() + SNOOZE_MILLIS)),
-            leadMinutes = 0,
-        )
+        MealAlarmScheduler.snoozeMeal(context, meal.id, System.currentTimeMillis() + SNOOZE_MILLIS)
     }
 
     private suspend fun showDailySummary(context: Context) {
         val container = context.appContainer
-        val settings = container.settings.currentSettings()
+        // Ugyanaz a rés, mint az étkezési emlékeztetőnél: a kikapcsolás és a már
+        // elsült ébresztő közé fér egy értesítés.
+        if (!container.settings.currentSettings().dailySummaryEnabled) return
         val today = LocalDate.now()
 
         val plan = container.planRepository.activePlan()

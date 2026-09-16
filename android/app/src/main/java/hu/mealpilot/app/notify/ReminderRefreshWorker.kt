@@ -69,7 +69,13 @@ object ReminderCoordinator {
             val now = System.currentTimeMillis()
             val meals = container.database.mealDao()
                 .scheduledBetween(now, now + MealAlarmScheduler.HORIZON_MILLIS)
-            MealAlarmScheduler.scheduleMeals(context, meals, settings.reminderLeadMinutes)
+            MealAlarmScheduler.syncMeals(context, meals, settings.reminderLeadMinutes)
+        } else {
+            // A kikapcsolás a MÁR kitett ébresztőkre is vonatkozik. Enélkül a
+            // felhasználó a kapcsoló átbillentése után még 36 órán át kapott
+            // emlékeztetőket — pontosan az a fajta hiba, amitől az ember letörli
+            // az appot, és közben biztos benne, hogy jól állította be.
+            MealAlarmScheduler.cancelAllMeals(context)
         }
 
         if (settings.dailySummaryEnabled) {

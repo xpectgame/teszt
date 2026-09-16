@@ -36,33 +36,106 @@ object MealAlarmScheduler {
         return context.getSystemService<AlarmManager>()?.canScheduleExactAlarms() == true
     }
 
-    fun scheduleMeals(context: Context, meals: List<MealEntity>, leadMinutes: Int) {
-        val alarmManager = context.getSystemService<AlarmManager>() ?: return
-        val exact = canScheduleExact(context)
-        val now = System.currentTimeMillis()
+    /** Egy tervezett étkezés azonosítója és időpontja — ennyi kell az időzítéshez. */
+    internal data class PlannedMeal(val mealId: Long, val scheduledAtMillis: Long)
 
-        for (meal in meals) {
-            val triggerAt = meal.scheduledAtMillis - TimeUnit.MINUTES.toMillis(leadMinutes.toLong())
-            if (triggerAt <= now) continue
-            val pendingIntent = reminderIntent(context, meal.id)
-            try {
-                if (exact) {
-                    alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerAt, pendingIntent)
-                } else {
-                    alarmManager.setWindow(
-                        AlarmManager.RTC_WAKEUP,
-                        triggerAt,
-                        INEXACT_WINDOW_MILLIS,
-                        pendingIntent,
-                    )
-                }
-            } catch (security: SecurityException) {
-                // A pontos ébresztés engedélye menet közben is visszavonható.
-                Log.w(TAG, "Pontos ébresztés megtagadva, ablakos ébresztésre váltok.", security)
+    /** Mit kell kitenni, mit visszavonni, és mi marad a nyilvántartásban. */
+    internal data class AlarmPlan(
+        val place: List<ScheduledAlarms.Entry>,
+        val cancel: List<Long>,
+        val keep: List<ScheduledAlarms.Entry>,
+    )
+
+    /**
+     * Az ébresztéssor összehangolása a tervvel — a döntés, Android nélkül.
+     *
+     * Három szabály, és mindhárom egy-egy valódi hibából jött:
+     *
+     * 1. Amire már nincs szükség, azt VISSZA kell vonni. Egy másik napra csúsztatott
+     *    vagy újratervezett étkezés ébresztője magától a RÉGI időpontjában maradna.
+     *    (Üres `meals` lista mellett ez a kikapcsolás: minden ébresztő megy.)
+     * 2. A lejárt nyilvántartási bejegyzés ébresztője már elsült, nincs mit
+     *    visszavonni rajta — csak kikerül a nyilvántartásból.
+     * 3. A halasztott ébresztő marad. Azt a tervből nem lehet visszaszámolni, mert az
+     *    étkezés saját időpontja ilyenkor már elmúlt: ha visszavonnánk, a „később"
+     *    gomb után a felhasználó soha nem kapna emlékeztetőt.
+     */
+    internal fun alarmPlan(
+        meals: List<PlannedMeal>,
+        leadMinutes: Int,
+        held: List<ScheduledAlarms.Entry>,
+        nowMillis: Long,
+    ): AlarmPlan {
+        val lead = TimeUnit.MINUTES.toMillis(leadMinutes.toLong())
+        val place = meals.mapNotNull { meal ->
+            val triggerAt = meal.scheduledAtMillis - lead
+            if (triggerAt <= nowMillis) null
+            else ScheduledAlarms.Entry(meal.mealId, triggerAt, snoozed = false)
+        }
+
+        val placedIds = place.mapTo(mutableSetOf()) { it.mealId }
+        val keep = place.toMutableList()
+        val cancel = mutableListOf<Long>()
+
+        for (entry in held) {
+            if (entry.mealId in placedIds) continue
+            if (entry.triggerAtMillis <= nowMillis) continue
+            if (entry.snoozed) keep += entry else cancel += entry.mealId
+        }
+
+        return AlarmPlan(place = place, cancel = cancel, keep = keep)
+    }
+
+    /** Az [alarmPlan] végrehajtása a rendszer ébresztéskezelőjén. */
+    fun syncMeals(context: Context, meals: List<MealEntity>, leadMinutes: Int) {
+        val plan = alarmPlan(
+            meals = meals.map { PlannedMeal(it.id, it.scheduledAtMillis) },
+            leadMinutes = leadMinutes,
+            held = ScheduledAlarms.all(context),
+            nowMillis = System.currentTimeMillis(),
+        )
+        plan.place.forEach { place(context, it.mealId, it.triggerAtMillis) }
+        plan.cancel.forEach { cancelMeal(context, it) }
+        ScheduledAlarms.replace(context, plan.keep)
+    }
+
+    /** A „később" gomb: ez az egy ébresztő nem a tervből jön, ezért külön jelöljük. */
+    fun snoozeMeal(context: Context, mealId: Long, triggerAtMillis: Long) {
+        place(context, mealId, triggerAtMillis)
+        val entry = ScheduledAlarms.Entry(mealId, triggerAtMillis, snoozed = true)
+        val others = ScheduledAlarms.all(context).filterNot { it.mealId == mealId }
+        ScheduledAlarms.replace(context, others + entry)
+    }
+
+    /**
+     * Minden étkezési ébresztő visszavonása.
+     *
+     * Az emlékeztetők kikapcsolásakor ez a lényeg: a beállítás nem csak a JÖVŐBELI
+     * időzítésre vonatkozik. Aki átbillenti a kapcsolót, most akar csendet, nem 36 óra
+     * múlva.
+     */
+    fun cancelAllMeals(context: Context) {
+        ScheduledAlarms.all(context).forEach { cancelMeal(context, it.mealId) }
+        ScheduledAlarms.clear(context)
+    }
+
+    private fun place(context: Context, mealId: Long, triggerAtMillis: Long) {
+        val alarmManager = context.getSystemService<AlarmManager>() ?: return
+        val pendingIntent = reminderIntent(context, mealId)
+        try {
+            if (canScheduleExact(context)) {
+                alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerAtMillis, pendingIntent)
+            } else {
                 alarmManager.setWindow(
-                    AlarmManager.RTC_WAKEUP, triggerAt, INEXACT_WINDOW_MILLIS, pendingIntent,
+                    AlarmManager.RTC_WAKEUP, triggerAtMillis, INEXACT_WINDOW_MILLIS, pendingIntent,
                 )
             }
+        } catch (security: SecurityException) {
+            // A pontos ébresztés engedélye menet közben is visszavonható.
+            Log.w(TAG, "Pontos ébresztés megtagadva, ablakos ébresztésre váltok.", security)
+            alarmManager.setWindow(
+                AlarmManager.RTC_WAKEUP, triggerAtMillis, INEXACT_WINDOW_MILLIS, pendingIntent,
+            )
         }
     }
 
