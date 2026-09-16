@@ -17,6 +17,16 @@ export type SubscriptionState =
   | 'CANCELED'
   | 'EXPIRED'
   | 'REVOKED'
+  /**
+   * A token létezik, de NEM a mi termékünkre szól (vagy egyetlen ránk vonatkozó
+   * tételt sem tartalmaz). Saját állapot, nem a Play-től jön.
+   *
+   * Azért állapot és nem külön mező: a jogosultságot a hívó a tárolt állapotból is
+   * kiszámolja, amikor a gyorsítótárból dolgozik. Egy külön logikai mező, ami nem fér
+   * be az állapot mellé az adatbázisba, pont a gyorsítótáras úton veszne el — és a
+   * hatodik óra után mindenki jogosulttá válna, akit az első hívás elutasított.
+   */
+  | 'OTHER_PRODUCT'
   | 'UNKNOWN'
 
 export interface VerifiedSubscription {
@@ -189,8 +199,15 @@ export function readPurchase(
   // Nincs a keresett termékre szóló tétel: az előfizetés létezik, de nem ezé.
   const forThisProduct = matching.length > 0
 
+  // Az állapotba ÍRJUK BELE, hogy nem a mi termékünkről van szó — nem csak az
+  // `entitled` mezőbe. A hívó a gyorsítótárból dolgozva már csak az állapotot és a
+  // lejáratot látja: ha a termék eredménye csak az `entitled` mezőben élne, a
+  // gyorsítótár első frissülése után egy idegen termékre szóló, aktív előfizetés
+  // teljes prémiumot adna.
+  const effectiveState: SubscriptionState = forThisProduct ? state : 'OTHER_PRODUCT'
+
   return {
-    state,
+    state: effectiveState,
     entitled: forThisProduct && isEntitled(state, expiresAt, now),
     expiresAt,
     linkedPurchaseToken: body.linkedPurchaseToken ?? null,

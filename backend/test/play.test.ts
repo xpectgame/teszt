@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { readPurchase } from '../src/play.js'
+import { isEntitled, readPurchase } from '../src/play.js'
 
 const NOW = Date.parse('2026-09-14T12:00:00Z')
 const LATER = '2026-10-14T12:00:00Z'
@@ -129,5 +129,66 @@ describe('readPurchase', () => {
     )
     expect(result.expiresAt).toBeNull()
     expect(result.entitled).toBe(true)
+  })
+})
+
+describe('a termékellenőrzés a hitelesítés útján is érvényes', () => {
+  /**
+   * A jogosultságot a hitelesítés NEM az `entitled` mezőből olvassa: azt a tárolt
+   * állapotból és lejáratból számolja újra, mert a gyorsítótárból dolgozva csak ez a
+   * kettő áll rendelkezésre. A termékellenőrzés tehát csak akkor ér valamit, ha az
+   * ÁLLAPOTBA is beleíródik — különben a gyorsítótár első frissülése után egy idegen
+   * termékre szóló előfizetés teljes prémiumot adna.
+   *
+   * A mai egytermékes állapotban ez nem látszana. A második csomag bevezetésekor
+   * viszont pénzügyi hiba lenne, és pont akkor nem tűnne fel senkinek.
+   */
+  function entitledFromStoredState(result: ReturnType<typeof readPurchase>): boolean {
+    return isEntitled(result.state, result.expiresAt, NOW)
+  }
+
+  it('a mi termékünk a tárolt állapotból is jogosít', () => {
+    const ours = readPurchase(
+      {
+        subscriptionState: 'SUBSCRIPTION_STATE_ACTIVE',
+        lineItems: [{ productId: PREMIUM, expiryTime: LATER }],
+      },
+      PREMIUM,
+      NOW,
+    )
+    expect(entitledFromStoredState(ours)).toBe(true)
+  })
+
+  it('MÁS termék a tárolt állapotból sem jogosít', () => {
+    const other = readPurchase(
+      {
+        subscriptionState: 'SUBSCRIPTION_STATE_ACTIVE',
+        lineItems: [{ productId: 'mealpilot_valami_mas', expiryTime: LATER }],
+      },
+      PREMIUM,
+      NOW,
+    )
+    expect(other.state).toBe('OTHER_PRODUCT')
+    expect(entitledFromStoredState(other)).toBe(false)
+  })
+
+  it('a tétel nélküli válasz a tárolt állapotból sem jogosít', () => {
+    const empty = readPurchase({ subscriptionState: 'SUBSCRIPTION_STATE_ACTIVE' }, PREMIUM, NOW)
+    expect(entitledFromStoredState(empty)).toBe(false)
+  })
+
+  it('a lemondott, de még futó előfizetés a tárolt állapotból is jogosít', () => {
+    // Fontos, hogy a javítás ezt NE vigye el: a lemondás után a kifizetett
+    // időszak végéig jár a csomag, és ezt a Play is elvárja.
+    const canceled = readPurchase(
+      {
+        subscriptionState: 'SUBSCRIPTION_STATE_CANCELED',
+        lineItems: [{ productId: PREMIUM, expiryTime: LATER }],
+      },
+      PREMIUM,
+      NOW,
+    )
+    expect(canceled.state).toBe('CANCELED')
+    expect(entitledFromStoredState(canceled)).toBe(true)
   })
 })
