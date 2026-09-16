@@ -1,5 +1,6 @@
 package hu.mealpilot.app.ui.components
 
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -359,7 +360,7 @@ fun RestrictionSurvey(
         if (total > 0) {
             Spacer(Modifier.height(10.dp))
             Text(
-                stringResource(R.string.restrictions_total, total),
+                pluralStringResource(R.plurals.restrictions_total, total, total),
                 style = MaterialTheme.typography.labelMedium,
                 fontWeight = FontWeight.Medium,
             )

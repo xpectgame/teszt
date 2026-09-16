@@ -247,7 +247,7 @@ class ChatViewModel(private val container: AppContainer) : ViewModel() {
                     onProgress = onProgress,
                 ).getOrThrow()
                 ReminderRefreshWorker.refreshNow(container.appContext)
-                text(R.string.chat_done_days, outcome.daysSaved)
+                container.strings.quantity(R.plurals.chat_done_days, outcome.daysSaved, outcome.daysSaved)
             }
 
             ChatActionType.REGENERATE_DAYS -> {
@@ -268,7 +268,7 @@ class ChatViewModel(private val container: AppContainer) : ViewModel() {
                     ).onSuccess { done++ }
                 }
                 ReminderRefreshWorker.refreshNow(container.appContext)
-                text(R.string.chat_days_rewritten, done)
+                container.strings.quantity(R.plurals.chat_days_rewritten, done, done)
             }
 
             ChatActionType.SET_MEAL_TIMES -> {

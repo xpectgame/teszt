@@ -2,6 +2,7 @@ package hu.mealpilot.app.i18n
 
 import android.content.Context
 import android.content.res.Configuration
+import androidx.annotation.PluralsRes
 import androidx.annotation.StringRes
 import hu.mealpilot.core.i18n.AppLanguage
 import java.util.Locale
@@ -28,6 +29,18 @@ class AppStrings(
     operator fun get(@StringRes resId: Int, vararg args: Any): String {
         val localized = localized()
         return if (args.isEmpty()) localized.getString(resId) else localized.getString(resId, *args)
+    }
+
+    /**
+     * Darabszámtól függő szöveg — „1 day" vagy „2 days".
+     *
+     * A [count] a nyelvtani alakot választja ki, és NEM kerül automatikusan a szövegbe:
+     * ha a helyőrző is kell, a számot argumentumként is át kell adni.
+     */
+    fun quantity(@PluralsRes resId: Int, count: Int, vararg args: Any): String {
+        val resources = localized().resources
+        return if (args.isEmpty()) resources.getQuantityString(resId, count)
+        else resources.getQuantityString(resId, count, *args)
     }
 
     private fun localized(): Context {

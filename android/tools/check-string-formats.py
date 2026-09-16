@@ -42,6 +42,26 @@ def read_strings(path: pathlib.Path) -> dict[str, str]:
     }
 
 
+def read_plurals(path: pathlib.Path) -> dict[str, dict[str, str]]:
+    """
+    A darabszámtól függő szövegek: {név: {mennyiség: szöveg}}.
+
+    Ezeket ugyanúgy ellenőrizni kell, mint a sima szövegeket — sőt jobban: itt egy
+    nyelven belül is több alak van, és ha az egyikből kimarad egy helyőrző, csak az
+    a darabszám omlaszt, ami ritkábban fordul elő. Pont az a fajta hiba, ami
+    teszteléskor nem jön elő.
+    """
+    xml = path.read_text(encoding='utf-8')
+    out: dict[str, dict[str, str]] = {}
+    for block in re.finditer(r'<plurals name="([^"]+)"[^>]*>(.*?)</plurals>', xml, re.S):
+        items = {
+            i.group(1): i.group(2)
+            for i in re.finditer(r'<item quantity="([^"]+)"[^>]*>(.*?)</item>', block.group(2), re.S)
+        }
+        out[block.group(1)] = items
+    return out
+
+
 def count_arguments(text: str, start: int) -> int:
     """
     Hány argumentum áll a megadott pozíciótól a hívás lezárásáig.
@@ -89,8 +109,13 @@ def main() -> int:
         'values/strings.xml': read_strings(RES / 'values/strings.xml'),
         'values-hu/strings.xml': read_strings(RES / 'values-hu/strings.xml'),
     }
+    plurals = {
+        'values/strings.xml': read_plurals(RES / 'values/strings.xml'),
+        'values-hu/strings.xml': read_plurals(RES / 'values-hu/strings.xml'),
+    }
 
     calls = collections.defaultdict(list)
+    plural_calls = collections.defaultdict(list)
     for kt in sorted(SRC.rglob('*.kt')):
         text = kt.read_text(encoding='utf-8')
         # Három hívási alak: Compose, Context és a lokalizált szövegforrás. Az utóbbi
@@ -106,6 +131,19 @@ def main() -> int:
             line = text.count('\n', 0, m.start()) + 1
             calls[key].append((f'{kt.relative_to(ROOT)}:{line}', given))
 
+        # A darabszámos alakok. Itt az ELSŐ argumentum a nyelvtani alakot választja ki,
+        # és nem helyőrző — ezért eggyel kevesebbet számolunk.
+        for m in re.finditer(
+            r'(?:pluralStringResource|getQuantityString)\(\s*R\.plurals\.([A-Za-z0-9_]+)\s*(,)?'
+            r'|\.quantity\(\s*R\.plurals\.([A-Za-z0-9_]+)\s*(,)?',
+            text,
+        ):
+            key = m.group(1) or m.group(3)
+            comma = 2 if m.group(1) else 4
+            given = max(0, count_arguments(text, m.end(comma)) - 1) if m.group(comma) else 0
+            line = text.count('\n', 0, m.start()) + 1
+            plural_calls[key].append((f'{kt.relative_to(ROOT)}:{line}', given))
+
     problems = []
     for key, uses in sorted(calls.items()):
         for language, table in strings.items():
@@ -119,6 +157,30 @@ def main() -> int:
                         f'{where}: R.string.{key} — a(z) {language} szöveg {expected} '
                         f'paramétert vár, a hívás {given}-t ad'
                     )
+
+    # Ugyanez a darabszámos szövegekre, minden nyelvtani alakra külön.
+    for key, uses in sorted(plural_calls.items()):
+        for language, table in plurals.items():
+            if key not in table:
+                problems.append(f'R.plurals.{key} — hiányzik a(z) {language} fájlból')
+                continue
+            for quantity, value in sorted(table[key].items()):
+                spec = placeholders(value)
+                expected = max(spec) if spec else 0
+                for where, given in uses:
+                    if given != expected:
+                        problems.append(
+                            f'{where}: R.plurals.{key} ({quantity}) — a(z) {language} szöveg '
+                            f'{expected} paramétert vár, a hívás {given}-t ad'
+                        )
+            # Egy nyelven belül is egyeznie kell: ha az „one" alakból kimarad egy
+            # helyőrző, csak az az egy darabszám omlaszt.
+            specs = {q: placeholders(v) for q, v in table[key].items()}
+            if len(set(map(str, map(sorted, (s.items() for s in specs.values()))))) > 1:
+                problems.append(
+                    f'R.plurals.{key} — a(z) {language} nyelvtani alakok helyőrzői eltérnek: '
+                    + ', '.join(f'{q}: {sorted(v.items())}' for q, v in sorted(specs.items()))
+                )
 
     # A két nyelv helyőrzőinek egyezniük kell, különben a nyelvváltás omlaszt.
     for key in sorted(set(strings['values/strings.xml']) & set(strings['values-hu/strings.xml'])):
@@ -137,7 +199,10 @@ def main() -> int:
         print(f'\n{len(problems)} hiba. Ezek futásidőben omlasztanák az appot.')
         return 1
 
-    print(f'Rendben: {len(calls)} szövegerőforrás-hívás helyőrzői egyeznek.')
+    print(
+        f'Rendben: {len(calls)} szöveg- és {len(plural_calls)} darabszámos '
+        f'erőforrás-hívás helyőrzői egyeznek.'
+    )
     return 0
 
 

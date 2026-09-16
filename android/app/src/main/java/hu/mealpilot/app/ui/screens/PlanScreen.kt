@@ -1,5 +1,6 @@
 package hu.mealpilot.app.ui.screens
 
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -185,7 +186,9 @@ fun PlanScreen(
         if (status.running && status.hasUsableDays && showGenerator) {
             showGenerator = false
             snackbarHostState.showSnackbar(
-                context.getString(R.string.plan_partial_ready, status.daysReady)
+                context.resources.getQuantityString(
+                    R.plurals.plan_partial_ready, status.daysReady, status.daysReady,
+                )
             )
         }
     }
@@ -202,7 +205,9 @@ fun PlanScreen(
                         // hogy nem azt kapta, amit kért.
                         it.usedFallback -> context.getString(R.string.plan_done_fallback)
                         it.isComplete -> context.getString(R.string.plan_done)
-                        else -> context.getString(R.string.plan_partial, it.daysSaved, it.requestedDays)
+                        else -> context.resources.getQuantityString(
+                            R.plurals.plan_partial, it.daysSaved, it.daysSaved, it.requestedDays,
+                        )
                     }
                 },
                 onFailure = { it.message ?: context.getString(R.string.plan_failed) },
@@ -255,7 +260,7 @@ fun PlanScreen(
                     FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         PlatePill(stringResource(R.string.plan_chip_kcal, plan.targetKcal))
                         PlatePill(
-                            stringResource(R.string.plan_chip_days, plan.dayCount),
+                            pluralStringResource(R.plurals.plan_chip_days, plan.dayCount, plan.dayCount),
                             container = MaterialTheme.colorScheme.secondaryContainer,
                             content = MaterialTheme.colorScheme.onSecondaryContainer,
                         )

@@ -143,7 +143,7 @@ abstract class StreamingMealAi(
                         totalChunks = chunk.total,
                         daysReady = allDays.size,
                         message = if (chunk.index + 1 < chunk.total) {
-                            strings[R.string.progress_days_ready, allDays.size]
+                            strings.quantity(R.plurals.progress_days_ready, allDays.size, allDays.size)
                         } else {
                             strings[R.string.progress_done]
                         },

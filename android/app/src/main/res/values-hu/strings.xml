@@ -60,10 +60,16 @@
     <string name="plan_refine_hint">pl. az ebéd legyen hidegen vihető, a vacsora hústalan</string>
     <string name="plan_refine_confirm">Átírás</string>
     <string name="plan_refine_failed">Nem sikerült módosítani.</string>
-    <string name="plan_partial_ready">%1$d nap kész — a többi közben töltődik.</string>
+    <plurals name="plan_partial_ready">
+        <item quantity="one">%1$d nap kész — a többi közben töltődik.</item>
+        <item quantity="other">%1$d nap kész — a többi közben töltődik.</item>
+    </plurals>
     <string name="plan_done">Kész az étrended!</string>
     <string name="plan_done_fallback">Az étrend elkészült, de a tervező nem volt elérhető — a hiányzó napok sablonból készültek.</string>
-    <string name="plan_partial">A kért %2$d napból %1$d készült el.</string>
+    <plurals name="plan_partial">
+        <item quantity="one">A kért %2$d napból %1$d készült el.</item>
+        <item quantity="other">A kért %2$d napból %1$d készült el.</item>
+    </plurals>
     <string name="plan_failed">Nem sikerült elkészíteni a tervet.</string>
     <string name="plan_background_hint">Nyugodtan zárd be — a háttérben tovább készül, és szólok, ha megvan.</string>
     <string name="plan_length_question">Meddig tervezzek?</string>
@@ -101,7 +107,10 @@
     <string name="restrictions_title">Allergiák és érzékenységek</string>
     <string name="restrictions_note">Amit bejelölsz, azt az étrend soha nem fogja tartalmazni — sem hozzávalóként, sem ízesítőként. A kész tervet ellenőrizzük is rá.</string>
     <string name="restrictions_implied">A(z) „%1$s” stílus miatt ezek automatikusan ki vannak zárva: %2$s.</string>
-    <string name="restrictions_total">Összesen %1$d kizárás aktív.</string>
+    <plurals name="restrictions_total">
+        <item quantity="one">Összesen %1$d kizárás aktív.</item>
+        <item quantity="other">Összesen %1$d kizárás aktív.</item>
+    </plurals>
     <string name="action_back">Vissza</string>
     <string name="macro_fiber">Rost</string>
     <string name="macro_sodium">Nátrium</string>
@@ -147,7 +156,7 @@
     <string name="report_submit">Jelentem</string>
     <string name="settings_title">Beállítások</string>
     <string name="settings_plan">Csomag</string>
-    <string name="settings_quota_left">A próbaidőszakodból még %1$d étrend és %2$d üzenet maradt.</string>
+    <string name="settings_quota_left">A próbaidőszakodból maradt — étrend: %1$d, üzenet: %2$d</string>
     <string name="settings_go_premium">Teljes csomag</string>
     <string name="settings_premium_thanks">Korlátlan étrend és beszélgetés. Köszönjük!</string>
     <string name="settings_manage_subscription">Előfizetés kezelése</string>
@@ -193,7 +202,10 @@
     <string name="budget_macros">Fehérje %1$d g · Szénhidrát %2$d g · Zsír %3$d g</string>
     <string name="budget_macros_fiber">Fehérje %1$d g · Szénhidrát %2$d g · Zsír %3$d g · Rost %4$d g</string>
     <string name="budget_rate">Várható ütem: %1$s kg/hét</string>
-    <string name="budget_days_to_target">A célsúlyt kb. %1$d nap múlva éred el (%2$s)</string>
+    <plurals name="budget_days_to_target">
+        <item quantity="one">A célsúlyt kb. %1$d nap múlva éred el (%2$s)</item>
+        <item quantity="other">A célsúlyt kb. %1$d nap múlva éred el (%2$s)</item>
+    </plurals>
     <string name="weight_card_title">Súly</string>
     <string name="weight_body_fat">testzsír %</string>
     <string name="weight_optional">opcionális</string>
@@ -202,7 +214,10 @@
     <string name="profile_weight_logged">Súly rögzítve: %1$s kg</string>
     <string name="weight_lost_so_far">Eddig %1$s kg-ot fogytál</string>
     <string name="weight_gained_so_far">Eddig %1$s kg-ot híztál</string>
-    <string name="weight_range_summary">%1$s – %2$s kg · utolsó %3$d mérés</string>
+    <plurals name="weight_range_summary">
+        <item quantity="one">%1$s – %2$s kg · utolsó %3$d mérés</item>
+        <item quantity="other">%1$s – %2$s kg · utolsó %3$d mérés</item>
+    </plurals>
     <string name="achievements_title">Eredmények</string>
     <string name="paywall_thanks">Köszönjük! A teljes csomag aktív.</string>
     <string name="paywall_intro">Az étrend tervezése és a beszélgetés valódi költséggel jár. Az előfizetés ezt fedezi — cserébe nincs korlát.</string>
@@ -225,10 +240,16 @@
     <string name="chat_no_answer">Nem sikerült válaszolni.</string>
     <string name="chat_ok">Rendben.</string>
     <string name="chat_nothing_to_do">Nincs teendő.</string>
-    <string name="chat_done_days">Kész: %1$d nap.</string>
+    <plurals name="chat_done_days">
+        <item quantity="one">Kész: %1$d nap.</item>
+        <item quantity="other">Kész: %1$d nap.</item>
+    </plurals>
     <string name="chat_no_plan_to_rewrite">Nincs aktív terv, amit át lehetne írni.</string>
     <string name="chat_which_day">Nem találtam, melyik napról van szó.</string>
-    <string name="chat_days_rewritten">%1$d nap átírva.</string>
+    <plurals name="chat_days_rewritten">
+        <item quantity="one">%1$d nap átírva.</item>
+        <item quantity="other">%1$d nap átírva.</item>
+    </plurals>
     <string name="chat_which_meal_time">Nem értettem, melyik étkezést mikorra tegyem.</string>
     <string name="chat_times_set">Átállítva: %1$s. %2$d étkezés időpontja és emlékeztetője frissült.</string>
     <string name="chat_times_set_default">Átállítva: %1$s. A következő tervnél már ez lesz az alapértelmezés.</string>
@@ -248,7 +269,10 @@
     <string name="progress_week">%1$d. hét összeállítása…</string>
     <string name="progress_plan">Terv összeállítása…</string>
     <string name="progress_day">%1$d. nap összeállítása…</string>
-    <string name="progress_days_ready">%1$d nap kész, a többi töltődik…</string>
+    <plurals name="progress_days_ready">
+        <item quantity="one">%1$d nap kész, a többi töltődik…</item>
+        <item quantity="other">%1$d nap kész, a többi töltődik…</item>
+    </plurals>
     <string name="progress_done">Kész.</string>
     <string name="progress_recipes">Receptek írása…</string>
     <string name="progress_tuning">A kalóriakeret finomhangolása…</string>
@@ -287,7 +311,10 @@
     <string name="period_half_year">félév</string>
     <string name="period_year">év</string>
     <string name="period_week">hét</string>
-    <string name="notif_prep_minutes">Elkészítés: %1$d perc</string>
+    <plurals name="notif_prep_minutes">
+        <item quantity="one">Elkészítés: %1$d perc</item>
+        <item quantity="other">Elkészítés: %1$d perc</item>
+    </plurals>
     <string name="notif_snooze">+15 perc</string>
     <string name="notif_generating">Étrend készül</string>
     <string name="notif_starting">Indulás…</string>
@@ -328,7 +355,10 @@
     <string name="shopping_left">%1$d hátra</string>
     <!-- Terv képernyő — a Tányér dizájn jelvényei és napkártyái -->
     <string name="plan_chip_kcal">%1$d kcal/nap</string>
-    <string name="plan_chip_days">%1$d nap</string>
+    <plurals name="plan_chip_days">
+        <item quantity="one">%1$d nap</item>
+        <item quantity="other">%1$d nap</item>
+    </plurals>
     <string name="plan_chip_protein">F %1$d g</string>
     <string name="plan_days_title">A terv napjai</string>
     <string name="chat_needs_approval">Jóváhagyást kér</string>

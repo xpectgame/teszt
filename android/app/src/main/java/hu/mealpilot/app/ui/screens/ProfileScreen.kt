@@ -45,6 +45,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
@@ -223,8 +224,9 @@ fun ProfileScreen(
                     )
                     EnergyCalculator.daysToTarget(state.profile, budget)?.let { days ->
                         NumberText(
-                            stringResource(
-                                R.string.budget_days_to_target,
+                            pluralStringResource(
+                                R.plurals.budget_days_to_target,
+                                days,
                                 days,
                                 LocalDate.now().plusDays(days.toLong()).toString(),
                             ),
@@ -419,8 +421,9 @@ private fun WeightSparkline(weights: List<WeightLogEntity>) {
         }
     }
     Text(
-        stringResource(
-            R.string.weight_range_summary,
+        pluralStringResource(
+            R.plurals.weight_range_summary,
+            ordered.size,
             "%.1f".format(min),
             "%.1f".format(max),
             ordered.size,

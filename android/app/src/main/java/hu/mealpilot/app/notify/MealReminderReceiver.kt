@@ -83,7 +83,7 @@ class MealReminderReceiver : BroadcastReceiver() {
                             append(meal.description)
                         }
                         if (meal.prepMinutes > 0) {
-                            append("\n" + strings[R.string.notif_prep_minutes, meal.prepMinutes])
+                            append("\n" + strings.quantity(R.plurals.notif_prep_minutes, meal.prepMinutes, meal.prepMinutes))
                         }
                     }
                 )
