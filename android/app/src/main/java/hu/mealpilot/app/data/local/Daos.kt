@@ -128,6 +128,75 @@ interface MealLogDao {
 
     @Query("SELECT COUNT(*) FROM meal_logs WHERE mealId = :mealId AND status = 'EATEN'")
     suspend fun eatenCountFor(mealId: Long): Int
+
+    /**
+     * A megevett étkezés naplóbejegyzésének leválasztása a törlésre ítélt fogásról.
+     *
+     * A naplóbejegyzés nem a TERVRŐL szól, hanem arról, amit a felhasználó tényleg
+     * megevett — azt egy újratervezés nem írhatja felül. A `mealId` viszont egy
+     * mindjárt nem létező sorra mutatna, és az ilyen bejegyzés SEHOL nem látszik: a
+     * napi lista csak a `mealId = NULL` sorokat mutatja terven kívüli tételként. A
+     * kalóriákat közben tovább számolja — tehát a nap összesítője magasabb, mint amit
+     * a lista indokol, és a felhasználó a fogást újra bejelölheti megevettként.
+     *
+     * A leválasztás után ugyanaz a bejegyzés terven kívüli tételként jelenik meg,
+     * a saját nevével és tápértékével, és törölhető is.
+     */
+    @Query(
+        """
+        UPDATE meal_logs SET mealId = NULL, planId = NULL
+        WHERE status IN ('EATEN', 'REPLACED')
+          AND mealId IN (SELECT id FROM meals WHERE planId = :planId AND dayIndex = :dayIndex)
+        """
+    )
+    suspend fun detachDay(planId: Long, dayIndex: Int)
+
+    /** Ugyanaz egy egész tervre — a `keepPlanId` terv bejegyzései érintetlenek. */
+    @Query(
+        """
+        UPDATE meal_logs SET mealId = NULL, planId = NULL
+        WHERE status IN ('EATEN', 'REPLACED')
+          AND planId IS NOT NULL AND planId != :keepPlanId
+        """
+    )
+    suspend fun detachOtherPlans(keepPlanId: Long)
+
+    /**
+     * A ki nem hagyott — vagyis meg nem evett — bejegyzések törlése a törölt fogásokról.
+     *
+     * Egy kihagyás önmagában nem hordoz információt: nulla tápérték, és a fogás, amire
+     * vonatkozott, már nem létezik. Leválasztva egy nulla kalóriás „terven kívüli"
+     * sorként jelenne meg a listában, amit a felhasználó nem tud hova tenni.
+     */
+    @Query(
+        """
+        DELETE FROM meal_logs
+        WHERE status NOT IN ('EATEN', 'REPLACED')
+          AND mealId IN (SELECT id FROM meals WHERE planId = :planId AND dayIndex = :dayIndex)
+        """
+    )
+    suspend fun deleteUneatenForDay(planId: Long, dayIndex: Int)
+
+    @Query(
+        """
+        DELETE FROM meal_logs
+        WHERE status NOT IN ('EATEN', 'REPLACED')
+          AND planId IS NOT NULL AND planId != :keepPlanId
+        """
+    )
+    suspend fun deleteUneatenForOtherPlans(keepPlanId: Long)
+
+    /** Egyetlen terv törlésekor — a többi terv bejegyzései érintetlenek. */
+    @Query(
+        """
+        UPDATE meal_logs SET mealId = NULL, planId = NULL
+        WHERE status IN ('EATEN', 'REPLACED') AND planId = :planId
+        """
+    )
+    suspend fun detachPlan(planId: Long)
+
+    @Query("DELETE FROM meal_logs WHERE status NOT IN ('EATEN', 'REPLACED') AND planId = :planId")
+    suspend fun deleteUneatenForPlan(planId: Long)
 }
 
 @Dao

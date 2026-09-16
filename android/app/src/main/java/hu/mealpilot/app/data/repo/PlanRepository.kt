@@ -5,6 +5,7 @@ import hu.mealpilot.app.data.ai.MealAiException
 import hu.mealpilot.app.data.local.IngredientEntity
 import hu.mealpilot.app.data.local.MealDao
 import hu.mealpilot.app.data.local.MealEntity
+import hu.mealpilot.app.data.local.MealLogDao
 import hu.mealpilot.app.data.local.MealWithIngredients
 import hu.mealpilot.app.data.local.NutrientsColumns
 import hu.mealpilot.app.data.local.PlanDao
@@ -52,6 +53,12 @@ class PlanRepository(
     private val planDao: PlanDao,
     private val mealDao: MealDao,
     private val shoppingDao: ShoppingDao,
+    /**
+     * A napló azért kell ide, mert a tervezett fogások törlése a naplót is érinti: a
+     * megevett étkezés bejegyzését le kell választani a megszűnő fogásról, különben
+     * láthatatlan marad, miközben a kalóriákat tovább számolja.
+     */
+    private val mealLogDao: MealLogDao,
 ) {
 
     fun observeActivePlan(): Flow<PlanEntity?> = planDao.observeActive()
@@ -148,6 +155,7 @@ class PlanRepository(
                 // pedig törlődnek. A régit nem elég deaktiválni — a naplózás és a napi
                 // nézet átfedő dátumoknál egyébként duplán mutatná az étkezéseket.
                 if (isFirstChunk) {
+                    detachLogsOfOtherPlans(planId)
                     planDao.deleteOthers(planId)
                 }
                 rebuildShoppingList(planId, startDate.toEpochDay(), startDate.toEpochDay() + days - 1)
@@ -199,6 +207,7 @@ class PlanRepository(
         val response = ai.refineDay(request, current.toAiDayJson(dayIndex), instruction)
             .getOrElse { return Result.failure(it) }
 
+        detachLogsOfDay(planId, dayIndex)
         mealDao.deleteDay(planId, dayIndex)
         insertDay(planId, startDate, response.day.copy(dayIndex = dayIndex))
         rebuildShoppingList(planId, plan.startEpochDay, plan.endEpochDay)
@@ -359,7 +368,39 @@ class PlanRepository(
         }
     }
 
-    suspend fun deletePlan(planId: Long) = planDao.delete(planId)
+    suspend fun deletePlan(planId: Long) {
+        detachLogsOfPlan(planId)
+        planDao.delete(planId)
+    }
+
+    /**
+     * A napló felkészítése a fogások törlésére.
+     *
+     * A naplóbejegyzés nem a tervről szól, hanem arról, amit a felhasználó tényleg
+     * megevett — azt egy újratervezés nem írhatja felül. A törölt fogásra mutató
+     * bejegyzés viszont SEHOL nem látszik (a napi lista csak a fogáshoz nem tartozó
+     * sorokat mutatja terven kívüli tételként), miközben a kalóriákat tovább számolja.
+     * A nap összesítője így magasabb volt, mint amit a lista indokolt, és a felhasználó
+     * ugyanazt az ételt még egyszer bejelölhette megevettként.
+     *
+     * A megevett bejegyzés ezért leválik a fogásról, és terven kívüli tételként marad
+     * látható; a kihagyás törlődik, mert egy nem létező fogás kihagyása nem információ.
+     */
+    private suspend fun detachLogsOfDay(planId: Long, dayIndex: Int) {
+        mealLogDao.detachDay(planId, dayIndex)
+        mealLogDao.deleteUneatenForDay(planId, dayIndex)
+    }
+
+    private suspend fun detachLogsOfOtherPlans(keepPlanId: Long) {
+        mealLogDao.detachOtherPlans(keepPlanId)
+        mealLogDao.deleteUneatenForOtherPlans(keepPlanId)
+    }
+
+    /** Egyetlen terv törlése: minden más terv bejegyzése érintetlen marad. */
+    private suspend fun detachLogsOfPlan(planId: Long) {
+        mealLogDao.detachPlan(planId)
+        mealLogDao.deleteUneatenForPlan(planId)
+    }
 
     suspend fun mealsInRange(planId: Long, from: Long, to: Long) = mealDao.mealsInRange(planId, from, to)
 

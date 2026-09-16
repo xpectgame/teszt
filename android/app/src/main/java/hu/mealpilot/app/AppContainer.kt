@@ -66,7 +66,7 @@ class AppContainer(context: Context) {
     val language: hu.mealpilot.core.i18n.AppLanguage get() = languageStore.current()
 
     val planRepository: PlanRepository by lazy {
-        PlanRepository(database.planDao(), database.mealDao(), database.shoppingDao())
+        PlanRepository(database.planDao(), database.mealDao(), database.shoppingDao(), database.mealLogDao())
     }
 
     val trackingRepository: TrackingRepository by lazy {
