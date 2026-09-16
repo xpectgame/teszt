@@ -1,6 +1,6 @@
 import { Hono } from 'hono'
 import { cors } from 'hono/cors'
-import { AnthropicError, costMicros, streamMessage } from './anthropic.js'
+import { AnthropicError, costMicros, emptyUsage, streamMessage } from './anthropic.js'
 import { AuthError, resolveCaller, type Caller } from './auth.js'
 import { addUsage, logRequest, readSubscription, readUsage, sha256Hex, writeSubscription } from './db.js'
 import type { Env } from './env.js'
@@ -286,17 +286,47 @@ app.post('/v1/generate', async (c) => {
     else void work
   }
 
+  /**
+   * A fogyasztás gyűjtője.
+   *
+   * Nem a `streamMessage` visszatérő értékéből könyvelünk, mert az csak SIKERES futásnál
+   * születik meg — a számla viszont a félbeszakadt hívásra is megérkezik. Ez az objektum
+   * a dobás pillanatában is a kezünkben van.
+   */
+  const tokens = emptyUsage()
+
+  /**
+   * A felfelé menő hívás megszakítója.
+   *
+   * Ha a kliens elmegy (kilép az appból, elmegy a térerő), az Anthropic magától tovább
+   * generál, és a végéig ki is számlázza. Ezért bontjuk aktívan: ez nem takarítás,
+   * hanem az egyetlen pont, ahol egy megszakadt terv költsége tényleg megáll.
+   */
+  const upstream = new AbortController()
+
   const stream = new ReadableStream<Uint8Array>({
     async start(controller) {
-      const send = (value: unknown) => controller.enqueue(encoder.encode(`${JSON.stringify(value)}\n`))
+      let clientGone = false
+      // A küldés SOHA nem dobhat. Egy elment kliensnél az `enqueue` hibát ad, és ha az
+      // kiszaladna, a hívás utáni könyvelés soha nem futna le — pont a drága esetben
+      // nem lenne nyoma semminek.
+      const send = (value: unknown) => {
+        if (clientGone) return
+        try {
+          controller.enqueue(encoder.encode(`${JSON.stringify(value)}\n`))
+        } catch {
+          clientGone = true
+          upstream.abort()
+        }
+      }
 
       send({ type: 'start', request_id: requestId, allowed_days: decision.allowedDays ?? requestedDays })
 
-      let result: Awaited<ReturnType<typeof streamMessage>> | null = null
+      let completed = false
       let failure: string | null = null
 
       try {
-        result = await streamMessage(
+        await streamMessage(
           {
             apiKey: c.env.ANTHROPIC_API_KEY,
             model,
@@ -306,10 +336,12 @@ app.post('/v1/generate', async (c) => {
             effort,
           },
           (text) => send({ type: 'delta', text }),
+          { signal: upstream.signal, usage: tokens },
         )
+        completed = true
         send({
           type: 'done',
-          usage: { input_tokens: result.inputTokens, output_tokens: result.outputTokens },
+          usage: { input_tokens: tokens.inputTokens, output_tokens: tokens.outputTokens },
         })
       } catch (error) {
         failure = error instanceof Error ? error.message : 'Ismeretlen hiba.'
@@ -323,45 +355,54 @@ app.post('/v1/generate', async (c) => {
               : 'A tervező szolgáltatás hibát adott. Próbáld újra kicsit később.',
         })
       } finally {
-        controller.close()
-      }
+        try {
+          controller.close()
+        } catch {
+          // A kliens már bontotta: nincs mit lezárni.
+        }
 
-      // A könyvelés a válasz lezárása UTÁN fut, hogy ne lassítsa a felhasználót.
-      const delta = usageDelta(task, chunkIndex, isRetry)
-      const tokens = result ?? { inputTokens: 0, outputTokens: 0, cacheReadTokens: 0, cacheWriteTokens: 0 }
-      const cost = result ? costMicros(model, result) : 0
-      const bookkeeping = Promise.all([
-        // A közös napi számláló MINDENKIT számol, a tulajdonost is: a mennyezet
-        // célja a számla felső korlátja, és abba az ő fogyasztása is beleszámít.
-        addUsage(c.env, GLOBAL_SUBJECT, today, {
-          inputTokens: tokens.inputTokens,
-          outputTokens: tokens.outputTokens,
-          costMicros: cost,
-        }),
-        addUsage(c.env, caller.subject, period, {
-          // Sikertelen hívás nem fogyaszt darabszám-kvótát, tokent viszont igen:
-          // azt tényleg elhasználta.
-          plans: result ? delta.plans : 0,
-          messages: result ? delta.messages : 0,
-          inputTokens: tokens.inputTokens,
-          outputTokens: tokens.outputTokens,
-          costMicros: cost,
-        }),
-        logRequest(c.env, {
-          id: requestId,
-          userId: caller.userId,
-          subject: caller.subject,
-          task,
-          model,
-          inputTokens: tokens.inputTokens,
-          outputTokens: tokens.outputTokens,
-          cacheReadTokens: tokens.cacheReadTokens,
-          costMicros: cost,
-          ok: result !== null,
-          error: failure,
-        }),
-      ])
-      defer(bookkeeping)
+        // A könyvelés a `finally`-ben van, nem utána: így a megszakadt folyam is
+        // hagy nyomot. Ezek a tokenek ugyanúgy ki vannak fizetve.
+        const delta = usageDelta(task, chunkIndex, isRetry)
+        const cost = costMicros(model, tokens)
+        defer(
+          Promise.all([
+            // A közös napi számláló MINDENKIT számol, a tulajdonost is: a mennyezet
+            // célja a számla felső korlátja, és abba az ő fogyasztása is beleszámít.
+            addUsage(c.env, GLOBAL_SUBJECT, today, {
+              inputTokens: tokens.inputTokens,
+              outputTokens: tokens.outputTokens,
+              costMicros: cost,
+            }),
+            addUsage(c.env, caller.subject, period, {
+              // Sikertelen hívás nem fogyaszt darabszám-kvótát, tokent viszont igen:
+              // azt tényleg elhasználta.
+              plans: completed ? delta.plans : 0,
+              messages: completed ? delta.messages : 0,
+              inputTokens: tokens.inputTokens,
+              outputTokens: tokens.outputTokens,
+              costMicros: cost,
+            }),
+            logRequest(c.env, {
+              id: requestId,
+              userId: caller.userId,
+              subject: caller.subject,
+              task,
+              model,
+              inputTokens: tokens.inputTokens,
+              outputTokens: tokens.outputTokens,
+              cacheReadTokens: tokens.cacheReadTokens,
+              costMicros: cost,
+              ok: completed,
+              error: failure,
+            }),
+          ]),
+        )
+      }
+    },
+    cancel() {
+      // A kliens bontotta a kapcsolatot, mielőtt az `enqueue` hibára futott volna.
+      upstream.abort()
     },
   })
 
