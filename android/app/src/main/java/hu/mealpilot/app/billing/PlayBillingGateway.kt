@@ -42,6 +42,15 @@ class PlayBillingGateway(
 
     private var productDetails: ProductDetails? = null
 
+    /**
+     * A kiválasztott ajánlat token azonosítója.
+     *
+     * Külön mező, mert az ÁR és a VÁSÁRLÁS ugyanabból az ajánlatból kell hogy jöjjön.
+     * Korábban mindkét helyen külön `firstOrNull()` állt, ami két különböző ajánlatot
+     * is elérhetett volna.
+     */
+    private var selectedOfferToken: String? = null
+
     private val purchasesListener = PurchasesUpdatedListener { result, purchases ->
         when (result.responseCode) {
             BillingClient.BillingResponseCode.OK -> handlePurchases(purchases.orEmpty())
@@ -106,11 +115,19 @@ class PlayBillingGateway(
             }
             val product = details.firstOrNull()
             productDetails = product
-            val phase = product?.subscriptionOfferDetails
-                ?.firstOrNull()
-                ?.pricingPhases
-                ?.pricingPhaseList
-                ?.firstOrNull()
+
+            val offers = product?.subscriptionOfferDetails.orEmpty()
+            val offer = offers.getOrNull(
+                bestOfferIndex(offers.map { it.pricingPhases.pricingPhaseList.map { phase -> phase.priceAmountMicros } }),
+            )
+            selectedOfferToken = offer?.offerToken
+
+            // A VISSZATÉRŐ fázis ára jelenik meg, nem az elsőé. Ingyenes próbaidőszaknál
+            // az első fázis 0 forint — azt kiírva az app azt állítaná, hogy az
+            // előfizetés ingyenes.
+            val phases = offer?.pricingPhases?.pricingPhaseList.orEmpty()
+            val phase = phases.getOrNull(recurringPhaseIndex(phases.map { it.recurrenceMode }))
+
             _state.value = _state.value.copy(
                 formattedPrice = phase?.formattedPrice,
                 billingPeriodLabel = phase?.billingPeriod?.let(::humanPeriod),
@@ -169,7 +186,9 @@ class PlayBillingGateway(
             _state.value = _state.value.copy(error = strings[R.string.billing_unavailable])
             return
         }
-        val offerToken = product.subscriptionOfferDetails?.firstOrNull()?.offerToken
+        // Ugyanaz az ajánlat, aminek az árát kiírtuk. Enélkül a felhasználó mást fizetne,
+        // mint amit a fizetőfalon látott.
+        val offerToken = selectedOfferToken
         if (offerToken == null) {
             _state.value = _state.value.copy(error = strings[R.string.billing_no_offer])
             return
