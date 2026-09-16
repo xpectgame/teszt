@@ -51,6 +51,25 @@ class PlanParserTest {
     }
 
     @Test
+    fun `a code fence without a line break is not thrown away`() {
+        // A nyitó kerítés után nem kötelező a sortörés. A régi kód a sortörésre
+        // vágott, tehát az egysoros válaszból ÜRES szöveg lett, és a hívó azt a
+        // félrevezető hibát kapta, hogy a válasz nem tartalmaz JSON-t — miközben egy
+        // kész terv volt benne. A javító kör ilyenkor fölöslegesen fut, és pénzbe kerül.
+        assertEquals("Heti terv", PlanParser.parsePlan("```$minimalPlan```").getOrThrow().planTitle)
+        assertEquals("Heti terv", PlanParser.parsePlan("```json $minimalPlan```").getOrThrow().planTitle)
+    }
+
+    @Test
+    fun `a truncated fenced response still reports a truncated plan`() {
+        // A kerítés levétele nem moshatja el a csonka választ: a „nincs JSON" és a
+        // „nincs lezárva" két külön ok, és a felhasználó az utóbbit értheti csak meg.
+        val result = PlanParser.parsePlan("```json\n" + minimalPlan.dropLast(40))
+        assertTrue(result.isFailure)
+        assertTrue(result.exceptionOrNull()!!.message!!.contains("csonka"))
+    }
+
+    @Test
     fun `ignores chatter around the json object`() {
         val chatty = "Persze, itt a terved:\n$minimalPlan\nJó étvágyat!"
         assertEquals(1, PlanParser.parsePlan(chatty).getOrThrow().days.size)

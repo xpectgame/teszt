@@ -62,8 +62,20 @@ object PlanParser {
         throw IllegalArgumentException("A JSON objektum nincs lezárva (a válasz valószínűleg csonka).")
     }
 
+    /**
+     * A körülölelő ```-kerítés levétele.
+     *
+     * A nyitó kerítés után állhat nyelvjelölés (```json), és utána jöhet SORTÖRÉS, de
+     * jöhet azonnal a tartalom is. Korábban a sortörés volt a határ, és ha nem volt
+     * benne, az egész válaszból üres szöveg lett — a hívó pedig azt a félrevezető
+     * hibát kapta, hogy a válasz nem tartalmaz JSON-t. Egy kész terv veszett el vele,
+     * és a javító kör pénzbe kerül.
+     *
+     * A nyelvjelölést nem itt vágjuk le: az objektum kikeresése úgyis az első `{`-nél
+     * kezdődik, tehát ami előtte áll, az magától kimarad.
+     */
     private fun String.removeCodeFence(): String {
         if (!startsWith("```")) return this
-        return substringAfter('\n', "").substringBeforeLast("```").trim()
+        return drop(3).substringBeforeLast("```").trim()
     }
 }
