@@ -136,6 +136,7 @@ class BackendClient(
         device: String,
         crashes: List<CrashRecord>,
         events: Map<String, Int>,
+        firstToday: Boolean,
     ) {
         val body = json.encodeToString(
             TelemetryRequest.serializer(),
@@ -153,6 +154,7 @@ class BackendClient(
                     )
                 },
                 events = events,
+                firstToday = firstToday,
             ),
         )
         execute(post("v1/telemetry", body)).use { response -> checkOk(response) }
@@ -256,6 +258,7 @@ private data class TelemetryRequest(
     val device: String,
     val crashes: List<TelemetryCrash>,
     val events: Map<String, Int>,
+    @SerialName("first_today") val firstToday: Boolean = true,
 )
 
 @Serializable

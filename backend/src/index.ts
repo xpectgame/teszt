@@ -475,6 +475,7 @@ app.post('/v1/telemetry', async (c) => {
       happened_at?: number
     }>
     events?: Record<string, number>
+    first_today?: boolean
   } | null
 
   if (!body) return c.json({ error: 'BAD_REQUEST', message: 'Hibás kérés.' }, 400)
@@ -507,6 +508,15 @@ app.post('/v1/telemetry', async (c) => {
   }
 
   const day = /^\d{4}-\d{2}-\d{2}$/.test(String(body.day)) ? String(body.day) : isoDay(now)
+  // Hány EMBER használta aznap az appot, nem hány feltöltés jött.
+  //
+  // A kliens indításkor is feltölt, tehát naponta többször küld. Feltöltésenként egyet
+  // adva a számhoz az derült ki, hogy aki naponta négyszer nyitotta meg az appot, az
+  // négy embernek számított — és pont a legaktívabb felhasználók torzították a
+  // legjobban, felfelé. A kliens ezért megmondja, hogy ez-e az első feltöltése aznap;
+  // a régi appverziók hiányzó mezőjét óvatosan nullának vesszük, mert felfelé hazudni
+  // rosszabb, mint lefelé.
+  const countsAsUser = body.first_today === true ? 1 : 0
   for (const [name, rawCount] of Object.entries(body.events ?? {}).slice(0, MAX_EVENT_NAMES)) {
     if (!/^[a-z0-9_]{1,40}$/.test(name)) continue
     const count = Math.min(Math.max(Math.trunc(Number(rawCount) || 0), 0), MAX_EVENT_COUNT)
@@ -514,12 +524,12 @@ app.post('/v1/telemetry', async (c) => {
     writes.push(
       c.env.DB.prepare(
         `INSERT INTO events (day, name, app_version, count, users, updated_at)
-         VALUES (?1, ?2, ?3, ?4, 1, ?5)
+         VALUES (?1, ?2, ?3, ?4, ?6, ?5)
          ON CONFLICT(day, name, app_version) DO UPDATE SET
            count = events.count + ?4,
-           users = events.users + 1,
+           users = events.users + ?6,
            updated_at = ?5`,
-      ).bind(day, name, appVersion, count, now),
+      ).bind(day, name, appVersion, count, now, countsAsUser),
     )
   }
 

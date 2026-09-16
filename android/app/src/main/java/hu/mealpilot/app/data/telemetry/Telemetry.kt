@@ -48,6 +48,15 @@ enum class TelemetryEvent(val key: String) {
 data class TelemetrySnapshot(
     val day: String,
     val counts: Map<String, Int>,
+    /**
+     * Ez az első sikeres feltöltés erre a napra ebből a telepítésből?
+     *
+     * A szerver ebből számolja, hány ember használta aznap az appot. Enélkül minden
+     * feltöltés új felhasználónak látszott, és az app indításakor is feltöltünk —
+     * vagyis aki naponta négyszer nyitotta meg, az négy embernek számított. Pont a
+     * legaktívabb felhasználók torzították a legjobban a számot, felfelé.
+     */
+    val firstToday: Boolean = true,
 ) {
     val isEmpty: Boolean get() = counts.isEmpty()
 }
@@ -90,7 +99,12 @@ class Telemetry(
                 name to count
             }
             .toMap()
-        return TelemetrySnapshot(day = prefs[K_DAY] ?: LocalDate.now().toString(), counts = counts)
+        val day = prefs[K_DAY] ?: LocalDate.now().toString()
+        return TelemetrySnapshot(
+            day = day,
+            counts = counts,
+            firstToday = prefs[K_COUNTED_DAY] != day,
+        )
     }
 
     /** Csak sikeres feltöltés után hívjuk — így egy elveszett kérés nem visz el egy napot. */
@@ -102,6 +116,9 @@ class Telemetry(
                 if (remaining > 0) prefs[key] = remaining else prefs.remove(key)
             }
             prefs.remove(K_DAY)
+            // Innentől ezt a napot már jelentettük: a további feltöltések nem
+            // növelhetik a napi felhasználószámot.
+            prefs[K_COUNTED_DAY] = snapshot.day
         }
     }
 
@@ -112,5 +129,6 @@ class Telemetry(
     private companion object {
         const val PREFIX = "evt_"
         val K_DAY = stringPreferencesKey("day")
+        val K_COUNTED_DAY = stringPreferencesKey("counted_day")
     }
 }

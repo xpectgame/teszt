@@ -47,6 +47,7 @@ class TelemetryWorker(
                 device = CrashReporter.device,
                 crashes = crashes,
                 events = snapshot.counts,
+                firstToday = snapshot.firstToday,
             )
             if (crashes.isNotEmpty()) CrashReporter.clear(applicationContext)
             if (!snapshot.isEmpty) telemetry.clear(snapshot)
