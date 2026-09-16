@@ -146,7 +146,7 @@ class BackendClient(
                 crashes = crashes.map {
                     TelemetryCrash(
                         exception = it.exception,
-                        message = it.message,
+                        // Üzenet nem megy: szabad szöveg, felhasználói adatot hordozhat.
                         stack = it.stack,
                         fingerprint = it.fingerprint,
                         happenedAt = it.happenedAt,

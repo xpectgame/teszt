@@ -211,9 +211,10 @@ fun SettingsScreen(
                             style = MaterialTheme.typography.titleSmall,
                             fontWeight = FontWeight.SemiBold,
                         )
-                        crash.message?.let {
-                            Text(it, style = MaterialTheme.typography.bodySmall)
-                        }
+                        Text(
+                            crash.exception,
+                            style = MaterialTheme.typography.bodySmall,
+                        )
                         Text(
                             // A teljes verem hosszú; az eleje mondja meg, hol tört el.
                             crash.stack.lineSequence().take(24).joinToString("\n"),
