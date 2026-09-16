@@ -331,6 +331,7 @@
     <string name="offline_tip_water">Igyál napi 2–3 liter folyadékot.</string>
     <string name="offline_tip_protein">A fehérjét oszd el egyenletesen a nap folyamán.</string>
     <string name="offline_chat_needs_network">A beszélgetéshez internetkapcsolat kell.</string>
+    <string name="offline_no_safe_meal">A beépített tervezőnek nincs olyan fogása, ami megfelel a kizárásaidnak. Próbáld újra internetkapcsolattal.</string>
     <string name="offline_cannot_refine">Ez a változat nem tudja átírni a napokat. Próbáld újra, ha van internetkapcsolatod.</string>
     <string name="error_quota_exhausted">Elfogyott az ingyenes próbakeret.</string>
     <string name="profile_activity">Mennyit mozogsz?</string>

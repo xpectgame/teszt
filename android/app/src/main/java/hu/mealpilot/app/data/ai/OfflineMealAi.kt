@@ -16,8 +16,10 @@ import hu.mealpilot.core.ai.ChatContext
 import hu.mealpilot.core.ai.ChatTurn
 import hu.mealpilot.core.ai.GenerationProgress
 import hu.mealpilot.core.ai.MealAi
+import hu.mealpilot.core.ai.RestrictionChecker
 import hu.mealpilot.core.ai.MealSlot
 import hu.mealpilot.core.ai.PlanRequest
+import hu.mealpilot.core.model.DietRestriction
 import kotlin.math.roundToInt
 
 /**
@@ -64,13 +66,12 @@ class OfflineMealAi(
                 title = strings[R.string.offline_day_title, dayIndex + 1],
                 note = strings[R.string.offline_day_note],
                 meals = slots.mapIndexed { slotIndex, slot ->
-                    val bank = bankFor(slot)
-                    val template = bank[(dayIndex * slots.size + slotIndex) % bank.size]
-                    template.scaledTo(
-                        targetKcal = target.kcal * shares[slotIndex],
+                    safeMeal(
                         slot = slot,
+                        startIndex = dayIndex * slots.size + slotIndex,
+                        targetKcal = target.kcal * shares[slotIndex],
                         time = request.profile.mealTimes.getOrNull(slotIndex) ?: slot.defaultTime,
-                        language = language,
+                        restrictions = request.profile.effectiveRestrictions,
                     )
                 },
             )
@@ -130,6 +131,40 @@ class OfflineMealAi(
         }
         val sum = weights.sum()
         return weights.map { it / sum }
+    }
+
+    /**
+     * A következő olyan sablon, amit ezzel a kizárással KI IS SZABAD adni.
+     *
+     * A sablonos tervező eddig kizárólag a napok és a fogások sorszámából választott, a
+     * profilt meg sem nézte. A modell válaszát a [RestrictionChecker] átvizsgálja, és
+     * hiba esetén javító kör készül — itt viszont nincs kit megkérni a javításra: ezt a
+     * tervet MI rakjuk ki, és egyenesen a felhasználóhoz kerül.
+     *
+     * Ez az út nem ritka: akkor lép működésbe, ha a tervezés félbeszakad (hálózat,
+     * kvóta, modellhiba), tehát pont akkor, amikor a felhasználó amúgy is bosszankodik.
+     * A sablonok között van „teljes kiőrlésű kenyér" és „görög joghurt dióval" is —
+     * vagyis egy gluténérzékeny vagy mogyoróallergiás felhasználó azt kapta volna, amit
+     * a saját profiljában kizárt.
+     *
+     * Ha egyetlen sablon sem felel meg, HIBÁT dobunk. Kevesebb nappal beérni rossz;
+     * allergént kiadni sokkal rosszabb, és ezt a különbséget nem szabad elmosni.
+     */
+    private fun safeMeal(
+        slot: MealSlot,
+        startIndex: Int,
+        targetKcal: Double,
+        time: String,
+        restrictions: Set<DietRestriction>,
+    ): AiMeal {
+        val bank = bankFor(slot)
+        // Ugyanonnan indulunk, mint eddig — kizárás nélkül a választás változatlan.
+        for (offset in bank.indices) {
+            val candidate = bank[(startIndex + offset) % bank.size]
+                .scaledTo(targetKcal = targetKcal, slot = slot, time = time, language = language)
+            if (RestrictionChecker.isSafe(candidate, restrictions, language)) return candidate
+        }
+        throw MealAiException(strings[R.string.offline_no_safe_meal])
     }
 
     private fun bankFor(slot: MealSlot): List<Template> = when (slot) {

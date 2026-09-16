@@ -328,4 +328,51 @@ class RestrictionCheckerTest {
         // A jelölő nélkül viszont ugyanaz a hozzávaló ütközik.
         assertEquals(listOf(DietRestriction.GLUTEN), hits("tészta", DietRestriction.GLUTEN))
     }
+
+    @Test
+    fun `a meal can be judged safe or unsafe before it is ever served`() {
+        // A beépített, sablonos tervező maga rakja ki a fogásokat, és nincs kit
+        // megkérni a javításra: amit kiad, az egyenesen a felhasználóhoz kerül.
+        // Ezért kell tudni ELŐRE, hogy egy fogás kiadható-e.
+        val walnutYoghurt = AiMeal(
+            name = "Görög joghurt dióval",
+            ingredients = listOf(
+                AiIngredient(name = "görög joghurt", quantity = 150.0, unit = "g"),
+                AiIngredient(name = "dió", quantity = 20.0, unit = "g"),
+            ),
+        )
+        val oatmeal = AiMeal(
+            name = "Zabkása vízzel",
+            ingredients = listOf(AiIngredient(name = "zabpehely", quantity = 60.0, unit = "g")),
+        )
+
+        assertFalse(
+            "Diós fogás nem adható mogyoróallergiásnak",
+            RestrictionChecker.isSafe(walnutYoghurt, setOf(DietRestriction.TREE_NUT), AppLanguage.HU),
+        )
+        assertFalse(
+            "Joghurtos fogás nem adható laktózérzékenynek",
+            RestrictionChecker.isSafe(walnutYoghurt, setOf(DietRestriction.LACTOSE), AppLanguage.HU),
+        )
+        assertTrue(
+            "Ami nem ütközik, az kiadható",
+            RestrictionChecker.isSafe(oatmeal, setOf(DietRestriction.TREE_NUT, DietRestriction.LACTOSE), AppLanguage.HU),
+        )
+        assertTrue(
+            "Kizárás nélkül minden kiadható",
+            RestrictionChecker.isSafe(walnutYoghurt, emptySet(), AppLanguage.HU),
+        )
+    }
+
+    @Test
+    fun `a dangerous name is caught even when the ingredients look clean`() {
+        // A sablon hozzávalólistája hiányos lehet; a fogás NEVE is árulkodik.
+        val meal = AiMeal(
+            name = "Mogyoróvajas pirítós",
+            ingredients = listOf(AiIngredient(name = "kenyér", quantity = 60.0, unit = "g")),
+        )
+        assertFalse(
+            RestrictionChecker.isSafe(meal, setOf(DietRestriction.PEANUT), AppLanguage.HU),
+        )
+    }
 }

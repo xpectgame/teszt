@@ -50,6 +50,20 @@ object RestrictionChecker {
         }
     }
 
+    /**
+     * Kiszolgálható-e ez a fogás ezekkel a kizárásokkal?
+     *
+     * A [check] a MODELL válaszát vizsgálja, és a hibából javító kör lesz. Ez a
+     * függvény ott kell, ahol nincs kit megkérni a javításra: a beépített, sablonos
+     * tervező maga rakja ki a fogásokat, tehát neki előre kell tudnia, melyiket nem
+     * szabad kiadnia.
+     */
+    fun isSafe(meal: AiMeal, restrictions: Set<DietRestriction>, language: AppLanguage): Boolean {
+        if (restrictions.isEmpty()) return true
+        if (violations(meal.name, restrictions, language).isNotEmpty()) return false
+        return meal.ingredients.none { violations(it.name, restrictions, language).isNotEmpty() }
+    }
+
     /** A teljes terv ellenőrzése; a talált hibák a javító prompt bemenetei. */
     fun check(
         plan: AiPlanResponse,
