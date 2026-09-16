@@ -97,3 +97,43 @@ describe('a napi számlálók feltöltése', () => {
     expect(stored.stored, 'csak a weight_logged marad').toBe(1)
   })
 })
+
+describe('az appverzió megszelídítése', () => {
+  /** Az events INSERT ?3 paramétere az appverzió. */
+  function versionIn(statements: any[]): string {
+    const row = statements.find((s) => String(s.sql).includes('INTO events'))
+    return String(row.args[2])
+  }
+
+  async function uploadWithVersion(version: string) {
+    const batches: unknown[][] = []
+    await app.fetch(
+      new Request('https://example.workers.dev/v1/telemetry', {
+        method: 'POST',
+        headers: {
+          authorization: 'Bearer aaaaaaaaaaaaaaaaaaaaaaaa',
+          'content-type': 'application/json',
+          'x-app-version': version,
+        },
+        body: JSON.stringify({ day: '2026-09-16', events: { app_open: 1 }, first_today: true }),
+      }),
+      envCapturing(batches),
+      ctx,
+    )
+    return versionIn(batches[0] as any[])
+  }
+
+  it('a valódi verziót változatlanul hagyja', async () => {
+    // A CI a futás sorszámát is beleírja: „0.1.0 (123)". A szóköz és a zárójel
+    // tehát nem szemét, hanem a normál alak.
+    expect(await uploadWithVersion('0.1.0 (123)')).toBe('0.1.0 (123)')
+  })
+
+  it('a hosszú és szemetes verziót levágja', async () => {
+    // Az appverzió az events tábla elsődleges kulcsának része: korlátozás nélkül
+    // minden kitalált érték új sort nyitna ugyanarra az eseményre.
+    expect(await uploadWithVersion('x'.repeat(500))).toHaveLength(40)
+    expect(await uploadWithVersion('1.0<script>')).toBe('1.0script')
+    expect(await uploadWithVersion('\n\t  ')).toBe('')
+  })
+})

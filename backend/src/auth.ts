@@ -44,6 +44,25 @@ function readInstallToken(request: Request): string {
   return token
 }
 
+/**
+ * Az appverzió megszelídítése.
+ *
+ * Ez az EGYETLEN kliensoldali szabad szöveg, ami elsődleges kulcsba kerül: az `events`
+ * tábla kulcsa (nap, eseménynév, appverzió). Korlátozás nélkül egy hamis kliens
+ * tetszőleges számú különböző verziót küldhetne, és minden egyes érték új sort nyitna
+ * ugyanarra az eseményre — a tábla a kérések számával nőne, a napi számlálók pedig
+ * használhatatlan szilánkokra esnének szét.
+ *
+ * A valódi verzió „0.1.0 (123)" alakú, ezért a szóköz és a zárójel is megengedett. Ami
+ * ezen kívül esik, azt kivágjuk, nem az egész értéket dobjuk el: egy elgépelt karakter
+ * miatt ne veszítsük el a verziót.
+ */
+function cleanAppVersion(raw: string | null): string | null {
+  if (!raw) return null
+  const cleaned = raw.slice(0, 40).replace(/[^A-Za-z0-9 ._+()-]/g, '').trim()
+  return cleaned.length > 0 ? cleaned : null
+}
+
 function limitsFor(env: Env, tier: Tier): TierLimits {
   const base = DEFAULT_LIMITS[tier]
   const configured =
@@ -73,7 +92,7 @@ function secretMatches(provided: string, expected: string): boolean {
 export async function resolveCaller(env: Env, request: Request): Promise<Caller> {
   const installToken = readInstallToken(request)
   const userId = await sha256Hex(installToken)
-  const appVersion = request.headers.get('x-app-version')
+  const appVersion = cleanAppVersion(request.headers.get('x-app-version'))
   const user = await touchUser(env, userId, appVersion)
 
   // A fejlesztő saját buildje. Ez megelőz mindent: nem a boltból jön, nincs vásárlási
