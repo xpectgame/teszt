@@ -59,6 +59,9 @@ enum class DietRestriction(
             "morzsa", "gríz", "griz", "tarhonya", "keksz", "ostya", "pékáru", "pekaru", "sör",
             "durum", "búzadara", "buzadara", "palacsinta", "piskóta", "piskota",
             "spagetti", "makaróni", "makaroni", "csusza", "galuska", "nokedli",
+            // Ezek az ANGOL listán rajta voltak, a magyarról lemaradtak — pedig a
+            // croissant és a bagett magyar reggeliben is gyakori.
+            "croissant", "bagett", "briós", "brios", "muffin", "pogácsa", "pogacsa",
             "pirítós", "piritos", "panír", "panir", "panírozott", "panirozott",
             // Szóközzel: a „rántotta" is ezzel kezdődik, azt viszont a tojás kizárása
             // fogja meg, nem a gluténé.
@@ -95,6 +98,8 @@ enum class DietRestriction(
             "camembert", "cottage", "tejpor", "trappista", "gouda", "cheddar", "brie", "eidami", "körözött", "korozott",
         ),
         safeMarkers = listOf("laktózmentes", "laktozmentes", "növényi", "novenyi", "zabtej", "szójatej", "szojatej", "mandulatej", "rizstej"),
+        // A vajbab és a vajretek zöldség — a „vaj" előtag ragadt beléjük.
+        exceptions = listOf("vajbab", "vajretek"),
         en = "Lactose",
         noteEn = "Lactose-free dairy stays allowed.",
         ruleEn = "No lactose-containing dairy; lactose-free versions are fine.",
@@ -127,6 +132,8 @@ enum class DietRestriction(
             "camembert", "cottage", "tejpor", "kazein", "tejsavó", "tejsavo", "trappista", "gouda", "cheddar", "brie", "eidami", "körözött", "korozott",
         ),
         safeMarkers = listOf("növényi", "novenyi", "zabtej", "szójatej", "szojatej", "mandulatej", "rizstej", "kókusztej", "kokusztej"),
+        // A vajbab és a vajretek zöldség — a „vaj" előtag ragadt beléjük.
+        exceptions = listOf("vajbab", "vajretek"),
         en = "Milk protein (casein)",
         noteEn = "Stricter than lactose intolerance: lactose-free milk is out too.",
         ruleEn = "No dairy-derived ingredient at all, not even lactose-free ones (they still contain casein and whey). Plant alternatives are fine.",
@@ -170,6 +177,9 @@ enum class DietRestriction(
             "hal", "lazac", "tonhal", "pisztráng", "pisztrang", "hering", "szardínia", "szardinia",
             "tőkehal", "tokehal", "harcsa", "ponty", "szardella", "makréla", "makrela", "halszósz", "halszosz",
         ),
+        // A „hal" előtag beleragad a halloumiba (sajt), a halványítóba (halványító
+        // zeller) és a halvába (szezámos édesség). Egyik sem hal.
+        exceptions = listOf("halloumi", "halvány", "halvany", "halva"),
         en = "Fish",
         noteEn = "",
         ruleEn = "No fish, fish products, fish sauce or fish oil.",
@@ -182,7 +192,22 @@ enum class DietRestriction(
     CRUSTACEAN(
         "Rákfélék", Group.ANIMAL, Severity.STRICT, "",
         "Rák, garnéla, homár és minden rákféle tiltott.",
-        listOf("rák", "rak", "garnéla", "garnela", "homár", "homar", "languszta", "scampi"),
+        // A „rak" (ékezet nélküli rák) ELŐTAGKÉNT a magyar egyik legtermékenyebb
+        // szótöve: rakott krumpli, rakott kel, rakéta saláta, raktár. Emiatt minden
+        // rakott étel rákallergiás találatnak számított, és fölösleges javító körökbe
+        // vitte a tervet — ami két kör után minőségi hibaként el is bukik.
+        //
+        // Az ékezetes „rák" ártalmatlan: a „rakott" nem kezdődik vele. A modell
+        // magyarul ékezetesen ír, tehát a veszteség elméleti, a nyereség nem.
+        listOf(
+            "rák", "garnéla", "garnela", "homár", "homar", "languszta", "scampi",
+            // A „rák" három betű, ezért a szóVÉGI egyezés (ami négytől fut) nem
+            // találja meg az összetételekben. A küszöb általános leszállítása viszont
+            // rosszabb lenne: a „vaj" szóvégi egyezése a mogyoróvajat tenné tejtermékké.
+            "tarisznyarák", "remeterák",
+        ),
+        // A Rákóczi túrós nem tengeri herkentyű.
+        exceptions = listOf("rákóczi", "rakoczi"),
         en = "Crustaceans",
         noteEn = "",
         ruleEn = "No crab, prawn, shrimp, lobster or any crustacean.",
@@ -194,6 +219,8 @@ enum class DietRestriction(
         "Puhatestűek", Group.ANIMAL, Severity.STRICT, "",
         "Kagyló, tintahal, polip, csiga nem szerepelhet.",
         listOf("kagyló", "kagylo", "tintahal", "polip", "csiga", "osztriga", "kalamári", "kalamari"),
+        // A csigatészta a húsleves tartozéka, nem csiga.
+        exceptions = listOf("csigatészt", "csigateszt"),
         en = "Molluscs",
         noteEn = "",
         ruleEn = "No mussels, squid, octopus or snails.",
@@ -206,8 +233,23 @@ enum class DietRestriction(
     // ---------- Magvak, hüvelyesek ----------
     PEANUT(
         "Földimogyoró", Group.NUTS_SEEDS, Severity.STRICT, "",
-        "Földimogyoró, mogyoróvaj, arachisolaj nem szerepelhet.",
-        listOf("földimogyoró", "foldimogyoro", "mogyoróvaj", "mogyorovaj", "arachis"),
+        "Földimogyoró, mogyoróvaj, arachisolaj nem szerepelhet. A magyar „mogyoró” a boltban " +
+            "rendszerint földimogyoró, ezért azt is kizárjuk — ha dióféle mogyorót írnál, " +
+            "nevezd törökmogyorónak.",
+        // A „mogyoró" a magyar köznyelvben földimogyorót is jelent: a „sós mogyoró"
+        // és a „pörkölt mogyoró" is az. Enélkül a mogyoróallergiás felhasználó úgy
+        // kapta volna meg a legveszélyesebb allergént, hogy semmi nem szól — a
+        // dióféléket jelölő TREE_NUT ugyanis csak akkor fut, ha azt IS bejelölte.
+        //
+        // Cserébe a valódi mogyoró (dióféle) is földimogyoró-találatot ad. Ez az
+        // elfogadható irány: egy fölösleges javító kör ára egy kör, egy kimaradt
+        // földimogyoróé egy anafilaxia.
+        listOf(
+            "földimogyoró", "foldimogyoro", "mogyoróvaj", "mogyorovaj", "arachis",
+            "mogyoró", "mogyoro",
+        ),
+        // A mogyoróhagyma (salotta) nem mogyoró, csak így hívják.
+        exceptions = listOf("mogyoróhagym", "mogyorohagym"),
         en = "Peanut",
         noteEn = "",
         ruleEn = "No peanuts, peanut butter or arachis oil.",
@@ -223,6 +265,8 @@ enum class DietRestriction(
             "dió", "dio", "mandula", "mogyoró", "mogyoro", "kesu", "pisztácia", "pisztacia",
             "pekándió", "pekandio", "makadámia", "makadamia", "marcipán", "marcipan",
         ),
+        // A mogyoróhagyma (salotta) hagyma, nem dióféle.
+        exceptions = listOf("mogyoróhagym", "mogyorohagym"),
         en = "Tree nuts",
         noteEn = "Walnut, almond, hazelnut, cashew, pistachio.",
         ruleEn = "No tree nuts at all (walnut, almond, hazelnut, cashew, pistachio, pecan, macadamia).",
@@ -237,7 +281,7 @@ enum class DietRestriction(
     SOY(
         "Szója", Group.NUTS_SEEDS, Severity.STRICT, "",
         "Szója, tofu, tempeh, szójaszósz, miso nem szerepelhet.",
-        listOf("szója", "szoja", "tofu", "tempeh", "szójaszósz", "szojaszosz", "miso", "edamame"),
+        listOf("szója", "szoja", "tofu", "tempeh", "szójaszósz", "szojaszosz", "miso", "edamame", "tamari"),
         en = "Soy",
         noteEn = "",
         ruleEn = "No soy, tofu, tempeh, soy sauce or miso.",
@@ -248,7 +292,7 @@ enum class DietRestriction(
     SESAME(
         "Szezám", Group.NUTS_SEEDS, Severity.STRICT, "",
         "Szezámmag, tahini, szezámolaj nem szerepelhet.",
-        listOf("szezám", "szezam", "tahini", "humusz", "hummusz"),
+        listOf("szezám", "szezam", "tahini", "humusz", "hummusz", "halva"),
         en = "Sesame",
         noteEn = "",
         ruleEn = "No sesame seeds, tahini or sesame oil.",
@@ -348,7 +392,8 @@ enum class DietRestriction(
         "Alacsony FODMAP étrendet tervezz: hagyma, fokhagyma, búza, bab, lencse, csicseriborsó, " +
             "karfiol, alma, körte kerülendő.",
         listOf("hagyma", "fokhagyma", "bab", "lencse", "csicseriborsó", "csicseriborso", "karfiol", "alma", "körte", "korte"),
-        exceptions = listOf("babérlevél", "baberlevel", "babér", "baber"),
+        // A babapiskóta keksz, nem hüvelyes; a toldalék miatt tőalakban.
+        exceptions = listOf("babérlevél", "baberlevel", "babér", "baber", "babapiskót"),
         en = "FODMAP sensitivity",
         noteEn = "Common with IBS. Follows the low-FODMAP approach.",
         ruleEn = "Plan a low-FODMAP diet: avoid onion, garlic, wheat, beans, lentils, chickpeas, cauliflower, apple and pear.",
@@ -455,7 +500,9 @@ enum class DietRestriction(
         "Kóser", Group.CHOICE, Severity.PREFERENCE,
         "Sertés és a hús-tej együttes használata kizárva.",
         "Sertés, rákfélék, puhatestűek nem szerepelhetnek, és egy fogásban ne legyen együtt hús és tejtermék.",
-        listOf("sertés", "sertes", "szalonna", "sonka", "bacon", "rák", "rak", "garnéla", "garnela", "kagyló", "kagylo"),
+        // „rak" nincs a listán: lásd a CRUSTACEAN indoklását — a rakott krumpli nem rák.
+        listOf("sertés", "sertes", "szalonna", "sonka", "bacon", "rák", "garnéla", "garnela", "kagyló", "kagylo"),
+        exceptions = listOf("rákóczi", "rakoczi"),
         en = "Kosher",
         noteEn = "No pork, and no meat and dairy in the same dish.",
         ruleEn = "No pork, crustaceans or molluscs, and do not put meat and dairy in the same dish.",

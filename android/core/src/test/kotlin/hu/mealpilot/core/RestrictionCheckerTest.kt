@@ -314,8 +314,9 @@ class RestrictionCheckerTest {
         assertEquals(emptyList<DietRestriction>(), hits("gluténmentes tészta", DietRestriction.GLUTEN))
         assertEquals(emptyList<DietRestriction>(), hits("laktózmentes sajt", DietRestriction.LACTOSE))
         assertEquals(emptyList<DietRestriction>(), hits("mandulatej", DietRestriction.LACTOSE))
-        // A mogyoró dióféle, nem földimogyoró — a kettő külön allergia.
-        assertEquals(emptyList<DietRestriction>(), hits("mogyoró", DietRestriction.PEANUT))
+        // A mogyoróhagyma (salotta) egyik diófélével sem ütközik.
+        assertEquals(emptyList<DietRestriction>(), hits("mogyoróhagyma", DietRestriction.PEANUT))
+        assertEquals(emptyList<DietRestriction>(), hits("mogyoróhagyma", DietRestriction.TREE_NUT))
     }
 
     @Test
@@ -374,5 +375,96 @@ class RestrictionCheckerTest {
         assertFalse(
             RestrictionChecker.isSafe(meal, setOf(DietRestriction.PEANUT), AppLanguage.HU),
         )
+    }
+
+    @Test
+    fun `the hungarian word for hazelnut also means peanut in everyday use`() {
+        // Ez egy KORÁBBI, szándékos döntés megfordítása. A régi szabály botanikailag
+        // helyes volt: a mogyoró dióféle (Corylus), a földimogyoró hüvelyes (Arachis),
+        // és a kettő külön allergia.
+        //
+        // A magyar boltban viszont a „sós mogyoró" és a „pörkölt mogyoró" földimogyoró.
+        // A régi szabály mellett az a földimogyoró-allergiás, aki a dióféléket NEM
+        // jelölte be — és nincs is rá oka, ha csak a földimogyoróra allergiás —,
+        // pontosan a legveszélyesebb allergént kapta volna meg némán.
+        //
+        // A két hiba ára nem egyforma: a téves találat egy javító kör, a kimaradté egy
+        // anafilaxia. Az app máshol is ezt az irányt választja („inkább maradjon a régi
+        // nap, mint hogy allergén kerüljön a tervbe").
+        assertEquals(listOf(DietRestriction.PEANUT), hits("sós mogyoró", DietRestriction.PEANUT))
+        assertEquals(listOf(DietRestriction.PEANUT), hits("pörkölt mogyoró", DietRestriction.PEANUT))
+
+        // Az ára: a valódi dióféle is földimogyoró-találatot ad. Ezt vállaljuk.
+        assertEquals(listOf(DietRestriction.PEANUT), hits("mogyorókrém", DietRestriction.PEANUT))
+    }
+
+    @Test
+    fun `everyday hungarian dishes are not mistaken for shellfish or molluscs`() {
+        // A „rak" (ékezet nélküli rák) a magyar egyik legtermékenyebb szótöve. Emiatt
+        // MINDEN rakott étel rákallergiás találat volt — a rakott krumpli, a rakott kel
+        // és a rakéta saláta is. Nem elméleti: ezek a leggyakoribb magyar fogások közé
+        // tartoznak, és minden találat egy fölösleges, fizetős javító kör.
+        for (name in listOf("rakott krumpli", "rakott kel", "rakott tészta", "rakéta saláta")) {
+            assertEquals(name, emptyList<DietRestriction>(), hits(name, DietRestriction.CRUSTACEAN))
+        }
+        assertEquals(emptyList<DietRestriction>(), hits("rákóczi túrós", DietRestriction.CRUSTACEAN))
+        // A valódi rák továbbra is találat.
+        assertEquals(listOf(DietRestriction.CRUSTACEAN), hits("folyami rák", DietRestriction.CRUSTACEAN))
+        assertEquals(listOf(DietRestriction.CRUSTACEAN), hits("garnélarák", DietRestriction.CRUSTACEAN))
+
+        // A csigatészta a húsleves tartozéka, nem csiga.
+        assertEquals(emptyList<DietRestriction>(), hits("csigatészta", DietRestriction.MOLLUSC))
+        assertEquals(emptyList<DietRestriction>(), hits("húsleves csigatésztával", DietRestriction.MOLLUSC))
+        assertEquals(listOf(DietRestriction.MOLLUSC), hits("fekete kagyló", DietRestriction.MOLLUSC))
+    }
+
+    @Test
+    fun `the fish prefix does not swallow cheese and celery`() {
+        // A „hal" előtag beleragadt a halloumiba (sajt) és a halványító zellerbe.
+        assertEquals(emptyList<DietRestriction>(), hits("halloumi", DietRestriction.FISH))
+        assertEquals(emptyList<DietRestriction>(), hits("halványító zeller", DietRestriction.FISH))
+        // A valódi hal továbbra is találat.
+        assertEquals(listOf(DietRestriction.FISH), hits("füstölt lazac", DietRestriction.FISH))
+        assertEquals(listOf(DietRestriction.FISH), hits("halfilé", DietRestriction.FISH))
+    }
+
+    @Test
+    fun `vegetables are not mistaken for dairy or beans`() {
+        // A „vaj" előtag beleragadt a vajbabba és a vajretekbe, a „bab" a
+        // babapiskótába. Mind a három hétköznapi magyar alapanyag.
+        assertEquals(emptyList<DietRestriction>(), hits("vajbabfőzelék", DietRestriction.LACTOSE))
+        assertEquals(emptyList<DietRestriction>(), hits("vajbab", DietRestriction.MILK_PROTEIN))
+        assertEquals(emptyList<DietRestriction>(), hits("vajretek", DietRestriction.LACTOSE))
+        assertEquals(emptyList<DietRestriction>(), hits("babapiskóta", DietRestriction.FODMAP))
+        // A valódi vaj és bab továbbra is találat.
+        assertEquals(listOf(DietRestriction.LACTOSE), hits("vajas pirítós", DietRestriction.LACTOSE))
+        assertEquals(listOf(DietRestriction.FODMAP), hits("fehér bab", DietRestriction.FODMAP))
+    }
+
+    @Test
+    fun `an exception survives hungarian suffixes`() {
+        // A magyar toldalék megnyújtja a tővéghangzót: „csigatészta" -> „csigatésztával".
+        // A kivételeket ezért TŐALAKBAN kell megadni, különben a toldalékos alakon
+        // átcsúszik a találat — és pont a toldalékos alak fordul elő a mondatban.
+        assertEquals(emptyList<DietRestriction>(), hits("csigatészta", DietRestriction.MOLLUSC))
+        assertEquals(emptyList<DietRestriction>(), hits("csigatésztával", DietRestriction.MOLLUSC))
+        assertEquals(emptyList<DietRestriction>(), hits("mogyoróhagymával", DietRestriction.TREE_NUT))
+    }
+
+    @Test
+    fun `common bakery items missing from the hungarian list are caught`() {
+        // Ezek az ANGOL kulcsszólistán rajta voltak, a magyarról lemaradtak. Egy
+        // gluténérzékeny magyar felhasználó croissant-t kaphatott volna reggelire.
+        for (name in listOf("vajas croissant", "bagett", "sajtos pogácsa", "briós")) {
+            assertEquals(name, listOf(DietRestriction.GLUTEN), hits(name, DietRestriction.GLUTEN))
+        }
+    }
+
+    @Test
+    fun `sesame and soy hide behind less common names`() {
+        assertEquals(listOf(DietRestriction.SESAME), hits("halva", DietRestriction.SESAME))
+        assertEquals(listOf(DietRestriction.SOY), hits("tamari szósz", DietRestriction.SOY))
+        // A „rák" három betű, ezért a szóvégi egyezés nem futott rá az összetételekre.
+        assertEquals(listOf(DietRestriction.CRUSTACEAN), hits("tarisznyarák", DietRestriction.CRUSTACEAN))
     }
 }
