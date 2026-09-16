@@ -335,6 +335,11 @@
     <string name="refine_conflicts_restrictions">Az átírt nap a javítás után is ütközött a kizárásaiddal, ezért az eredeti nap maradt. Részletek: %1$s</string>
     <string name="offline_cannot_refine">Ez a változat nem tudja átírni a napokat. Próbáld újra, ha van internetkapcsolatod.</string>
     <string name="error_quota_exhausted">Elfogyott az ingyenes próbakeret.</string>
+    <string name="error_quota_plans">Elhasználtad az ingyenes terveidet. Az előfizetéssel korlátlanul tervezhetsz.</string>
+    <string name="error_quota_messages">Elfogytak a próbaidőszak üzenetei. Az előfizetéssel korlátlanul beszélgethetsz.</string>
+    <string name="error_premium_only">Ez a funkció a teljes csomag része.</string>
+    <string name="error_plan_too_long">Az ingyenes csomagban ennél rövidebb terv kérhető.</string>
+    <string name="error_token_cap">Ebben az időszakban szokatlanul sok kérés futott le erről a telepítésről. Írj nekünk, ha ez tévedés.</string>
     <string name="profile_activity">Mennyit mozogsz?</string>
     <string name="achievement_unlocked">Megvan</string>
     <!-- „Ma" képernyő — a Tányér dizájn hős doboza és étkezéslapkái -->

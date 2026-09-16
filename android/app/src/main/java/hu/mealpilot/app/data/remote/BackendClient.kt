@@ -102,8 +102,13 @@ class BackendClient(
                         onChars(text.length)
                     }
 
+                    // A KÓDBÓL választunk szöveget, nem a szerver mondatából: a
+                    // szerver üzenetei csak magyarul léteznek.
                     "error" -> throw MealAiException(
-                        event.message ?: strings[R.string.error_planner_service]
+                        when (event.code) {
+                            "RATE_LIMIT" -> strings[R.string.error_busy]
+                            else -> strings[R.string.error_planner_service]
+                        }
                     )
 
                     "done" -> sawDone = true
@@ -189,6 +194,26 @@ class BackendClient(
         )
     }
 
+    /**
+     * A kvótahiba szövege a KÓDBÓL, nem a szerver mondatából.
+     *
+     * A szerver üzenetei csak magyarul léteznek — nem is kaphat nyelvet minden
+     * végponton. A fizetőfal viszont a legfontosabb szöveg az appban: ott kérünk
+     * pénzt. Egy angol felhasználó eddig magyarul kapta meg, hogy elfogyott a kerete,
+     * pont abban a pillanatban.
+     *
+     * A kód a szerződés a két oldal között, a szöveg nem. Ismeretlen kódnál marad az
+     * általános szöveg — az is a felhasználó nyelvén.
+     */
+    private fun quotaMessage(code: String?): String = when (code) {
+        "PLAN_QUOTA" -> strings[R.string.error_quota_plans]
+        "MESSAGE_QUOTA" -> strings[R.string.error_quota_messages]
+        "PREMIUM_ONLY" -> strings[R.string.error_premium_only]
+        "PLAN_TOO_LONG" -> strings[R.string.error_plan_too_long]
+        "TOKEN_CAP" -> strings[R.string.error_token_cap]
+        else -> strings[R.string.error_quota_exhausted]
+    }
+
     private fun checkOk(response: Response) {
         if (response.isSuccessful) return
         val raw = response.body?.string().orEmpty()
@@ -197,7 +222,7 @@ class BackendClient(
         when (response.code) {
             402 -> throw QuotaExceededException(
                 code = error?.error ?: "QUOTA",
-                message = error?.message ?: strings[R.string.error_quota_exhausted],
+                message = quotaMessage(error?.error),
                 upgradeOffered = error?.upgrade ?: true,
             )
 
@@ -215,8 +240,10 @@ class BackendClient(
                 strings[R.string.error_service_down]
             )
 
+            // A szerver szövege itt fejlesztőnek szól („Ismeretlen feladat."), és csak
+            // magyarul létezik. A felhasználónak a HTTP kód többet mond, a saját nyelvén.
             else -> throw MealAiException(
-                error?.message ?: strings[R.string.error_service_refused, response.code]
+                strings[R.string.error_service_refused, response.code]
             )
         }
     }

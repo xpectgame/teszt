@@ -202,9 +202,15 @@ def main() -> int:
         print(f'\n{len(problems)} hiba. Ezek futásidőben omlasztanák az appot.')
         return 1
 
+    # KULCSOKAT és HÍVÁSOKAT külön írunk ki. A kettő nem ugyanaz, és amíg csak a
+    # kulcsok száma látszott „hívás" néven, a szám nem volt mihez mérni: új hívás
+    # hozzáadásakor nem mozdult, ha a kulcs már szerepelt máshol. Egy őr, aminek a
+    # számát nem lehet ellenőrizni, pont annyit ér, mintha nem is írna ki semmit.
+    call_sites = sum(len(uses) for uses in calls.values())
+    plural_sites = sum(len(uses) for uses in plural_calls.values())
     print(
-        f'Rendben: {len(calls)} szöveg- és {len(plural_calls)} darabszámos '
-        f'erőforrás-hívás helyőrzői egyeznek.'
+        f'Rendben: {call_sites} szöveghívás ({len(calls)} kulcs) és '
+        f'{plural_sites} darabszámos hívás ({len(plural_calls)} kulcs) helyőrzői egyeznek.'
     )
     return 0
 

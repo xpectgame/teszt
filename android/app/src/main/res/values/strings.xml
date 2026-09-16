@@ -336,6 +336,11 @@
     <string name="refine_conflicts_restrictions">The rewritten day kept clashing with your exclusions, so the original day was kept. Details: %1$s</string>
     <string name="offline_cannot_refine">This version can\'t rewrite days. Try again when you have an internet connection.</string>
     <string name="error_quota_exhausted">You\'ve used up your free trial.</string>
+    <string name="error_quota_plans">You have used up your free meal plans. A subscription gives you unlimited plans.</string>
+    <string name="error_quota_messages">You have used up the trial messages. A subscription lets you chat without limits.</string>
+    <string name="error_premium_only">This feature is part of the full plan.</string>
+    <string name="error_plan_too_long">The free plan allows a shorter meal plan than this.</string>
+    <string name="error_token_cap">Unusually many requests came from this install in this period. Write to us if that looks wrong.</string>
     <string name="profile_activity">How much do you move?</string>
     <string name="achievement_unlocked">Unlocked</string>
     <!-- „Ma" képernyő — a Tányér dizájn hős doboza és étkezéslapkái -->

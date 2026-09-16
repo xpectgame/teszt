@@ -2,6 +2,7 @@ package hu.mealpilot.app.work
 
 import android.util.Log
 import hu.mealpilot.app.AppContainer
+import hu.mealpilot.app.R
 import hu.mealpilot.app.data.ai.QuotaExceededException
 import hu.mealpilot.app.data.repo.PlanGenerationOutcome
 import hu.mealpilot.app.data.telemetry.TelemetryEvent
@@ -73,7 +74,9 @@ class GenerationCoordinator(private val container: AppContainer) {
     private fun offerUpgradeIfQuota(error: Throwable?): Boolean {
         val quota = error as? QuotaExceededException ?: return false
         container.telemetry.record(TelemetryEvent.QUOTA_BLOCKED)
-        if (quota.upgradeOffered) requestPaywall(quota.message ?: "Elfogyott a havi keret.")
+        // A szöveget a kliens adja (lásd BackendClient.quotaMessage), tehát a felhasználó
+        // nyelvén van. A tartalék itt csak elvi: sosem null.
+        if (quota.upgradeOffered) requestPaywall(quota.message ?: container.strings[R.string.error_quota_exhausted])
         return quota.upgradeOffered
     }
 
