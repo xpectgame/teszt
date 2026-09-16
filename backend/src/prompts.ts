@@ -11,10 +11,10 @@
  * SystemPromptSyncTest hasheit is. A Kotlin-teszt elbukik, ha a kettő szétcsúszik.
  *
  * plan:        sha256 = 2b3561f227e3baf35c85138491b338e6e550dcbec5a8dedd544cd101a3fbcb8e
- * chat:        sha256 = 6fe0ce49af8a2d0cbe9e862f89aecb12513a00498e99e9ddf4dd4974948c4e00
+ * chat:        sha256 = 73035df0000a0a46ffcec379be35ff49376dc49559539c3251e3d135c895361d
  * estimate:    sha256 = 443769ed2f44c08fb1ca208f8607a66859e3bed11f615f60fb30b4a575be51be
  * plan_en:     sha256 = 127de26af7626a484376242a51e389defed75ecad1fbf473ffd3cc51a7c0e1f6
- * chat_en:     sha256 = 4be35abccd9fd76d1cee4cd66b2a3915a8a517d5f7fb18a61dfe1793037abc00
+ * chat_en:     sha256 = b3e8b223dc88c85a3ba0654a006429951bb0979b07bdad8c59adfcb285a6dfcf
  * estimate_en: sha256 = 933c185ac1b9bae7895323049c68ccad104ad19ee53e48a04da002cef6edba7b
  */
 
@@ -156,6 +156,13 @@ Ezek után jönnek a többiek:
 - LOG_WEIGHT: ha a felhasználó bemond egy mai súlyt.
 
 SZABÁLYOK
+- A KIZÁRÁSOK szakasz mindent felülír. Amit ott allergiaként vagy intoleranciaként
+  látsz, azt SOHA ne ajánld — se ételként, se hozzávalóként, se „csak egy kicsit"
+  formában, és akkor sem, ha a felhasználó maga kéri. Ez egészségügyi kockázat, nem
+  ízlés kérdése. Ha a felhasználó olyat kér, ami ütközik a kizárással, mondd meg,
+  miért nem ajánlod, és javasolj helyette mást.
+- Mielőtt elküldöd a választ, nézd át saját magad minden megnevezett ételt és
+  hozzávalót a KIZÁRÁSOK lista ellen.
 - Ha a kérés megoldható helyi művelettel, SOHA ne javasolj újratervezést helyette.
   Rossz: "az időpontok átállításához új tervet kell készítenem". Jó: SET_MEAL_TIMES.
 - Egy válaszban legfeljebb egy műveletet nevezz meg. Ha több dolgot kér, a legfontosabbat
@@ -352,6 +359,13 @@ Then come the rest:
 - LOG_WEIGHT: if the user states today's weight.
 
 RULES
+- The EXCLUSIONS section overrides everything. Never suggest anything listed there as an
+  allergy or intolerance — not as a dish, not as an ingredient, not "just a little", and
+  not even if the user asks for it. This is a health risk, not a matter of taste. If the
+  user asks for something that clashes with an exclusion, say why you will not suggest it
+  and offer an alternative.
+- Before you send your answer, check every dish and ingredient you named against the
+  EXCLUSIONS list yourself.
 - If the request can be met with a local action, NEVER suggest replanning instead.
   Wrong: "to change the times I need to create a new plan". Right: SET_MEAL_TIMES.
 - Name at most one action per reply. If they ask for several things, pick the most
@@ -423,9 +437,9 @@ A single JSON object, with no prose and no code fences:
 
 export const PROMPT_HASHES = {
   plan: '2b3561f227e3baf35c85138491b338e6e550dcbec5a8dedd544cd101a3fbcb8e',
-  chat: '6fe0ce49af8a2d0cbe9e862f89aecb12513a00498e99e9ddf4dd4974948c4e00',
+  chat: '73035df0000a0a46ffcec379be35ff49376dc49559539c3251e3d135c895361d',
   estimate: '443769ed2f44c08fb1ca208f8607a66859e3bed11f615f60fb30b4a575be51be',
   plan_en: '127de26af7626a484376242a51e389defed75ecad1fbf473ffd3cc51a7c0e1f6',
-  chat_en: '4be35abccd9fd76d1cee4cd66b2a3915a8a517d5f7fb18a61dfe1793037abc00',
+  chat_en: 'b3e8b223dc88c85a3ba0654a006429951bb0979b07bdad8c59adfcb285a6dfcf',
   estimate_en: '933c185ac1b9bae7895323049c68ccad104ad19ee53e48a04da002cef6edba7b',
 } as const

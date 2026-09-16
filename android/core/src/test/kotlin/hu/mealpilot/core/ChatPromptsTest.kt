@@ -5,6 +5,8 @@ import hu.mealpilot.core.ai.ChatContext
 import hu.mealpilot.core.ai.ChatPrompts
 import hu.mealpilot.core.ai.ChatTurn
 import hu.mealpilot.core.ai.PlanParser
+import hu.mealpilot.core.i18n.AppLanguage
+import hu.mealpilot.core.model.DietRestriction
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -17,9 +19,48 @@ class ChatPromptsTest {
         planSummary = "Őszi magas fehérje hét, 7 nap, a mai nap a 2.",
         todaySummary = "Eddig 1160 kcal, 104 g fehérje.",
         recentProgress = "14 nap alatt 3,4 kg fogyás.",
-        restrictions = listOf("GLUTEN", "LACTOSE"),
+        restrictionKeys = listOf("GLUTEN", "LACTOSE"),
         availableDayCount = 7,
     )
+
+    @Test
+    fun `the user's own allergies reach the assistant`() {
+        // A beszélgetés ételtanácsot ad, tehát ugyanúgy be kell tartania a kizárásokat,
+        // mint a tervezőnek. Korábban CSAK a felvehető kulcsok szótára ment át: a modell
+        // sosem tudta meg, hogy ennek az embernek gluténallergiája van, és nyugodtan
+        // ajánlott szendvicset annak, akinek a tervéből ugyanazt kiszűrtük.
+        val prompt = ChatPrompts.userPrompt(
+            context.copy(exclusions = setOf(DietRestriction.GLUTEN, DietRestriction.NO_PORK)),
+            emptyList(),
+            "Mit egyek ma vacsorára?",
+        )
+
+        assertTrue("A kizárásoknak külön, felülíró szakaszban kell lenniük", prompt.contains("KIZÁRÁSOK"))
+        assertTrue(
+            "Az allergiát egészségügyi kockázatként kell jelölni, nem ízlésként",
+            prompt.contains("Allergia / intolerancia"),
+        )
+        assertTrue("A gluténnak szerepelnie kell", prompt.contains(DietRestriction.GLUTEN.rule(AppLanguage.HU)))
+        assertTrue("Az étrendi döntés külön sorban", prompt.contains("Étrendi döntés"))
+    }
+
+    @Test
+    fun `the vocabulary is not mistaken for the user's own exclusions`() {
+        // A szótár minden kulcsot felsorol. Ha ugyanabban a szakaszban lenne, mint a
+        // valódi kizárások, a modell azt hinné, hogy a felhasználó MINDENRE allergiás.
+        val prompt = ChatPrompts.userPrompt(context, emptyList(), "szia")
+        assertTrue(prompt.contains("Felvehető kizárások"))
+        assertTrue("Kizárás nélkül nincs felülíró szakasz", !prompt.contains("KIZÁRÁSOK — EZ MINDENT FELÜLÍR"))
+    }
+
+    @Test
+    fun `the rule that exclusions win is in the system prompt`() {
+        // A kontextus hiába sorolja fel, ha a rendszerprompt nem mondja ki, hogy be is
+        // kell tartani. A tervező promptjában ez a mondat megvan, a beszélgetéséből
+        // hiányzott.
+        assertTrue(ChatPrompts.SYSTEM.contains("KIZÁRÁSOK"))
+        assertTrue(ChatPrompts.SYSTEM_EN.contains("EXCLUSIONS"))
+    }
 
     @Test
     fun `the prompt carries the context the model needs to act`() {

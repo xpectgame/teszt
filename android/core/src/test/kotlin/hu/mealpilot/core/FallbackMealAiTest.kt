@@ -27,7 +27,7 @@ class FallbackMealAiTest {
         planSummary = "",
         todaySummary = "",
         recentProgress = "",
-        restrictions = emptyList(),
+        restrictionKeys = emptyList(),
         availableDayCount = 0,
     )
 

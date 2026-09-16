@@ -1,5 +1,6 @@
 package hu.mealpilot.core.ai
 
+import hu.mealpilot.core.model.DietRestriction
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
@@ -18,7 +19,23 @@ data class ChatContext(
     val planSummary: String,
     val todaySummary: String,
     val recentProgress: String,
-    val restrictions: List<String>,
+    /**
+     * Amit a felhasználó NEM ehet. A beszélgetés ugyanúgy köteles betartani, mint a
+     * tervező: az ételtanács is étel.
+     *
+     * Ez korábban hiányzott. A modell megkapta a felvehető kizárások SZÓTÁRÁT (lásd
+     * [restrictionKeys]), de azt soha nem tudta meg, hogy a felhasználónak van-e
+     * allergiája — így a tervező kiszűrte a glutént, a beszélgetés viszont nyugodtan
+     * ajánlott szendvicset ugyanannak az embernek.
+     */
+    val exclusions: Set<DietRestriction> = emptySet(),
+    /**
+     * A felvehető kizárások kulcsai az ADD_RESTRICTIONS művelethez.
+     *
+     * SZÓTÁR, nem a felhasználó kizárásai — azok az [exclusions] mezőben vannak. A
+     * korábbi neve (`restrictions`) pont ezt mosta össze.
+     */
+    val restrictionKeys: List<String>,
     val availableDayCount: Int,
 )
 

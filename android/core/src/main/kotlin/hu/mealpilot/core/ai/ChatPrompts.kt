@@ -1,6 +1,8 @@
 package hu.mealpilot.core.ai
 
 import hu.mealpilot.core.i18n.AppLanguage
+import hu.mealpilot.core.i18n.label
+import hu.mealpilot.core.model.DietRestriction
 
 object ChatPrompts {
 
@@ -46,6 +48,13 @@ Ezek után jönnek a többiek:
 - LOG_WEIGHT: ha a felhasználó bemond egy mai súlyt.
 
 SZABÁLYOK
+- A KIZÁRÁSOK szakasz mindent felülír. Amit ott allergiaként vagy intoleranciaként
+  látsz, azt SOHA ne ajánld — se ételként, se hozzávalóként, se „csak egy kicsit"
+  formában, és akkor sem, ha a felhasználó maga kéri. Ez egészségügyi kockázat, nem
+  ízlés kérdése. Ha a felhasználó olyat kér, ami ütközik a kizárással, mondd meg,
+  miért nem ajánlod, és javasolj helyette mást.
+- Mielőtt elküldöd a választ, nézd át saját magad minden megnevezett ételt és
+  hozzávalót a KIZÁRÁSOK lista ellen.
 - Ha a kérés megoldható helyi művelettel, SOHA ne javasolj újratervezést helyette.
   Rossz: "az időpontok átállításához új tervet kell készítenem". Jó: SET_MEAL_TIMES.
 - Egy válaszban legfeljebb egy műveletet nevezz meg. Ha több dolgot kér, a legfontosabbat
@@ -135,6 +144,13 @@ Then come the rest:
 - LOG_WEIGHT: if the user states today's weight.
 
 RULES
+- The EXCLUSIONS section overrides everything. Never suggest anything listed there as an
+  allergy or intolerance — not as a dish, not as an ingredient, not "just a little", and
+  not even if the user asks for it. This is a health risk, not a matter of taste. If the
+  user asks for something that clashes with an exclusion, say why you will not suggest it
+  and offer an alternative.
+- Before you send your answer, check every dish and ingredient you named against the
+  EXCLUSIONS list yourself.
 - If the request can be met with a local action, NEVER suggest replanning instead.
   Wrong: "to change the times I need to create a new plan". Right: SET_MEAL_TIMES.
 - Name at most one action per reply. If they ask for several things, pick the most
@@ -192,13 +208,35 @@ A single JSON object, with no prose and no code fences:
         appendLine(s("A FELHASZNÁLÓ ADATAI", "ABOUT THE USER"))
         appendLine(context.profileSummary)
         appendLine(context.targetSummary)
-        if (context.restrictions.isNotEmpty()) {
-            appendLine(s(
-                "Kizárások (a kulcsok, amiket az ADD_RESTRICTIONS művelethez használhatsz):",
-                "Exclusions (the keys you may use with the ADD_RESTRICTIONS action):"))
-            appendLine(context.restrictions.joinToString(", "))
-        }
         appendLine()
+
+        // A valódi kizárások a szótár ELŐTT és külön szakaszban: ezt a modellnek
+        // ugyanúgy be kell tartania, mint a tervezőnek. Ugyanaz a tagolás, mint a
+        // PlanPrompts-ban — a kettőnek nem szabad szétcsúsznia.
+        if (context.exclusions.isNotEmpty()) {
+            val strict = context.exclusions.filter { it.severity == DietRestriction.Severity.STRICT }
+            val choices = context.exclusions.filter { it.severity == DietRestriction.Severity.PREFERENCE }
+            appendLine(s("KIZÁRÁSOK — EZ MINDENT FELÜLÍR", "EXCLUSIONS — THESE OVERRIDE EVERYTHING"))
+            if (strict.isNotEmpty()) {
+                appendLine(s(
+                    "Allergia / intolerancia (egészségügyi kockázat, nulla tolerancia):",
+                    "Allergy / intolerance (health risk, zero tolerance):"))
+                strict.forEach { appendLine("- ${it.label(language)}: ${it.rule(language)}") }
+            }
+            if (choices.isNotEmpty()) {
+                appendLine(s("Étrendi döntés:", "Dietary choice:"))
+                choices.forEach { appendLine("- ${it.label(language)}: ${it.rule(language)}") }
+            }
+            appendLine()
+        }
+
+        if (context.restrictionKeys.isNotEmpty()) {
+            appendLine(s(
+                "Felvehető kizárások (a kulcsok, amiket az ADD_RESTRICTIONS művelethez használhatsz):",
+                "Available exclusions (the keys you may use with the ADD_RESTRICTIONS action):"))
+            appendLine(context.restrictionKeys.joinToString(", "))
+            appendLine()
+        }
 
         appendLine(s("AKTUÁLIS TERV", "CURRENT PLAN"))
         appendLine(context.planSummary)

@@ -242,7 +242,13 @@ class ChatRepository(
             planSummary = planSummary,
             todaySummary = todaySummary,
             recentProgress = recentProgress,
-            restrictions = DietRestriction.entries.map { it.name },
+            // Amit a felhasználó NEM ehet. Ez korábban hiányzott: a tervező kiszűrte
+            // a glutént, a beszélgetés viszont nyugodtan ajánlott szendvicset ugyanannak
+            // az embernek. Az ételtanács is étel.
+            exclusions = profile.effectiveRestrictions,
+            // A felvehető kizárások SZÓTÁRA az ADD_RESTRICTIONS művelethez — nem a
+            // felhasználó sajátjai.
+            restrictionKeys = DietRestriction.entries.map { it.name },
             availableDayCount = plan?.dayCount ?: 0,
         )
     }
