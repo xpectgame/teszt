@@ -92,14 +92,40 @@ object EnergyCalculator {
 
         val appliedDeficit = min(requestedDeficit.toDouble(), allowedDeficit).coerceAtLeast(0.0)
         if (appliedDeficit < requestedDeficit - 1) {
-            warnings += s(
-                "A kért ütem túl agresszív lenne ehhez a testsúlyhoz: a deficitet " +
-                    "${appliedDeficit.roundToInt()} kcal/napra mérsékeltem " +
-                    "(max. a TDEE ${(MAX_DEFICIT_RATIO * 100).roundToInt()}%-a, és nem megyünk az alapanyagcsere alá).",
-                "That rate would be too aggressive at this body weight: I eased the deficit to " +
-                    "${appliedDeficit.roundToInt()} kcal/day " +
-                    "(at most ${(MAX_DEFICIT_RATIO * 100).roundToInt()}% of your TDEE, and never below your BMR).",
-            )
+            // MELYIK korlát fogott? A kettő nagyon mást jelent a felhasználónak.
+            //
+            // Az alapanyagcsere-korlát ülő életmódnál MINDIG fog: a napi felhasználás
+            // ilyenkor az alapanyagcsere 1,2-szerese, tehát a kettő közé fér a teljes
+            // mozgástér. Az app alapértelmezett üteme (0,5 kg/hét) ennél nagyobb
+            // deficitet kérne, vagyis minden ülő életmódú felhasználó megkapta ezt a
+            // figyelmeztetést — az első képernyőn, a SAJÁT alapértelmezésünkre.
+            //
+            // A régi szöveg ezt úgy fogalmazta, hogy „a kért ütem túl agresszív", ami a
+            // felhasználót hibáztatja azért, amit nem ő állított be. Nem is igaz: heti
+            // fél kiló nem agresszív cél. Ami szűkös, az a mozgás és az alapanyagcsere
+            // közötti sáv.
+            val achievable = appliedDeficit * 7.0 / KCAL_PER_KG_FAT
+            val rateText = "%.2f".format(achievable)
+            warnings += if (maxByFloor <= maxByRatio) {
+                s(
+                    "Ezen a mozgásszinten a napi felhasználásod (${tdeeValue.roundToInt()} kcal) közel van " +
+                        "az alapanyagcserédhez (${bmrValue.roundToInt()} kcal), és az alá nem tervezünk. " +
+                        "Ezért $rateText kg/hét fér bele heti ${"%.2f".format(rate)} kg helyett. " +
+                        "Több mozgással gyorsulhat.",
+                    "At this activity level your daily burn (${tdeeValue.roundToInt()} kcal) is close to " +
+                        "your BMR (${bmrValue.roundToInt()} kcal), and we never plan below that. " +
+                        "So $rateText kg/week fits instead of ${"%.2f".format(rate)} kg. " +
+                        "More activity would speed it up.",
+                )
+            } else {
+                s(
+                    "A biztonságos felső határ a napi felhasználásod " +
+                        "${(MAX_DEFICIT_RATIO * 100).roundToInt()}%-a, ezért $rateText kg/hét fér bele " +
+                        "heti ${"%.2f".format(rate)} kg helyett.",
+                    "The safe maximum is ${(MAX_DEFICIT_RATIO * 100).roundToInt()}% of your daily burn, " +
+                        "so $rateText kg/week fits instead of ${"%.2f".format(rate)} kg.",
+                )
+            }
         }
 
         // Az alsó határ a CÉLRA vonatkozik, nem csak a deficitre. Korábban a kód a

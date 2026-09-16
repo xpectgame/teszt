@@ -1,5 +1,6 @@
 package hu.mealpilot.core
 
+import hu.mealpilot.core.i18n.AppLanguage
 import hu.mealpilot.core.energy.EnergyCalculator
 import hu.mealpilot.core.model.ActivityLevel
 import hu.mealpilot.core.model.MacroPreset
@@ -57,7 +58,37 @@ class EnergyCalculatorTest {
         assertEquals(1100, budget.requestedDeficit)
         assertTrue("A deficitet korlátozni kell", budget.wasCapped)
         assertEquals(638, budget.appliedDeficit) // a TDEE 25%-a
-        assertTrue(budget.warnings.any { it.contains("agresszív") })
+        // Itt tényleg a 25%-os szabály fog, és az üzenet ezt is mondja — nem azt,
+        // hogy a felhasználó kért volna valami szélsőségeset.
+        val warning = budget.warnings.single { it.contains("kg/hét") }
+        assertTrue(warning, warning.contains("biztonságos felső határ"))
+        assertTrue("Mondja meg, mi fér bele: $warning", warning.contains("0,58 kg/hét") || warning.contains("0.58 kg/hét"))
+    }
+
+    @Test
+    fun `a sedentary user on the default rate is not told their goal is aggressive`() {
+        // Ülő életmódnál a napi felhasználás az alapanyagcsere 1,2-szerese, tehát a
+        // kettő közé fér a TELJES mozgástér — az app alapértelmezett üteme (0,5 kg/hét)
+        // ennél nagyobb deficitet kérne. Vagyis MINDEN ülő életmódú felhasználó
+        // megkapja ezt az üzenetet, már az első képernyőn, a saját alapértelmezésünkre.
+        //
+        // A régi szöveg ezt úgy fogalmazta, hogy „a kért ütem túl agresszív" — ami a
+        // felhasználót hibáztatja azért, amit nem ő állított be, és nem is igaz: heti
+        // fél kiló nem agresszív cél.
+        val sedentary = UserProfile(
+            sex = Sex.FEMALE, ageYears = 30, heightCm = 165.0, weightKg = 62.0,
+            activityLevel = ActivityLevel.SEDENTARY,
+        )
+        val budget = EnergyCalculator.budget(sedentary, AppLanguage.HU)
+
+        assertTrue("Az alapértelmezett ütem 0,5 kg/hét", sedentary.targetRateKgPerWeek == 0.5)
+        assertTrue("Ülő életmódnál korlátozni kell", budget.wasCapped)
+
+        val warning = budget.warnings.single { it.contains("kg/hét") }
+        assertTrue("Ne hibáztassa a felhasználót: $warning", !warning.contains("agresszív"))
+        assertTrue("Nevezze meg az okot: $warning", warning.contains("alapanyagcser"))
+        assertTrue("Mondja meg, mi fér bele: $warning", warning.contains("kg/hét fér bele"))
+        assertTrue("Mondja meg, mit tehet: $warning", warning.contains("mozgás"))
     }
 
     @Test
