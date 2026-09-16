@@ -50,6 +50,9 @@ class RefineDayRestrictionTest {
             isRetry: Boolean,
             onChars: (Int) -> Unit,
         ): String = answers[minOf(calls++, answers.lastIndex)]
+
+        /** A tesztben nincs mit fordítani: a hiba önmagát képviseli. */
+        override fun translate(error: Throwable): Throwable = error
     }
 
     private fun strings(): AppStrings {

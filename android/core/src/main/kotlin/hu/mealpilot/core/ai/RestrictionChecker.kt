@@ -58,10 +58,25 @@ object RestrictionChecker {
      * tervező maga rakja ki a fogásokat, tehát neki előre kell tudnia, melyiket nem
      * szabad kiadnia.
      */
-    fun isSafe(meal: AiMeal, restrictions: Set<DietRestriction>, language: AppLanguage): Boolean {
+    fun isSafe(meal: AiMeal, restrictions: Set<DietRestriction>, language: AppLanguage): Boolean =
+        isSafe(meal.name, meal.ingredients.map { it.name }, restrictions, language)
+
+    /**
+     * Ugyanaz, csak nevekből.
+     *
+     * A MÁR ELMENTETT terv fogásai nem [AiMeal]-ként élnek, hanem az adatbázis saját
+     * alakjában. Ez az alak teszi lehetővé, hogy egy utólag felvett allergiát a meglévő
+     * tervre is rá lehessen futtatni — a :core modul így sem lát az adatbázisra.
+     */
+    fun isSafe(
+        mealName: String,
+        ingredientNames: List<String>,
+        restrictions: Set<DietRestriction>,
+        language: AppLanguage,
+    ): Boolean {
         if (restrictions.isEmpty()) return true
-        if (violations(meal.name, restrictions, language).isNotEmpty()) return false
-        return meal.ingredients.none { violations(it.name, restrictions, language).isNotEmpty() }
+        if (violations(mealName, restrictions, language).isNotEmpty()) return false
+        return ingredientNames.none { violations(it, restrictions, language).isNotEmpty() }
     }
 
     /** A teljes terv ellenőrzése; a talált hibák a javító prompt bemenetei. */
