@@ -76,14 +76,19 @@ import hu.mealpilot.core.ai.MealSlot
 import hu.mealpilot.core.i18n.label
 import hu.mealpilot.core.model.Nutrients
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.time.LocalDate
+import java.time.ZoneId
 import kotlin.math.roundToInt
 
 /** Amit tényleg megevett: a tervezett, a helyette megevett és a terven kívüli is. */
@@ -92,6 +97,18 @@ private val CONSUMED_STATUSES = setOf(
     LogStatus.REPLACED.name,
     LogStatus.EXTRA.name,
 )
+
+/**
+ * Melyik nap legyen kiválasztva lapozás után. A null a „ma".
+ *
+ * Ha a lapozás visszaér a mai napra, szándékosan null-t adunk vissza: onnantól megint
+ * automatikusan továbblép éjfélkor. Ha a felhasználó máshol jár, ott is marad — egy
+ * átnézett régi nap ne ugorjon el alóla, amíg olvassa.
+ */
+internal fun nextSelectedDay(current: LocalDate?, days: Long, today: LocalDate): LocalDate? {
+    val next = (current ?: today).plusDays(days)
+    return next.takeIf { it != today }
+}
 
 data class TodayUiState(
     val date: LocalDate = LocalDate.now(),
@@ -117,21 +134,49 @@ data class TodayUiState(
 
 class TodayViewModel(private val container: AppContainer) : ViewModel() {
 
-    private val date = MutableStateFlow(LocalDate.now())
+    /**
+     * Amit a felhasználó kiválasztott. A null a „ma" — ez éjfélkor magától továbblép.
+     *
+     * Korábban egyetlen, a ViewModel születésekor rögzített dátum volt. Aki nyitva
+     * hagyta az appot éjfélkor, másnap is a tegnapot látta, és a terven kívül felvitt
+     * étkezés is oda került. A képernyő nem életciklus-tudatosan gyűjt, tehát a
+     * háttérbe kerülés sem indította újra a folyamot.
+     */
+    private val selectedDay = MutableStateFlow<LocalDate?>(null)
+
+    /**
+     * A mai nap, éjfélkor frissülve.
+     *
+     * A várakozás után ÚJRA kiolvassuk a dátumot, nem egyszerűen léptetünk egyet: ha a
+     * telefon energiatakarékos módban aludt, az ébresztés késhet, és akár több nap is
+     * eltelhet egy ciklus alatt.
+     */
+    private val today: Flow<LocalDate> = flow {
+        while (true) {
+            val day = LocalDate.now()
+            emit(day)
+            val nextMidnight = day.plusDays(1)
+                .atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
+            delay((nextMidnight - System.currentTimeMillis()).coerceAtLeast(1_000L))
+        }
+    }
 
     @OptIn(ExperimentalCoroutinesApi::class)
-    val state: StateFlow<TodayUiState> = date.flatMapLatest { day ->
-        combine(
-            container.planRepository.observeActivePlan(),
-            container.planRepository.observeDay(day),
-            container.trackingRepository.observeMealLogs(day),
-        ) { plan, meals, logs ->
-            TodayUiState(date = day, plan = plan, meals = meals, logs = logs)
-        }
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), TodayUiState())
+    val state: StateFlow<TodayUiState> =
+        combine(today, selectedDay) { now, chosen -> chosen ?: now }
+            .distinctUntilChanged()
+            .flatMapLatest { day ->
+                combine(
+                    container.planRepository.observeActivePlan(),
+                    container.planRepository.observeDay(day),
+                    container.trackingRepository.observeMealLogs(day),
+                ) { plan, meals, logs ->
+                    TodayUiState(date = day, plan = plan, meals = meals, logs = logs)
+                }
+            }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), TodayUiState())
 
     fun shiftDay(days: Long) {
-        date.value = date.value.plusDays(days)
+        selectedDay.value = nextSelectedDay(selectedDay.value, days, LocalDate.now())
     }
 
     fun log(mealId: Long, status: LogStatus) = viewModelScope.launch {
@@ -154,7 +199,7 @@ class TodayViewModel(private val container: AppContainer) : ViewModel() {
 
     fun logExtra(name: String, nutrients: Nutrients) = viewModelScope.launch {
         container.telemetry.record(TelemetryEvent.MEAL_LOGGED)
-        container.trackingRepository.logCustomMeal(date.value, name, nutrients)
+        container.trackingRepository.logCustomMeal(state.value.date, name, nutrients)
         refreshAchievements()
     }
 
