@@ -229,7 +229,7 @@ fun SettingsScreen(
                             clipboard.setText(
                                 AnnotatedString(
                                     crashes.joinToString("\n\n---\n\n") {
-                                        "${it.fingerprint}\n${it.message.orEmpty()}\n${it.stack}"
+                                        "${it.fingerprint}\n${it.exception}\n${it.stack}"
                                     }
                                 )
                             )
