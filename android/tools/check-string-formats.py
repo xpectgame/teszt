@@ -118,15 +118,18 @@ def main() -> int:
     plural_calls = collections.defaultdict(list)
     for kt in sorted(SRC.rglob('*.kt')):
         text = kt.read_text(encoding='utf-8')
-        # Három hívási alak: Compose, Context és a lokalizált szövegforrás. Az utóbbi
-        # szögletes zárójellel hívódik, és a minta kiterjesztése nélkül kimaradna.
+        # Négy hívási alak: Compose, Context és a lokalizált szövegforrás kétféleképpen.
+        # Az utóbbi szögletes zárójellel hívódik — DE ahol szórásoperátor kell (*args),
+        # ott az indexelő alak nem használható, és a hívás `.get(...)`-re vált. Ez a
+        # minta sokáig kimaradt, tehát azok a hívások ellenőrizetlenül mentek át.
         for m in re.finditer(
             r'(?:stringResource|getString)\(\s*R\.string\.([A-Za-z0-9_]+)\s*(,)?'
-            r'|strings\[\s*R\.string\.([A-Za-z0-9_]+)\s*(,)?',
+            r'|strings\[\s*R\.string\.([A-Za-z0-9_]+)\s*(,)?'
+            r'|strings\.get\(\s*R\.string\.([A-Za-z0-9_]+)\s*(,)?',
             text,
         ):
-            key = m.group(1) or m.group(3)
-            comma = 2 if m.group(1) else 4
+            key = m.group(1) or m.group(3) or m.group(5)
+            comma = 2 if m.group(1) else (4 if m.group(3) else 6)
             given = count_arguments(text, m.end(comma)) if m.group(comma) else 0
             line = text.count('\n', 0, m.start()) + 1
             calls[key].append((f'{kt.relative_to(ROOT)}:{line}', given))

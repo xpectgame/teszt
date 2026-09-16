@@ -22,6 +22,7 @@ import hu.mealpilot.core.ai.PlanPrompts
 import hu.mealpilot.core.ai.PlanRepair
 import hu.mealpilot.core.ai.PlanRequest
 import hu.mealpilot.core.ai.PlanValidator
+import hu.mealpilot.core.ai.RestrictionChecker
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ensureActive
@@ -281,14 +282,48 @@ abstract class StreamingMealAi(
         instruction: String,
     ): Result<AiDayResponse> = withContext(Dispatchers.IO) {
         try {
-            val raw = call(
-                task = AiTask.DAY,
-                userText = PlanPrompts.refineDayPrompt(request, currentDayJson, instruction, language),
-                planDays = 1,
-            )
-            val parsed = PlanParser.parseDay(raw).getOrThrow()
-            // Ugyanaz a kerekítés, mint a tervezésnél — egy átírt nap se adjon 178 grammot.
-            Result.success(parsed.copy(day = PlanRepair.humanizeDay(parsed.day)))
+            // A kizárásokat a prompt is kéri — de a kérés nem garancia, és ez az ÚT
+            // eddig ellenőrzés nélkül írt a tervbe. A teljes terv útján van
+            // kizárás-ellenőrzés és javító kör; egy nap átírásán nem volt semmi, pedig
+            // ugyanúgy a felhasználó tányérjára kerül.
+            val restrictions = request.profile.effectiveRestrictions
+            val basePrompt = PlanPrompts.refineDayPrompt(request, currentDayJson, instruction, language)
+            var prompt = basePrompt
+            var accepted: AiDayResponse? = null
+            var violations: List<String> = emptyList()
+
+            for (attempt in 0 until MAX_ATTEMPTS) {
+                val raw = call(
+                    task = AiTask.DAY,
+                    userText = prompt,
+                    planDays = 1,
+                    // A javító kör ugyanazt a napot kéri újra — a kvótának nem új terv.
+                    isRetry = attempt > 0,
+                )
+                val parsed = PlanParser.parseDay(raw).getOrThrow()
+                // Ugyanaz a kerekítés, mint a tervezésnél — egy átírt nap se adjon 178 grammot.
+                val day = PlanRepair.humanizeDay(parsed.day)
+
+                // Kizárás nélkül ez azonnal üres listát ad, tehát a hívás egyetlen
+                // körből megvan — a felhasználók többségének semmi nem változik.
+                violations = RestrictionChecker.check(AiPlanResponse(days = listOf(day)), restrictions, language)
+                if (violations.isEmpty()) {
+                    accepted = parsed.copy(day = day)
+                    break
+                }
+                Log.i(TAG, "Az átírt nap ütközik a kizárásokkal: $violations")
+                prompt = basePrompt + "\n\n" + PlanPrompts.repairPrompt(violations, language)
+            }
+
+            // Inkább maradjon a régi nap, mint hogy allergén kerüljön a tervbe. A
+            // tápérték-eltérést elnézzük (a régi viselkedés is elnézte), a kizárást nem:
+            // az egészségügyi kockázat, nem ízlés kérdése.
+            if (accepted == null) {
+                throw MealAiException(
+                    strings.get(R.string.refine_conflicts_restrictions, violations.take(2).joinToString("; "))
+                )
+            }
+            Result.success(accepted)
         } catch (cancelled: CancellationException) {
             throw cancelled
         } catch (error: Throwable) {

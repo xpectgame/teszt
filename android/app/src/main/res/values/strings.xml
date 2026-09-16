@@ -333,6 +333,7 @@
     <string name="offline_tip_protein">Spread your protein evenly across the day.</string>
     <string name="offline_chat_needs_network">Chatting needs an internet connection.</string>
     <string name="offline_no_safe_meal">The built-in planner has no meal that fits your exclusions. Please try again with a connection.</string>
+    <string name="refine_conflicts_restrictions">The rewritten day kept clashing with your exclusions, so the original day was kept. Details: %1$s</string>
     <string name="offline_cannot_refine">This version can\'t rewrite days. Try again when you have an internet connection.</string>
     <string name="error_quota_exhausted">You\'ve used up your free trial.</string>
     <string name="profile_activity">How much do you move?</string>
