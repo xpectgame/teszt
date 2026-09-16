@@ -8,6 +8,7 @@ import android.os.Build
 import android.util.Log
 import androidx.core.content.getSystemService
 import hu.mealpilot.app.data.local.MealEntity
+import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalTime
 import java.time.ZoneId
@@ -73,11 +74,7 @@ object MealAlarmScheduler {
     /** Napi összefoglaló a megadott órában — mindig a következő előfordulásra. */
     fun scheduleDailySummary(context: Context, hour: Int) {
         val alarmManager = context.getSystemService<AlarmManager>() ?: return
-        val zone = ZoneId.systemDefault()
-        val now = System.currentTimeMillis()
-        var trigger = LocalDate.now(zone).atTime(LocalTime.of(hour.coerceIn(0, 23), 0))
-            .atZone(zone).toInstant().toEpochMilli()
-        if (trigger <= now) trigger += TimeUnit.DAYS.toMillis(1)
+        val trigger = nextDailySummaryAt(hour, System.currentTimeMillis(), ZoneId.systemDefault())
 
         val pendingIntent = summaryIntent(context)
         try {
@@ -87,6 +84,28 @@ object MealAlarmScheduler {
                 AlarmManager.RTC_WAKEUP, trigger, TimeUnit.MINUTES.toMillis(30), pendingIntent,
             )
         }
+    }
+
+    /**
+     * Mikor van legközelebb a megadott óra.
+     *
+     * A NAPOT léptetjük, nem 24 órát adunk hozzá. Óraátállításkor a nap 23 vagy 25
+     * órás, tehát a „holnap ugyanekkor" nem 86 400 000 ezredmásodperc: az órák
+     * visszaállításakor az összefoglaló egy órával korábban, tavasszal egy órával
+     * később szólalt volna meg.
+     *
+     * Ha a kiválasztott időpont az átállás miatt nem létezik (tavasszal a 2 és 3 óra
+     * közötti óra kimarad), az `atZone` előre tolja a legközelebbi létező pillanatra —
+     * egy emlékeztetőnél pontosan ez a kívánt viselkedés.
+     */
+    internal fun nextDailySummaryAt(hour: Int, nowMillis: Long, zone: ZoneId): Long {
+        val time = LocalTime.of(hour.coerceIn(0, 23), 0)
+        val now = Instant.ofEpochMilli(nowMillis)
+        val today = now.atZone(zone).toLocalDate()
+        val candidate = today.atTime(time).atZone(zone)
+        val next = if (candidate.toInstant().isAfter(now)) candidate
+        else today.plusDays(1).atTime(time).atZone(zone)
+        return next.toInstant().toEpochMilli()
     }
 
     fun cancelDailySummary(context: Context) {
