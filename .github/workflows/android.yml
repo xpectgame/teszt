@@ -79,6 +79,14 @@ jobs:
       - name: A szövegek formátumhelyőrzői
         run: python3 tools/check-string-formats.py
 
+      # A csomagkorlátok KÉT helyen élnek: a kliensben és a szerveren. Mindkét fájl
+      # kommentje azt írja, hogy a másikkal egyeznie kell — de eddig semmi nem
+      # ellenőrizte. A döntést a szerver hozza, a kért terv hosszát viszont a kliens
+      # vágja le: ha a kettő szétcsúszik, a felhasználó olyat kér, amit a kliens
+      # megenged és a szerver minden alkalommal elutasít.
+      - name: A csomagkorlátok egyeznek a backenddel
+        run: python3 tools/check-tier-limits.py
+
       # A backend címe a gradle.properties-ből jön, tehát a debug APK-ba be KELL kerülnie.
       # Ha valaki elírja vagy törli a beállítást, az app csendben visszaesne a saját
       # kulcsot kérő fejlesztői útra — a telepítőn semmi nem látszana belőle.
