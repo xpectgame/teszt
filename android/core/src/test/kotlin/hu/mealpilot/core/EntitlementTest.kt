@@ -44,7 +44,7 @@ class EntitlementTest {
         assertFalse(used.canGeneratePlan())
         assertEquals(0, used.remainingPlans())
 
-        val reason = used.blockReason(PaidFeature.PLAN_GENERATION)
+        val reason = used.blockReason(PaidFeature.PLAN_GENERATION, language = AppLanguage.HU)
         assertNotNull(reason)
         // A próbakeret nem töltődik újra. Egy „X nap múlva nullázódik" mondat olyasmit
         // ígérne, ami soha nem jön el — az apró hazugság viszi el a bizalmat.
@@ -64,21 +64,21 @@ class EntitlementTest {
         val entitlement = premium()
         assertTrue(entitlement.canGeneratePlan(period))
         assertTrue(entitlement.canSendMessage(period))
-        assertNull(entitlement.blockReason(PaidFeature.PLAN_GENERATION, period))
-        assertNull(entitlement.blockReason(PaidFeature.CHAT, period))
+        assertNull(entitlement.blockReason(PaidFeature.PLAN_GENERATION, period, language = AppLanguage.HU))
+        assertNull(entitlement.blockReason(PaidFeature.CHAT, period, language = AppLanguage.HU))
     }
 
     @Test
     fun `paid-only features are named, not silently missing`() {
         val entitlement = free()
-        assertNotNull(entitlement.blockReason(PaidFeature.CHAT_ACTIONS, period))
-        assertNotNull(entitlement.blockReason(PaidFeature.DAY_REFINE, period))
-        assertNotNull(entitlement.blockReason(PaidFeature.LONG_PLAN, period))
+        assertNotNull(entitlement.blockReason(PaidFeature.CHAT_ACTIONS, period, language = AppLanguage.HU))
+        assertNotNull(entitlement.blockReason(PaidFeature.DAY_REFINE, period, language = AppLanguage.HU))
+        assertNotNull(entitlement.blockReason(PaidFeature.LONG_PLAN, period, language = AppLanguage.HU))
 
         val paid = premium()
-        assertNull(paid.blockReason(PaidFeature.CHAT_ACTIONS, period))
-        assertNull(paid.blockReason(PaidFeature.DAY_REFINE, period))
-        assertNull(paid.blockReason(PaidFeature.LONG_PLAN, period))
+        assertNull(paid.blockReason(PaidFeature.CHAT_ACTIONS, period, language = AppLanguage.HU))
+        assertNull(paid.blockReason(PaidFeature.DAY_REFINE, period, language = AppLanguage.HU))
+        assertNull(paid.blockReason(PaidFeature.LONG_PLAN, period, language = AppLanguage.HU))
     }
 
     @Test
@@ -143,5 +143,22 @@ class EntitlementTest {
         assertTrue(Tiers.FREE.maxPlanDays > 0)
         assertTrue(Tiers.freeBenefits(AppLanguage.HU).isNotEmpty())
         assertTrue(Tiers.premiumBenefits(AppLanguage.HU).isNotEmpty())
+    }
+
+    @Test
+    fun `the paywall message follows the chosen language`() {
+        // Ez a szöveg a FIZETŐFALON jelenik meg — abban a pillanatban, amikor fizetést
+        // kérünk. A nyelvnek volt alapértelmezése (magyar), és mind a három hívó
+        // elfelejtette átadni: az angol felhasználó magyarul kapta. Az alapértelmezés
+        // most nincs, tehát a fordító kényszeríti ki.
+        val used = free(plans = Tiers.FREE.aiPlans)
+
+        val hungarian = used.blockReason(PaidFeature.PLAN_GENERATION, language = AppLanguage.HU)
+        val english = used.blockReason(PaidFeature.PLAN_GENERATION, language = AppLanguage.EN)
+
+        assertNotNull(hungarian)
+        assertNotNull(english)
+        assertTrue("Magyarul: $hungarian", hungarian!!.contains("Elhasználtad"))
+        assertTrue("Angolul: $english", english!!.contains("You have used"))
     }
 }

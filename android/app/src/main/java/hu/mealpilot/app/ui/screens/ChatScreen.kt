@@ -123,7 +123,7 @@ class ChatViewModel(private val container: AppContainer) : ViewModel() {
             // ragadt, és minden további üzenet némán visszafordult a fenti őrnél.
             try {
                 val entitlement = container.entitlements.current()
-                entitlement.blockReason(PaidFeature.CHAT)?.let { reason ->
+                entitlement.blockReason(PaidFeature.CHAT, language = container.language)?.let { reason ->
                     container.generation.requestPaywall(reason)
                     return@launch
                 }
@@ -173,7 +173,8 @@ class ChatViewModel(private val container: AppContainer) : ViewModel() {
         viewModelScope.launch {
             try {
                 container.telemetry.record(TelemetryEvent.CHAT_ACTION_CONFIRMED)
-                container.entitlements.current().blockReason(PaidFeature.CHAT_ACTIONS)?.let { reason ->
+                container.entitlements.current()
+                    .blockReason(PaidFeature.CHAT_ACTIONS, language = container.language)?.let { reason ->
                     container.generation.requestPaywall(reason)
                     return@launch
                 }

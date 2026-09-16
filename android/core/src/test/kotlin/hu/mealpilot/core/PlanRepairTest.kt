@@ -1,5 +1,6 @@
 package hu.mealpilot.core
 
+import hu.mealpilot.core.i18n.AppLanguage
 import hu.mealpilot.core.ai.AiDay
 import hu.mealpilot.core.ai.AiIngredient
 import hu.mealpilot.core.ai.AiMeal
@@ -125,7 +126,7 @@ class PlanRepairTest {
     @Test
     fun `normalising a plan makes it pass validation without a model round-trip`() {
         val plan = AiPlanResponse(days = listOf(day(0, 2300.0, 190.0), day(1, 1800.0, 165.0)))
-        val before = PlanValidator.validate(plan, target, expectedDays = 2, expectedMealsPerDay = 4)
+        val before = PlanValidator.validate(plan, target, expectedDays = 2, expectedMealsPerDay = 4, language = AppLanguage.HU)
         assertTrue("Javítás előtt legyen kalóriahiba", before.any { it.contains("kcal") })
 
         val after = PlanValidator.validate(
@@ -133,6 +134,7 @@ class PlanRepairTest {
             target,
             expectedDays = 2,
             expectedMealsPerDay = 4,
+            language = AppLanguage.HU,
         )
         assertTrue("Javítás után ne maradjon hiba: $after", after.isEmpty())
     }
@@ -216,6 +218,7 @@ class PlanRepairTest {
         assertEquals("A nap kalóriája nem változhat", 2400.0, total.kcal, 0.5)
         val problems = PlanValidator.validate(
             result.plan, target, expectedDays = 1, expectedMealsPerDay = 4,
+            language = AppLanguage.HU,
         )
         assertTrue("A validátornak észre kell vennie", problems.any { it.contains("kcal") })
     }

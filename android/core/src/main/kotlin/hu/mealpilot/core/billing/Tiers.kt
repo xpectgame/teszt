@@ -183,7 +183,8 @@ data class Entitlement(
     fun blockReason(
         feature: PaidFeature,
         now: String = periodKey,
-        language: AppLanguage = AppLanguage.DEFAULT,
+        /** KÖTELEZŐ: ez a szöveg a FIZETŐFALON jelenik meg. Lásd [PlanValidator.validate]. */
+        language: AppLanguage,
     ): String? {
         // Null a próbaidőszakban: ott nincs mire várni, és nem ígérünk olyat, ami
         // nem jön el. Előfizetőnél viszont van értelme kiírni, mikor fordul a hónap.

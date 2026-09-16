@@ -35,7 +35,17 @@ object PlanValidator {
         expectedDays: Int,
         expectedMealsPerDay: Int,
         restrictions: Set<DietRestriction> = emptySet(),
-        language: AppLanguage = AppLanguage.DEFAULT,
+        /**
+         * KÖTELEZŐ, szándékosan alapértelmezés nélkül.
+         *
+         * Volt rá alapértelmezés, és a hívó elfelejtette átadni: az angol nyelvű tervre
+         * a magyar ellenőrzés futott, ami minden angol ételnevet hibának jelölt, és
+         * javító kört csinált abból, ami helyes volt. A fordító semmit nem szólt.
+         *
+         * Egy nyelvi alapértelmezés itt nem kényelem, hanem csapda: pont az a hívó
+         * nem veszi észre a hiányt, aki elrontja.
+         */
+        language: AppLanguage,
     ): List<String> {
         val problems = mutableListOf<String>()
         // A hibalista a JAVÍTÓ PROMPTBA megy, tehát a terv nyelvén kell lennie —

@@ -87,7 +87,10 @@ class GenerationCoordinator(private val container: AppContainer) {
             // A kvótát a munka MEGKEZDÉSE előtt nézzük meg: egy elutasított kérésért ne
             // fusson le a drága rész, és ne is fogyjon a keret.
             val entitlement = container.entitlements.current()
-            entitlement.blockReason(PaidFeature.PLAN_GENERATION)?.let { reason ->
+            // A nyelvet át kell adni: ez a szöveg a FIZETŐFALON jelenik meg, és az
+            // alapértelmezés magyar — egy angol felhasználó magyarul kapta volna,
+            // pont abban a pillanatban, amikor fizetést kérünk tőle.
+            entitlement.blockReason(PaidFeature.PLAN_GENERATION, language = container.language)?.let { reason ->
                 requestPaywall(reason)
                 return@launch
             }

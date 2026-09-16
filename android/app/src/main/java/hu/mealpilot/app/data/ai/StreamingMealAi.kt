@@ -247,6 +247,12 @@ abstract class StreamingMealAi(
                 expectedDays = chunkRequest.days,
                 expectedMealsPerDay = expectedMeals,
                 restrictions = chunkRequest.profile.effectiveRestrictions,
+                // A nyelv NEM hagyható el. Az alapértelmezés a magyar, és ilyenkor az
+                // angolmaradvány-kereső egy hibátlan ANGOL tervre fut rá: minden angol
+                // ételnevet hibának jelöl, amiből javító kör lesz, ami magyarra íratná
+                // át a helyes tervet. A hibaüzenetek is a terv nyelvén kell szóljanak,
+                // mert ezek a JAVÍTÓ PROMPTBA mennek.
+                language = language,
             )
             if (problems.isEmpty()) return plan
 
