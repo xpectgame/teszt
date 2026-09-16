@@ -76,7 +76,31 @@ object PlanRepair {
     fun scaleDay(day: AiDay, factor: Double): AiDay =
         day.copy(meals = day.meals.map { scaleMeal(it, factor) })
 
-    private fun scaleMeal(meal: AiMeal, factor: Double): AiMeal = meal.copy(
+    /**
+     * Egy fogás átméretezése.
+     *
+     * A tápértéket CSAK akkor mozgatjuk, ha a hozzávalókon tényleg változtattunk. A
+     * skálázás azon áll, hogy a kettő együtt megy: kevesebb csirkemell, kevesebb
+     * kalória. Ha a fogásban nincs mit átméretezni — csupa darabos hozzávaló (2 db
+     * tojás, 1 db zsemle) vagy csak fűszer —, akkor a hozzávalók változatlanok
+     * maradnak, és a tápértéknek is annak kell maradnia.
+     *
+     * Korábban a tápérték a hozzávalóktól FÜGGETLENÜL skálázódott. Egy csupa darabos
+     * nap 2400 kaloriából 2000-nek látszott: ugyanaz az étel, 400 kcal-lal kevesebbnek
+     * feltüntetve. Egy kalóriaszámláló appban ez a lehető legrosszabb hiba — csendes,
+     * és pont a napi deficitet tünteti el, tehát a felhasználó akkor sem fogy, ha
+     * mindent pontosan betart.
+     *
+     * Az így célon kívül maradt napot a [PlanValidator] veszi észre, és javító kör
+     * készül belőle. Egy javító kör olcsóbb, mint egy hibás szám.
+     */
+    private fun scaleMeal(meal: AiMeal, factor: Double): AiMeal {
+        val ingredients = meal.ingredients.map { scaleIngredient(it, factor) }
+        if (ingredients == meal.ingredients) return meal
+        return scaleNutrition(meal, factor).copy(ingredients = ingredients)
+    }
+
+    private fun scaleNutrition(meal: AiMeal, factor: Double): AiMeal = meal.copy(
         nutrition = meal.nutrition.let { n ->
             AiNutrition(
                 kcal = round1(n.kcal * factor),
@@ -89,7 +113,6 @@ object PlanRepair {
                 sodiumMg = round1(n.sodiumMg * factor),
             )
         },
-        ingredients = meal.ingredients.map { scaleIngredient(it, factor) },
     )
 
     /**

@@ -142,4 +142,81 @@ class PlanRepairTest {
         assertNull(PlanRepair.scaleFactor(AiDay(dayIndex = 0, meals = emptyList()), target))
         assertNull(PlanRepair.scaleFactor(day(0, 0.0), target))
     }
+
+    /**
+     * Csak darabra mért fogás: nincs mit átméretezni rajta.
+     *
+     * A skálázás azért működik, mert a hozzávalókat ÉS a tápértéket együtt mozgatjuk.
+     * Ha a fogásban csak darabos hozzávaló van (2 db tojás) meg fűszer, a hozzávalókhoz
+     * nem nyúlunk — a kalóriaértéket viszont mégis leosztottuk. A terv ilyenkor kevesebb
+     * kalóriát ÁLLÍT, mint amennyi a tányéron van, és ez egy kalóriaszámláló appban a
+     * legrosszabb fajta hiba: csendes, és pont a lényeget rontja el.
+     */
+    private fun countableOnlyDay(index: Int, dayKcal: Double) = AiDay(
+        dayIndex = index,
+        meals = List(4) {
+            AiMeal(
+                name = "Fogás $it",
+                time = "12:00",
+                ingredients = listOf(
+                    AiIngredient(name = "tojás", quantity = 2.0, unit = "db"),
+                    AiIngredient(name = "zsemle", quantity = 1.0, unit = "db"),
+                    AiIngredient(name = "só", quantity = 1.0, unit = "csipet", pantryStaple = true),
+                ),
+                nutrition = AiNutrition(
+                    // 4 × 50 = 200 g: a fehérje-őr (MIN_PROTEIN_RATIO) így nem blokkolja
+                    // a skálázást, tehát a teszt tényleg a darabos hozzávalókat méri.
+                    kcal = dayKcal / 4,
+                    proteinG = 50.0,
+                    carbsG = 30.0,
+                    fatG = 12.0,
+                    fiberG = 7.0,
+                ),
+            )
+        },
+    )
+
+    @Test
+    fun `a meal that cannot be resized keeps its calorie value`() {
+        val plan = AiPlanResponse(planTitle = "T", days = listOf(countableOnlyDay(0, 2400.0)))
+        val before = plan.days[0].meals.map { it.nutrition.kcal }
+
+        val after = PlanRepair.normalize(plan, target).plan.days[0].meals.map { it.nutrition.kcal }
+
+        assertEquals(
+            "A hozzávalók változatlanok, tehát a kalóriaérték sem változhat",
+            before,
+            after,
+        )
+    }
+
+    @Test
+    fun `the stated calories still match the food after scaling`() {
+        // A vegyes nap skálázható: a grammos hozzávaló csökken, tehát a tápérték is
+        // csökkenhet. Itt az a kérdés, hogy a kettő EGYÜTT mozog-e.
+        val plan = AiPlanResponse(planTitle = "T", days = listOf(day(0, 2400.0, dayProtein = 200.0)))
+        val result = PlanRepair.normalize(plan, target)
+        val meal = result.plan.days[0].meals[0]
+        val original = day(0, 2400.0, dayProtein = 200.0).meals[0]
+
+        val chickenBefore = original.ingredients.first { it.unit == "g" }.quantity
+        val chickenAfter = meal.ingredients.first { it.unit == "g" }.quantity
+        assertTrue("A grammos hozzávalónak csökkennie kellett", chickenAfter < chickenBefore)
+        assertTrue("A kalóriaértéknek is csökkennie kellett", meal.nutrition.kcal < original.nutrition.kcal)
+    }
+
+    @Test
+    fun `a day of unresizable meals is left for the validator, not silently relabelled`() {
+        // Ha nem tudjuk igazítani, a nap maradjon a célon kívül — a validátor majd
+        // kéri az újratervezést. A csendes átcímkézés rosszabb, mint egy javító kör.
+        val plan = AiPlanResponse(planTitle = "T", days = listOf(countableOnlyDay(0, 2400.0)))
+        val result = PlanRepair.normalize(plan, target)
+        val total = Nutrients.sum(result.plan.days[0].meals.map { it.nutrition.toNutrients() })
+
+        assertEquals("A nap kalóriája nem változhat", 2400.0, total.kcal, 0.5)
+        val problems = PlanValidator.validate(
+            result.plan, target, expectedDays = 1, expectedMealsPerDay = 4,
+        )
+        assertTrue("A validátornak észre kell vennie", problems.any { it.contains("kcal") })
+    }
 }
