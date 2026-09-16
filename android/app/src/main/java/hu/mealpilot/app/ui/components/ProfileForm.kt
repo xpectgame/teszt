@@ -33,6 +33,7 @@ import hu.mealpilot.app.R
 import hu.mealpilot.app.i18n.LocalAppLanguage
 import hu.mealpilot.core.ai.MealSlot
 import hu.mealpilot.core.i18n.label
+import hu.mealpilot.core.model.ProfileLimits
 import hu.mealpilot.core.model.ActivityLevel
 import hu.mealpilot.core.model.DietRestriction
 import hu.mealpilot.core.model.DietStyle
@@ -90,7 +91,7 @@ fun ProfileForm(
                 initial = profile.ageYears.toString(),
                 label = stringResource(R.string.profile_age),
                 onValidValue = { onChange(profile.copy(ageYears = it.toInt())) },
-                validRange = 14.0..100.0,
+                validRange = ProfileLimits.AGE_YEARS,
                 modifier = Modifier.weight(1f),
             )
             NumberField(
@@ -98,7 +99,7 @@ fun ProfileForm(
                 label = stringResource(R.string.profile_height),
                 decimal = true,
                 onValidValue = { onChange(profile.copy(heightCm = it)) },
-                validRange = 120.0..230.0,
+                validRange = ProfileLimits.HEIGHT_CM,
                 modifier = Modifier.weight(1f),
             )
         }
@@ -110,7 +111,7 @@ fun ProfileForm(
                 label = stringResource(R.string.profile_weight),
                 decimal = true,
                 onValidValue = { onChange(profile.copy(weightKg = it)) },
-                validRange = 35.0..300.0,
+                validRange = ProfileLimits.WEIGHT_KG,
                 modifier = Modifier.weight(1f),
             )
             NumberField(
@@ -120,7 +121,7 @@ fun ProfileForm(
                 allowEmpty = true,
                 onValidValue = { onChange(profile.copy(targetWeightKg = it)) },
                 onCleared = { onChange(profile.copy(targetWeightKg = null)) },
-                validRange = 35.0..300.0,
+                validRange = ProfileLimits.WEIGHT_KG,
                 modifier = Modifier.weight(1f),
             )
         }
@@ -133,7 +134,7 @@ fun ProfileForm(
             allowEmpty = true,
             onValidValue = { onChange(profile.copy(bodyFatPercent = it)) },
             onCleared = { onChange(profile.copy(bodyFatPercent = null)) },
-            validRange = 3.0..70.0,
+            validRange = ProfileLimits.BODY_FAT_PERCENT,
             modifier = Modifier.fillMaxWidth(),
         )
         Spacer(Modifier.height(16.dp))

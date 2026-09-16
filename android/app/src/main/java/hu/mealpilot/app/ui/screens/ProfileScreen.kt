@@ -68,6 +68,7 @@ import hu.mealpilot.core.achievements.AchievementState
 import hu.mealpilot.core.achievements.AchievementTier
 import hu.mealpilot.core.energy.EnergyBudget
 import hu.mealpilot.core.energy.EnergyCalculator
+import hu.mealpilot.core.model.ProfileLimits
 import hu.mealpilot.core.model.UserProfile
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -241,12 +242,23 @@ fun ProfileScreen(
 
         item {
             SectionCard(title = stringResource(R.string.weight_card_title)) {
+                // A tartományokat a ProfileLimits adja, ugyanaz, amit a profilűrlap használ.
+                // Ez a kártya korábban SEMMIT nem ellenőrzött: a testsúly is beírható volt a
+                // testzsír mezőbe, és mivel a mérés felülírja a profilt, a napi kalóriacél
+                // ebből számolódott újra.
+                val loggedWeight = weightText.replace(',', '.').toDoubleOrNull()
+                val loggedFat = bodyFatText.replace(',', '.').toDoubleOrNull()
+                val weightValid = ProfileLimits.isValidWeight(loggedWeight)
+                val fatValid = bodyFatText.isBlank() ||
+                    (loggedFat != null && loggedFat in ProfileLimits.BODY_FAT_PERCENT)
+
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     OutlinedTextField(
                         value = weightText,
                         onValueChange = { weightText = it.filter { c -> c.isDigit() || c == '.' || c == ',' } },
                         label = { Text("kg") },
                         singleLine = true,
+                        isError = weightText.isNotBlank() && !weightValid,
                         modifier = Modifier.weight(1f),
                     )
                     OutlinedTextField(
@@ -255,19 +267,19 @@ fun ProfileScreen(
                         label = { Text(stringResource(R.string.weight_body_fat)) },
                         placeholder = { Text(stringResource(R.string.weight_optional)) },
                         singleLine = true,
+                        isError = !fatValid,
                         modifier = Modifier.weight(1f),
                     )
                 }
                 Spacer(Modifier.height(8.dp))
                 Button(
                     onClick = {
-                        val kg = weightText.replace(',', '.').toDoubleOrNull() ?: return@Button
-                        val fat = bodyFatText.replace(',', '.').toDoubleOrNull()
-                        viewModel.logWeight(kg, fat) { snackbarHostState.showSnackbar(it) }
+                        val kg = loggedWeight ?: return@Button
+                        viewModel.logWeight(kg, loggedFat) { snackbarHostState.showSnackbar(it) }
                         weightText = ""
                         bodyFatText = ""
                     },
-                    enabled = weightText.replace(',', '.').toDoubleOrNull() != null,
+                    enabled = weightValid && fatValid,
                 ) { Text(stringResource(R.string.weight_log_today)) }
 
                 state.change?.let { change ->

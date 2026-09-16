@@ -102,7 +102,23 @@ object EnergyCalculator {
             )
         }
 
-        val targetKcal = (tdeeValue - appliedDeficit).roundToInt()
+        // Az alsó határ a CÉLRA vonatkozik, nem csak a deficitre. Korábban a kód a
+        // deficitet nullázta le, de a célt nem emelte meg — ha a TDEE maga a határ alatt
+        // volt (kis zsírmentes tömeg, vagy elgépelt testzsír), a felhasználó a saját
+        // klinikai minimuma alatti kalóriacélt kapott, miközben a figyelmeztetés az
+        // ellenkezőjét állította.
+        val rawTarget = tdeeValue - appliedDeficit
+        val targetKcal = max(rawTarget, floor).roundToInt()
+        if (rawTarget < floor - 1) {
+            warnings += s(
+                "A megadott adatokból a napi felhasználásod ${tdeeValue.roundToInt()} kcal, ami a " +
+                    "biztonságos alsó határ alatt van. A célt ${targetKcal} kcal-ra emeltem, és " +
+                    "ezen a szinten nem tervezek deficitet. Ha ez meglepő, ellenőrizd a testadataidat.",
+                "From the data you gave, your daily expenditure is ${tdeeValue.roundToInt()} kcal, " +
+                    "which is below the safe minimum. I raised the target to ${targetKcal} kcal and " +
+                    "will not plan a deficit at this level. If that looks wrong, check your body data.",
+            )
+        }
         val target = macroTarget(profile, targetKcal)
 
         if (profile.bmi < 20.0) {

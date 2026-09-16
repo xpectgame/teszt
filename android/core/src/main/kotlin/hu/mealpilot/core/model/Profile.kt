@@ -72,9 +72,21 @@ data class UserProfile(
 ) {
     val bmi: Double get() = weightKg / ((heightCm / 100.0) * (heightCm / 100.0))
 
-    /** Zsírmentes testtömeg, ha ismert a testzsírszázalék. */
+    /**
+     * Zsírmentes testtömeg, ha ismert a testzsírszázalék.
+     *
+     * Az ÉRTELMES tartományon kívüli érték itt null-t ad, nem hibás számot: onnan a
+     * számítás a Mifflin-St Jeor képletre esik vissza, ami csak a súlyt és a magasságot
+     * használja. Enélkül egy 100 fölötti testzsír negatív zsírmentes tömeget, abból
+     * negatív alapanyagcserét, végül NEGATÍV napi kalóriacélt adna.
+     *
+     * A beviteli mezők is szorítanak, de egy egészségügyi számítás ne függjön attól,
+     * hogy minden felület gondos volt-e.
+     */
     val leanBodyMassKg: Double?
-        get() = bodyFatPercent?.let { weightKg * (1.0 - it / 100.0) }
+        get() = bodyFatPercent
+            ?.takeIf { it in ProfileLimits.BODY_FAT_PERCENT }
+            ?.let { weightKg * (1.0 - it / 100.0) }
 
     /**
      * A ténylegesen érvényes kizárások: amit a felhasználó kipipált, plusz ami az

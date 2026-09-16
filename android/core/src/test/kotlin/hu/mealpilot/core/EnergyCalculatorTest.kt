@@ -6,6 +6,8 @@ import hu.mealpilot.core.model.MacroPreset
 import hu.mealpilot.core.model.Sex
 import hu.mealpilot.core.model.UserProfile
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import kotlin.math.abs
@@ -106,5 +108,74 @@ class EnergyCalculatorTest {
         // 10 kg * 7700 / 550 = 140 nap
         assertEquals(140, EnergyCalculator.daysToTarget(profile, budget))
         assertEquals(null, EnergyCalculator.daysToTarget(male, budget))
+    }
+
+    // ---------------------------------------------------------------------------
+    // Hibás testadatokból nem születhet veszélyes kalóriacél. Mindhárom eset ÉLES
+    // hiba volt: a súlyrögzítő kártya nem ellenőrzött tartományt, és onnan a
+    // testzsír mezőbe bármi bekerülhetett.
+    // ---------------------------------------------------------------------------
+
+    private fun profile(weight: Double = 80.0, bodyFat: Double? = null) = UserProfile(
+        sex = Sex.MALE,
+        ageYears = 35,
+        heightCm = 178.0,
+        weightKg = weight,
+        bodyFatPercent = bodyFat,
+        activityLevel = ActivityLevel.LIGHT,
+    )
+
+    @Test
+    fun `an out-of-range body fat falls back instead of producing nonsense`() {
+        // 150% testzsír negatív zsírmentes tömeget adna, abból negatív alapanyagcserét,
+        // végül NEGATÍV napi kalóriacélt. A képlet helyett a testzsírt hagyjuk figyelmen
+        // kívül: a Mifflin-St Jeor csak a súlyt és a magasságot használja.
+        assertNull(profile(bodyFat = 150.0).leanBodyMassKg)
+        assertNull(profile(bodyFat = 0.0).leanBodyMassKg)
+        assertNotNull(profile(bodyFat = 25.0).leanBodyMassKg)
+
+        val broken = EnergyCalculator.budget(profile(bodyFat = 150.0))
+        val sane = EnergyCalculator.budget(profile())
+        assertEquals("A hibás érték nem befolyásolhatja az eredményt", sane.target.kcal, broken.target.kcal)
+        assertTrue("A cél nem lehet negatív", broken.target.kcal > 0)
+    }
+
+    @Test
+    fun `the daily target never drops below the safety floor`() {
+        // Korábban a kód a DEFICITET nullázta le, de a célt nem emelte meg. Ha a napi
+        // felhasználás maga a határ alatt volt, a felhasználó a saját klinikai minimuma
+        // alatti célt kapott — miközben a figyelmeztetés az ellenkezőjét állította.
+        val low = profile(weight = 45.0, bodyFat = 65.0)
+        val budget = EnergyCalculator.budget(low)
+        val floor = EnergyCalculator.floorKcal(low)
+
+        assertTrue(
+            "A cél (${budget.target.kcal}) nem lehet az alsó határ (${floor.toInt()}) alatt",
+            budget.target.kcal >= floor.toInt(),
+        )
+        assertEquals("Ilyenkor nincs deficit", 0, budget.appliedDeficit)
+        assertTrue("És szólni kell róla", budget.warnings.any { it.contains("ellenőrizd", ignoreCase = true) })
+    }
+
+    @Test
+    fun `a healthy profile is untouched by the new floor`() {
+        // A javítás nem nyúlhat a normál esethez: ott a deficit és a cél marad, ami volt.
+        val budget = EnergyCalculator.budget(profile())
+        assertTrue("Van érdemi deficit", budget.appliedDeficit > 400)
+        assertTrue("A cél a határ fölött van", budget.target.kcal > EnergyCalculator.floorKcal(profile()).toInt())
+        assertTrue("És nincs fölösleges figyelmeztetés", budget.warnings.none { it.contains("ellenőrizd", ignoreCase = true) })
+    }
+
+    @Test
+    fun `the macro targets stay positive for every accepted input`() {
+        for (fat in listOf(null, 3.0, 25.0, 70.0)) {
+            for (weight in listOf(35.0, 80.0, 300.0)) {
+                val b = EnergyCalculator.budget(profile(weight = weight, bodyFat = fat))
+                assertTrue("kcal > 0 (fat=$fat, weight=$weight)", b.target.kcal > 0)
+                assertTrue("fehérje > 0 (fat=$fat, weight=$weight)", b.target.proteinG > 0)
+                assertTrue("zsír > 0 (fat=$fat, weight=$weight)", b.target.fatG > 0)
+                assertTrue("szénhidrát >= 0 (fat=$fat, weight=$weight)", b.target.carbsG >= 0)
+            }
+        }
     }
 }
