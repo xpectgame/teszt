@@ -81,7 +81,10 @@ class ReportRepository(private val backend: BackendClient?) {
         subject = "MealPilot report — ${reason.code}",
         body = buildString {
             appendLine("Mire vonatkozik: ${kind.name}")
-            appendLine("Ok: ${reason.label}")
+            // A `label` egy erőforrás-azonosító, nem szöveg: kiírva egy nyolcjegyű
+            // szám lett belőle a levélben. A `code` az, ami olvasható — és ez az
+            // egyetlen út, ami akkor is működik, ha a szolgáltatás nem elérhető.
+            appendLine("Ok: ${reason.code}")
             if (detail.isNotBlank()) {
                 appendLine()
                 appendLine(detail)
