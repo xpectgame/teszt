@@ -20,6 +20,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.outlined.WarningAmber
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Button
@@ -76,8 +77,10 @@ import hu.mealpilot.app.ui.theme.MealColors
 import hu.mealpilot.app.ui.theme.PlateShape
 import hu.mealpilot.core.ai.GenerationProgress
 import hu.mealpilot.core.ai.MealSlot
+import hu.mealpilot.core.ai.RestrictionChecker
 import hu.mealpilot.core.energy.EnergyCalculator
 import hu.mealpilot.core.i18n.label
+import hu.mealpilot.core.model.DietRestriction
 import hu.mealpilot.core.model.Nutrients
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
@@ -86,6 +89,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
@@ -101,6 +105,11 @@ data class PlanUiState(
     val canRefine: Boolean = false,
     /** A csomagban kérhető leghosszabb terv. */
     val maxPlanDays: Int = Tiers.PREMIUM.maxPlanDays,
+    /**
+     * A profil MOSTANI kizárásai. A terv a KÉSZÍTÉSEKOR ismert kizárásokkal készült;
+     * ami később került a profilba, azt csak itt, utólag lehet észrevenni.
+     */
+    val restrictions: Set<DietRestriction> = emptySet(),
 ) {
     val byDay: Map<Int, List<MealWithIngredients>>
         get() = meals.groupBy { it.meal.dayIndex }.toSortedMap()
@@ -112,11 +121,13 @@ class PlanViewModel(private val container: AppContainer) : ViewModel() {
     val state: StateFlow<PlanUiState> = combine(
         container.planRepository.observeActivePlan(),
         container.entitlements.entitlement,
-    ) { plan, entitlement -> plan to entitlement }
-        .flatMapLatest { (plan, entitlement) ->
+        container.settings.profile.map { it.effectiveRestrictions }.distinctUntilChanged(),
+    ) { plan, entitlement, restrictions -> Triple(plan, entitlement, restrictions) }
+        .flatMapLatest { (plan, entitlement, restrictions) ->
             val base = PlanUiState(
                 canRefine = container.hasPlanner && entitlement.limits.canRefineDays,
                 maxPlanDays = entitlement.limits.maxPlanDays,
+                restrictions = restrictions,
             )
             if (plan == null) flowOf(base)
             else container.planRepository.observePlanMeals(plan.id).map { meals ->
@@ -306,6 +317,7 @@ fun PlanScreen(
                     onOpenMeal = onOpenMeal,
                     onRefine = { refineDayIndex = dayIndex },
                     refineEnabled = state.canRefine,
+                    restrictions = state.restrictions,
                 )
             }
         }
@@ -359,6 +371,7 @@ private fun DayCard(
     onOpenMeal: (Long) -> Unit,
     onRefine: () -> Unit,
     refineEnabled: Boolean,
+    restrictions: Set<DietRestriction> = emptySet(),
 ) {
     val total = Nutrients.sum(meals.map { it.meal.nutrients.toNutrients() })
     val date = startDate.plusDays(dayIndex.toLong())
@@ -439,6 +452,27 @@ private fun DayCard(
                                 style = MaterialTheme.typography.bodyMedium,
                                 modifier = Modifier.weight(1f),
                             )
+                            // Ha egy utólag felvett kizárásba ütközik, itt is látszik.
+                            // A teljes mondat a fogás lapján van; itt egy jel elég
+                            // ahhoz, hogy a hét áttekintésekor kiszúrja az ember.
+                            val violations = RestrictionChecker.violatedBy(
+                                mealName = mw.meal.name,
+                                ingredientNames = mw.ingredients.map { it.name },
+                                restrictions = restrictions,
+                                language = language,
+                            )
+                            if (violations.isNotEmpty()) {
+                                Spacer(Modifier.width(8.dp))
+                                Icon(
+                                    Icons.Outlined.WarningAmber,
+                                    contentDescription = stringResource(
+                                        R.string.meal_breaks_exclusions,
+                                        violations.joinToString { it.label(language) },
+                                    ),
+                                    tint = MaterialTheme.colorScheme.error,
+                                    modifier = Modifier.size(17.dp),
+                                )
+                            }
                             Spacer(Modifier.width(8.dp))
                             NumberText(
                                 "${mw.meal.nutrients.kcal.roundToInt()} kcal",

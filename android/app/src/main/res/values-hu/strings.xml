@@ -139,6 +139,7 @@
     <string name="entry_what">Mit ettél?</string>
     <string name="entry_kcal">Kalória (kcal)</string>
     <string name="entry_kcal_range">A kalória %1$d és %2$d között lehet. Javítsd ki, vagy vedd fel két bejegyzésként.</string>
+    <string name="meal_breaks_exclusions">Ez a fogás ütközik egy utólag felvett kizárásoddal: %1$s. Írasd át a napot, vagy egyél mást.</string>
     <string name="entry_protein">Fehérje (g)</string>
     <string name="entry_carbs">Szénhidrát (g)</string>
     <string name="entry_fat">Zsír (g)</string>

@@ -47,17 +47,21 @@ import hu.mealpilot.app.ui.components.MealStamp
 import hu.mealpilot.app.ui.components.PlatePill
 import hu.mealpilot.app.ui.components.ReportDialog
 import hu.mealpilot.app.ui.components.SectionCard
+import hu.mealpilot.app.ui.components.WarningNote
 import hu.mealpilot.app.ui.containerFactory
 import hu.mealpilot.app.ui.icon
 import hu.mealpilot.app.ui.theme.LocalDarkTheme
 import hu.mealpilot.app.ui.theme.MealColors
 import hu.mealpilot.app.ui.theme.MealLabelStyle
 import hu.mealpilot.core.ai.Aisle
+import hu.mealpilot.core.ai.RestrictionChecker
 import hu.mealpilot.core.ai.Units
 import hu.mealpilot.core.i18n.label
 import hu.mealpilot.core.ai.MealSlot
+import hu.mealpilot.core.model.DietRestriction
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
@@ -69,6 +73,11 @@ class MealDetailViewModel(
 
     val meal: StateFlow<MealWithIngredients?> = container.planRepository.observeMeal(mealId)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+
+    /** A profil MOSTANI kizárásai — nem azok, amik a terv készítésekor éltek. */
+    val restrictions: StateFlow<Set<DietRestriction>> = container.settings.profile
+        .map { it.effectiveRestrictions }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptySet())
 
     fun log(mealId: Long, status: LogStatus) = viewModelScope.launch {
         container.telemetry.record(TelemetryEvent.MEAL_LOGGED)
@@ -90,6 +99,7 @@ fun MealDetailScreen(
         factory = containerFactory(container) { MealDetailViewModel(it, mealId) },
     )
     val mealWithIngredients by viewModel.meal.collectAsState()
+    val restrictions by viewModel.restrictions.collectAsState()
     val scope = rememberCoroutineScope()
     var reporting by remember { mutableStateOf(false) }
     val language = LocalAppLanguage.current
@@ -128,6 +138,25 @@ fun MealDetailScreen(
                 Text(meal.name, style = MaterialTheme.typography.headlineSmall)
             }
         }
+        // Ez az a képernyő, ahol a felhasználó a recept elolvasása előtt eldönti, hogy
+        // megfőzi-e. Ha egy utólag felvett kizárásba ütközik, ITT kell szólni — a
+        // tervező csak a készítéskor ismert kizárásokat szűrte ki.
+        val violations = RestrictionChecker.violatedBy(
+            mealName = meal.name,
+            ingredientNames = data.ingredients.map { it.name },
+            restrictions = restrictions,
+            language = language,
+        )
+        if (violations.isNotEmpty()) {
+            Spacer(Modifier.height(12.dp))
+            WarningNote(
+                stringResource(
+                    R.string.meal_breaks_exclusions,
+                    violations.joinToString { it.label(language) },
+                )
+            )
+        }
+
         if (meal.description.isNotBlank()) {
             Spacer(Modifier.height(12.dp))
             Text(

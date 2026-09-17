@@ -15,6 +15,7 @@ import hu.mealpilot.app.i18n.LocalAppLanguage
 import hu.mealpilot.app.ui.screens.MealRow
 import hu.mealpilot.app.ui.theme.MealPilotTheme
 import hu.mealpilot.core.i18n.AppLanguage
+import hu.mealpilot.core.model.DietRestriction
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -58,14 +59,17 @@ class MealRowTest {
         onSkip: () -> Unit = {},
         onOpen: () -> Unit = {},
         onUndo: () -> Unit = {},
+        meal: MealWithIngredients = lunch,
+        violations: List<DietRestriction> = emptyList(),
     ) {
         compose.setContent {
             CompositionLocalProvider(LocalAppLanguage provides AppLanguage.HU) {
                 MealPilotTheme(darkTheme = false) {
                     MealRow(
-                        meal = lunch,
+                        meal = meal,
                         log = log,
                         status = status,
+                        violations = violations,
                         onOpen = onOpen,
                         onAte = onAte,
                         onSkip = onSkip,
@@ -161,5 +165,42 @@ class MealRowTest {
         compose.onNodeWithText("Grillcsirke barna rizzsel").performClick()
         compose.waitForIdle()
         assertTrue(opened)
+    }
+
+    /**
+     * A tervező csak azokat a kizárásokat szűrte ki, amik a terv KÉSZÍTÉSEKOR éltek.
+     * Aki ma jelenti be a mogyoróallergiáját, annak a tegnapi tervében ott marad a
+     * mogyoróvaj — és eddig semmi nem szólt róla. Ez a lapka az utolsó hely, ahol
+     * szólni lehet: innen indul a „Megettem".
+     */
+    @Test
+    fun `az utólag felvett kizárásról a lapka szól`() {
+        row(violations = listOf(DietRestriction.PEANUT))
+
+        compose.onNodeWithText(
+            "Ez a fogás ütközik egy utólag felvett kizárásoddal: Földimogyoró. " +
+                "Írasd át a napot, vagy egyél mást.",
+        ).assertIsDisplayed()
+    }
+
+    @Test
+    fun `kizárás nélkül nincs figyelmeztetés`() {
+        row()
+
+        compose.onNodeWithText(
+            "Ez a fogás ütközik egy utólag felvett kizárásoddal: Földimogyoró. " +
+                "Írasd át a napot, vagy egyél mást.",
+        ).assertDoesNotExist()
+    }
+
+    @Test
+    fun `a már megevett fogásnál is kint marad a figyelmeztetés`() {
+        // Ha kiderül, hogy allergént evett, azt utólag is tudnia kell.
+        row(status = LogStatus.EATEN, violations = listOf(DietRestriction.PEANUT))
+
+        compose.onNodeWithText(
+            "Ez a fogás ütközik egy utólag felvett kizárásoddal: Földimogyoró. " +
+                "Írasd át a napot, vagy egyél mást.",
+        ).assertIsDisplayed()
     }
 }

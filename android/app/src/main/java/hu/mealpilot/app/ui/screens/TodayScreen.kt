@@ -66,6 +66,7 @@ import hu.mealpilot.app.ui.components.MealEntrySheet
 import hu.mealpilot.app.ui.components.MealStamp
 import hu.mealpilot.app.ui.components.NumberText
 import hu.mealpilot.app.ui.components.SectionHeading
+import hu.mealpilot.app.ui.components.WarningNote
 import hu.mealpilot.app.ui.containerFactory
 import hu.mealpilot.app.ui.theme.LocalDarkTheme
 import hu.mealpilot.app.ui.theme.MealColors
@@ -73,7 +74,9 @@ import hu.mealpilot.app.ui.theme.MealLabelStyle
 import hu.mealpilot.app.ui.theme.PlateShape
 import hu.mealpilot.core.ai.AiMealEstimate
 import hu.mealpilot.core.ai.MealSlot
+import hu.mealpilot.core.ai.RestrictionChecker
 import hu.mealpilot.core.i18n.label
+import hu.mealpilot.core.model.DietRestriction
 import hu.mealpilot.core.model.Nutrients
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.delay
@@ -84,6 +87,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -115,6 +119,13 @@ data class TodayUiState(
     val plan: PlanEntity? = null,
     val meals: List<MealWithIngredients> = emptyList(),
     val logs: List<MealLogEntity> = emptyList(),
+    /**
+     * A profil MOSTANI kizárásai — nem azok, amik a terv készítésekor éltek.
+     *
+     * A kettő eltérhet, és pont az eltérés a lényeg: aki ma jelenti be a
+     * mogyoróallergiát, annak a tegnap készült tervében még ott a mogyoróvaj.
+     */
+    val restrictions: Set<DietRestriction> = emptySet(),
 ) {
     val consumed: Nutrients
         get() = Nutrients.sum(
@@ -170,8 +181,15 @@ class TodayViewModel(private val container: AppContainer) : ViewModel() {
                     container.planRepository.observeActivePlan(),
                     container.planRepository.observeDay(day),
                     container.trackingRepository.observeMealLogs(day),
-                ) { plan, meals, logs ->
-                    TodayUiState(date = day, plan = plan, meals = meals, logs = logs)
+                    container.settings.profile.map { it.effectiveRestrictions }.distinctUntilChanged(),
+                ) { plan, meals, logs, restrictions ->
+                    TodayUiState(
+                        date = day,
+                        plan = plan,
+                        meals = meals,
+                        logs = logs,
+                        restrictions = restrictions,
+                    )
                 }
             }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), TodayUiState())
 
@@ -239,6 +257,7 @@ fun TodayScreen(
         factory = containerFactory(container) { TodayViewModel(it) }
     )
     val state by viewModel.state.collectAsState()
+    val language = LocalAppLanguage.current
     val consumed = state.consumed
     val consumedKcal = consumed.kcal.roundToInt()
     val remainingKcal = state.targetKcal - consumedKcal
@@ -354,6 +373,12 @@ fun TodayScreen(
                 meal = mealWithIngredients,
                 log = state.logFor(mealWithIngredients.meal.id),
                 status = state.statusOf(mealWithIngredients.meal.id),
+                violations = RestrictionChecker.violatedBy(
+                    mealName = mealWithIngredients.meal.name,
+                    ingredientNames = mealWithIngredients.ingredients.map { it.name },
+                    restrictions = state.restrictions,
+                    language = language,
+                ),
                 onOpen = { onOpenMeal(mealWithIngredients.meal.id) },
                 onAte = { viewModel.log(mealWithIngredients.meal.id, LogStatus.EATEN) },
                 onSkip = { viewModel.log(mealWithIngredients.meal.id, LogStatus.SKIPPED) },
@@ -467,6 +492,12 @@ internal fun MealRow(
     meal: MealWithIngredients,
     log: MealLogEntity?,
     status: LogStatus?,
+    /**
+     * A kizárások, amikbe ez a fogás beleütközik. Rendes esetben üres: a tervező
+     * kiszűri őket. NEM üres akkor, ha a kizárás a terv elkészülte UTÁN került a
+     * profilba — ilyenkor a tervben ott marad az allergén, és eddig semmi nem szólt.
+     */
+    violations: List<DietRestriction> = emptyList(),
     onOpen: () -> Unit,
     onAte: () -> Unit,
     onSkip: () -> Unit,
@@ -474,7 +505,10 @@ internal fun MealRow(
     onUndo: () -> Unit,
 ) {
     val mealSlot = MealSlot.fromRaw(meal.meal.slot)
-    val slot = mealSlot.label(LocalAppLanguage.current)
+    // A nyelvet EGYSZER olvassuk ki. A `joinToString` lambdája nem @Composable
+    // környezet, tehát ott a `LocalAppLanguage.current` fordítási hiba lenne.
+    val language = LocalAppLanguage.current
+    val slot = mealSlot.label(language)
     val replaced = status == LogStatus.REPLACED
     // Felülírásnál azt mutatjuk, amit tényleg megevett — nem azt, amit terveztünk.
     val shownName = if (replaced) log?.name.orEmpty().ifBlank { meal.meal.name } else meal.meal.name
@@ -547,6 +581,19 @@ internal fun MealRow(
                         Text(stringResource(R.string.action_undo))
                     }
                 }
+            }
+
+            // A figyelmeztetés a gombok FÖLÖTT: ez a döntés bemenete, nem a
+            // következménye. Lezárt étkezésnél is kint marad — ha kiderül, hogy
+            // allergént evett, azt akkor is tudnia kell.
+            if (violations.isNotEmpty()) {
+                Spacer(Modifier.height(10.dp))
+                WarningNote(
+                    stringResource(
+                        R.string.meal_breaks_exclusions,
+                        violations.joinToString { it.label(language) },
+                    )
+                )
             }
 
             if (settled) {

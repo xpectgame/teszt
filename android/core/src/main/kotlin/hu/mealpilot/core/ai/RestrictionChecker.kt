@@ -79,10 +79,29 @@ object RestrictionChecker {
         ingredientNames: List<String>,
         restrictions: Set<DietRestriction>,
         language: AppLanguage,
-    ): Boolean {
-        if (restrictions.isEmpty()) return true
-        if (violations(mealName, restrictions, language).isNotEmpty()) return false
-        return ingredientNames.none { violations(it, restrictions, language).isNotEmpty() }
+    ): Boolean = violatedBy(mealName, ingredientNames, restrictions, language).isEmpty()
+
+    /**
+     * MELYIK kizárásokba ütközik ez a fogás. Üres lista, ha egyikbe sem.
+     *
+     * Az [isSafe] igen/nem válasza a tervezőnek elég — az eldobja a fogást és hoz
+     * másikat. A FELÜLETNEK kevés: ha egy már elmentett terv fogása ütközik egy
+     * utólag felvett allergiával, a felhasználónak azt kell látnia, MIVEL ütközik,
+     * nem csak azt, hogy valami baj van.
+     */
+    fun violatedBy(
+        mealName: String,
+        ingredientNames: List<String>,
+        restrictions: Set<DietRestriction>,
+        language: AppLanguage,
+    ): List<DietRestriction> {
+        if (restrictions.isEmpty()) return emptyList()
+        val hits = LinkedHashSet<DietRestriction>()
+        violations(mealName, restrictions, language).forEach { hits += it.restriction }
+        ingredientNames.forEach { name ->
+            violations(name, restrictions, language).forEach { hits += it.restriction }
+        }
+        return hits.toList()
     }
 
     /** A teljes terv ellenőrzése; a talált hibák a javító prompt bemenetei. */

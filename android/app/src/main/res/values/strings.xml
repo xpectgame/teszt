@@ -140,6 +140,7 @@
     <string name="entry_what">What did you eat?</string>
     <string name="entry_kcal">Calories (kcal)</string>
     <string name="entry_kcal_range">Calories must be between %1$d and %2$d. Correct it, or log it as two entries.</string>
+    <string name="meal_breaks_exclusions">This dish clashes with an exclusion you added later: %1$s. Rewrite the day, or eat something else.</string>
     <string name="entry_protein">Protein (g)</string>
     <string name="entry_carbs">Carbs (g)</string>
     <string name="entry_fat">Fat (g)</string>

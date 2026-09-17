@@ -559,4 +559,66 @@ class RestrictionCheckerTest {
             }
         }
     }
+
+    /**
+     * A MÁR ELMENTETT tervre is rá kell tudni futtatni egy utólag felvett allergiát.
+     * A felületnek nem elég az igen/nem: azt kell kiírnia, MELYIK kizárásba ütközik,
+     * különben a felhasználó csak annyit lát, hogy „valami baj van ezzel a fogással".
+     */
+    @Test
+    fun `a mentett fogásról megmondja, melyik kizárásba ütközik`() {
+        val hits = RestrictionChecker.violatedBy(
+            mealName = "Mogyoróvajas pirítós",
+            ingredientNames = listOf("teljes kiőrlésű kenyér", "mogyoróvaj", "banán"),
+            restrictions = setOf(DietRestriction.PEANUT, DietRestriction.GLUTEN, DietRestriction.FISH),
+            language = AppLanguage.HU,
+        )
+
+        assertTrue("a mogyoró kimaradt: $hits", DietRestriction.PEANUT in hits)
+        assertTrue("a glutén kimaradt: $hits", DietRestriction.GLUTEN in hits)
+        // A halallergia nem ütközik semmivel ebben a fogásban — nem szabad riasztania.
+        assertFalse("a hal tévesen riasztott: $hits", DietRestriction.FISH in hits)
+    }
+
+    @Test
+    fun `a tiszta fogásra üres a lista`() {
+        assertEquals(
+            emptyList<DietRestriction>(),
+            RestrictionChecker.violatedBy(
+                mealName = "Grillcsirke barna rizzsel",
+                ingredientNames = listOf("csirkemell", "barna rizs", "brokkoli"),
+                restrictions = setOf(DietRestriction.PEANUT, DietRestriction.GLUTEN),
+                language = AppLanguage.HU,
+            ),
+        )
+    }
+
+    @Test
+    fun `a fogás NEVE önmagában is ütközhet`() {
+        // A hozzávalólista hiányos lehet; a név ilyenkor az egyetlen jelzés.
+        val hits = RestrictionChecker.violatedBy(
+            mealName = "Rákkoktél",
+            ingredientNames = emptyList(),
+            restrictions = setOf(DietRestriction.CRUSTACEAN),
+            language = AppLanguage.HU,
+        )
+        assertEquals(listOf(DietRestriction.CRUSTACEAN), hits)
+    }
+
+    @Test
+    fun `az isSafe és a violatedBy ugyanazt mondja`() {
+        val restrictions = setOf(DietRestriction.PEANUT, DietRestriction.GLUTEN, DietRestriction.MILK_PROTEIN)
+        val meals = listOf(
+            "Mogyoróvajas pirítós" to listOf("kenyér", "mogyoróvaj"),
+            "Grillcsirke" to listOf("csirkemell", "brokkoli"),
+            "Tejszínes tészta" to listOf("tészta", "tejszín"),
+        )
+        meals.forEach { (name, ingredients) ->
+            assertEquals(
+                name,
+                RestrictionChecker.isSafe(name, ingredients, restrictions, AppLanguage.HU),
+                RestrictionChecker.violatedBy(name, ingredients, restrictions, AppLanguage.HU).isEmpty(),
+            )
+        }
+    }
 }
