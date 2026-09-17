@@ -3,8 +3,10 @@ package hu.mealpilot.core
 import hu.mealpilot.core.achievements.AchievementCatalog
 import hu.mealpilot.core.achievements.AchievementEngine
 import hu.mealpilot.core.achievements.AchievementStats
+import hu.mealpilot.core.i18n.AppLanguage
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -71,5 +73,39 @@ class AchievementEngineTest {
         assertEquals(keys.size, keys.distinct().size)
         keys.forEach { assertNotNull(AchievementCatalog.byKey(it)) }
         assertTrue(AchievementCatalog.all.all { it.goal > 0 })
+    }
+
+    /**
+     * Az angol szövegek nem díszek: az app angolul is fut, és az achievementek
+     * szövege nem az erőforrásokból jön, hanem innen. Ezek a mezők sokáig ott
+     * voltak, csak épp senki nem olvasta őket — a felület és az értesítés is a
+     * magyar mezőt írta ki, akárhogy állt a nyelv.
+     */
+    @Test
+    fun `every achievement really is bilingual`() {
+        AchievementCatalog.all.forEach { achievement ->
+            val key = achievement.key
+            assertTrue("$key: üres angol cím", achievement.titleEn.isNotBlank())
+            assertTrue("$key: üres angol leírás", achievement.descriptionEn.isNotBlank())
+            assertTrue("$key: üres magyar cím", achievement.titleHu.isNotBlank())
+            assertTrue("$key: üres magyar leírás", achievement.descriptionHu.isNotBlank())
+            // Az azonos szöveg majdnem biztosan másolás: a magyar maradt bent.
+            assertNotEquals("$key: a két cím azonos", achievement.titleHu, achievement.titleEn)
+            assertNotEquals(
+                "$key: a két leírás azonos",
+                achievement.descriptionHu,
+                achievement.descriptionEn,
+            )
+        }
+    }
+
+    @Test
+    fun `the language argument decides which text comes back`() {
+        val protein = AchievementCatalog.byKey("protein_7")!!
+
+        assertEquals("Fehérjebajnok", protein.title(AppLanguage.HU))
+        assertEquals("Protein champion", protein.title(AppLanguage.EN))
+        assertEquals("7 napon teljesült a fehérjecél", protein.description(AppLanguage.HU))
+        assertEquals("Protein goal hit on 7 days", protein.description(AppLanguage.EN))
     }
 }

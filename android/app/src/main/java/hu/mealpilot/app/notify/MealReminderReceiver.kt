@@ -112,11 +112,15 @@ class MealReminderReceiver : BroadcastReceiver() {
         // A naplózás új achievementet is feloldhat — erről rögtön szólunk.
         val plan = container.planRepository.activePlan() ?: return
         val fresh = container.statsRepository.refreshAndCollectNew(plan.targetKcal, plan.targetProteinG)
+        // Az értesítés az app nyelvén szól, mint minden más szöveg. A `container.strings`
+        // ugyanezt a nyelvet használja — itt a szöveg a katalógusból jön, nem az
+        // erőforrásokból, ezért kell kézzel átadni.
+        val language = container.language
         fresh.forEachIndexed { index, achievement ->
             val notification = NotificationCompat.Builder(context, Notifications.CHANNEL_ACHIEVEMENTS)
                 .setSmallIcon(R.drawable.ic_notification)
-                .setContentTitle("${achievement.emoji} ${achievement.title}")
-                .setContentText(achievement.description)
+                .setContentTitle("${achievement.emoji} ${achievement.title(language)}")
+                .setContentText(achievement.description(language))
                 .setAutoCancel(true)
                 .setContentIntent(openAppIntent(context))
                 .build()

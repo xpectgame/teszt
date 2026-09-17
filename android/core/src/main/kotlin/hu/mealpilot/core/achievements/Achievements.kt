@@ -32,10 +32,21 @@ enum class AchievementTier(override val hu: String, override val en: String) : L
     BRONZE("Bronz", "Bronze"), SILVER("Ezüst", "Silver"), GOLD("Arany", "Gold")
 }
 
+/**
+ * A nyelvi mezők neve SZÁNDÉKOSAN `titleHu` és `titleEn`, nem `title` és `titleEn`.
+ *
+ * Amíg a magyar mező `title`-nek hívták, minden hívási hely simán kiírta — a
+ * profilképernyő és az achievement-értesítés is —, és egy angolul használó
+ * felhasználónak magyarul jelent meg, hogy „Fehérjebajnok". A hiba nem látszott:
+ * a `title` mező létezik, fordul, és magyarul helyes szöveget ad.
+ *
+ * Így viszont a nyelv nélküli kiírás FORDÍTÁSI HIBA. A [title] és a [description]
+ * függvényt kell hívni, ami nyelvet kér.
+ */
 data class Achievement(
     val key: String,
-    val title: String,
-    val description: String,
+    val titleHu: String,
+    val descriptionHu: String,
     val titleEn: String,
     val descriptionEn: String,
     val emoji: String,
@@ -44,13 +55,13 @@ data class Achievement(
     /** A jelenlegi állás kiolvasása a statisztikából (skálázott egész). */
     val progressOf: (AchievementStats) -> Int,
 ) : Localized {
-    override val hu: String get() = title
+    override val hu: String get() = titleHu
     override val en: String get() = titleEn
 
     fun title(language: AppLanguage): String = label(language)
 
     fun description(language: AppLanguage): String =
-        if (language == AppLanguage.EN) descriptionEn else description
+        if (language == AppLanguage.EN) descriptionEn else descriptionHu
 }
 
 data class AchievementState(

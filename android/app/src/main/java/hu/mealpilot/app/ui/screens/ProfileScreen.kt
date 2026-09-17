@@ -58,6 +58,7 @@ import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import hu.mealpilot.app.AppContainer
 import hu.mealpilot.app.R
+import hu.mealpilot.app.i18n.LocalAppLanguage
 import hu.mealpilot.app.data.telemetry.TelemetryEvent
 import hu.mealpilot.app.data.local.WeightLogEntity
 import hu.mealpilot.app.ui.components.SectionCard
@@ -315,6 +316,7 @@ fun ProfileScreen(
 
 @Composable
 private fun AchievementRow(state: AchievementState) {
+    val language = LocalAppLanguage.current
     Card(Modifier.fillMaxWidth()) {
         Row(
             Modifier
@@ -333,12 +335,12 @@ private fun AchievementRow(state: AchievementState) {
             Spacer(Modifier.size(12.dp))
             Column(Modifier.weight(1f)) {
                 Text(
-                    state.achievement.title,
+                    state.achievement.title(language),
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.SemiBold,
                 )
                 Text(
-                    state.achievement.description,
+                    state.achievement.description(language),
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
