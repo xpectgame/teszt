@@ -242,6 +242,13 @@ jobs:
       - name: Függőségek
         run: npm ci
 
+      # A migrációk az ÉLES adatbázison futnak le, kézzel indított deploy közben. Egy
+      # elgépelt oszlopnév ott derülne ki — a legrosszabb pillanatban, félig lefutott
+      # állapotot hagyva. A vitest a SQL-t csak SZÖVEGKÉNT nézi; ez a lépés valódi
+      # SQLite motoron futtatja végig mindet, sorrendben.
+      - name: A migrációk lefutnak
+        run: python3 tools/check-migrations.py
+
       - name: Típusellenőrzés
         run: npm run typecheck
 
