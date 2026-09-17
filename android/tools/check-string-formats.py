@@ -9,6 +9,11 @@ várt, a hívás Double-t adott. Semmi nem szólt előtte — se fordító, se l
 
 Ez a szkript azt a rést zárja be. A CI-ban fut, és nem kell hozzá se emulátor,
 se Android SDK.
+
+AMIT LEFED: `stringResource`, `getString`, `strings[...]`, `strings.get(...)`, a
+darabszámos alakok, ÉS a fájlban írt rövidítő függvények (`fun text(resId: Int,
+vararg args: Any) = strings.get(resId, *args)`). Az utolsó sokáig kimaradt — pedig
+pont oda kerülnek a szórásoperátort igénylő, tehát HELYŐRZŐS hívások.
 """
 import re
 import sys
@@ -122,14 +127,40 @@ def main() -> int:
         # Az utóbbi szögletes zárójellel hívódik — DE ahol szórásoperátor kell (*args),
         # ott az indexelő alak nem használható, és a hívás `.get(...)`-re vált. Ez a
         # minta sokáig kimaradt, tehát azok a hívások ellenőrizetlenül mentek át.
+        #
+        # ÖTÖDIK alak: a fájlban ÍRT rövidítő függvény. A `ChatScreen`-ben például
+        #
+        #     fun text(resId: Int, vararg args: Any) = container.strings.get(resId, *args)
+        #
+        # áll, és tizennégy hívás megy rajta keresztül. Ezeket a szkript nem látta,
+        # mert a mintái közvetlenül az `R.string.` elé néztek — vagyis pont ott maradt
+        # rés, ahol a szórásoperátor miatt a legtöbb HELYŐRZŐS hívás van. Egy három
+        # helyőrzős szöveg két argumentummal hívva zölden átment, futásidőben viszont
+        # `MissingFormatArgumentException`.
+        wrappers = set(
+            re.findall(
+                r'fun\s+([A-Za-z0-9_]+)\s*\(\s*\w+\s*:\s*Int\s*,\s*vararg\s+\w+\s*:\s*Any\s*\)'
+                r'[^=\n]*=\s*[\w.]*(?:strings\.get|getString)\(',
+                text,
+            )
+        )
+        wrapper_alternatives = ''.join(
+            r'|\b%s\(\s*R\.string\.([A-Za-z0-9_]+)\s*(,)?' % re.escape(name)
+            for name in sorted(wrappers)
+        )
+
         for m in re.finditer(
             r'(?:stringResource|getString)\(\s*R\.string\.([A-Za-z0-9_]+)\s*(,)?'
             r'|strings\[\s*R\.string\.([A-Za-z0-9_]+)\s*(,)?'
-            r'|strings\.get\(\s*R\.string\.([A-Za-z0-9_]+)\s*(,)?',
+            r'|strings\.get\(\s*R\.string\.([A-Za-z0-9_]+)\s*(,)?'
+            + wrapper_alternatives,
             text,
         ):
-            key = m.group(1) or m.group(3) or m.group(5)
-            comma = 2 if m.group(1) else (4 if m.group(3) else 6)
+            # Az első csoport nyer, amelyik illeszkedett; a kulcs és a vesszője egymás
+            # mellett áll, tehát a kulcs csoportszáma után közvetlenül a vessző jön.
+            index = next(i for i in range(1, (m.lastindex or 0) + 1, 2) if m.group(i))
+            key = m.group(index)
+            comma = index + 1
             given = count_arguments(text, m.end(comma)) if m.group(comma) else 0
             line = text.count('\n', 0, m.start()) + 1
             calls[key].append((f'{kt.relative_to(ROOT)}:{line}', given))
