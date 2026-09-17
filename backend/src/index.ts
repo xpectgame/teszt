@@ -472,7 +472,6 @@ app.post('/v1/telemetry', async (c) => {
     device?: string
     crashes?: Array<{
       exception?: string
-      message?: string
       stack?: string
       fingerprint?: string
       happened_at?: number
@@ -487,13 +486,20 @@ app.post('/v1/telemetry', async (c) => {
   const appVersion = caller.appVersion ?? ''
   const writes: Array<D1PreparedStatement> = []
 
+  // A KIVÉTEL ÜZENETE szándékosan nem szerepel sem a fogadott mezők között, sem a
+  // beszúrásban. Az app sosem küldte — a `CrashReporter` pont azért építi a vermet
+  // keretekből, mert egy kivételüzenet bárhonnan kaphat felhasználói szöveget (egy
+  // `NumberFormatException: For input string: "78,5"` a beírt testsúlyt vinné
+  // magával). A szerveren viszont nyitva állt egy 1000 karakteres szabad szöveges
+  // rekesz hozzá: amit a kliens nem tölt ki, azt egy későbbi kliens kitölthetné, és
+  // a tájékoztató 3/a. pontja nem is említi. Ami nem gyűjthető, azt ne is fogadjuk.
   for (const crash of (body.crashes ?? []).slice(0, MAX_CRASHES_PER_UPLOAD)) {
     if (!crash.stack || !crash.exception) continue
     writes.push(
       c.env.DB.prepare(
         `INSERT INTO crashes
-           (id, user_id, app_version, android_api, device, exception, message, stack, fingerprint, happened_at, received_at)
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)`,
+           (id, user_id, app_version, android_api, device, exception, stack, fingerprint, happened_at, received_at)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)`,
       ).bind(
         crypto.randomUUID(),
         caller.userId,
@@ -501,7 +507,6 @@ app.post('/v1/telemetry', async (c) => {
         body.android_api ?? null,
         body.device ? String(body.device).slice(0, 120) : null,
         String(crash.exception).slice(0, 300),
-        crash.message ? String(crash.message).slice(0, 1000) : null,
         String(crash.stack).slice(0, MAX_STACK_CHARS),
         String(crash.fingerprint ?? crash.exception).slice(0, 64),
         crash.happened_at ?? now,

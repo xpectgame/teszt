@@ -1,0 +1,12 @@
+-- A `crashes.message` oszlop eltávolítása.
+--
+-- Az app SOHA nem küldött ide üzenetet: a `CrashReporter` a vermet keretekből építi
+-- (osztály, függvény, sor), mert egy kivételüzenet bárhonnan kaphat felhasználói
+-- szöveget — egy `NumberFormatException: For input string: "78,5"` a beírt testsúlyt
+-- vinné magával. A szerveren mégis állt hozzá egy 1000 karakteres szabad szöveges
+-- oszlop, amit a `/v1/telemetry` ki is töltött volna, ha a kliens küld ilyet.
+--
+-- Az adatkezelési tájékoztató 3/a. pontja nem említi, a 0002-es migráció fejléce
+-- pedig azt írja, hogy ide „az étrend, a napló meg a testadatok soha nem kerülnek".
+-- Egy nyitva hagyott rekesz ezt nem garantálja — ezért nincs többé rekesz.
+ALTER TABLE crashes DROP COLUMN message;

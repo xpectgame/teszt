@@ -137,3 +137,62 @@ describe('az appverzió megszelídítése', () => {
     expect(await uploadWithVersion('\n\t  ')).toBe('')
   })
 })
+
+describe('az összeomlás-jelentés', () => {
+  /**
+   * Az app soha nem küld kivételüzenetet: a `CrashReporter` a vermet keretekből
+   * építi, mert egy üzenet bárhonnan kaphat felhasználói szöveget. A szerveren
+   * mégis állt hozzá egy 1000 karakteres szabad szöveges rekesz — amit a kliens nem
+   * tölt ki, azt egy későbbi kliens kitölthetné.
+   */
+  it('a küldött kivételüzenetet nem tárolja el', async () => {
+    const batches: unknown[][] = []
+    const r = await upload(envCapturing(batches), {
+      day: '2026-09-17',
+      crashes: [
+        {
+          exception: 'java.lang.NumberFormatException',
+          message: 'For input string: "78,5"',
+          stack: 'hu.mealpilot.app.Valami.fut:42',
+          fingerprint: 'abc',
+        },
+      ],
+    })
+
+    expect(r.status).toBe(200)
+    const insert = batches
+      .flat()
+      .find((s: any) => String(s.sql).includes('INTO crashes')) as any
+    expect(insert, 'az összeomlásnak be kell kerülnie').toBeTruthy()
+
+    // A verem és az osztály igen, az üzenet nem.
+    const stored = (insert.args as unknown[]).map(String)
+    expect(stored).toContain('java.lang.NumberFormatException')
+    expect(stored.some((value) => value.includes('78,5'))).toBe(false)
+    expect(String(insert.sql)).not.toContain('message')
+  })
+
+  it('üzenet nélkül is elmenti, amit az app tényleg küld', async () => {
+    const batches: unknown[][] = []
+    await upload(envCapturing(batches), {
+      day: '2026-09-17',
+      device: 'Pixel 8',
+      android_api: 34,
+      crashes: [
+        {
+          exception: 'java.lang.IllegalStateException',
+          stack: 'hu.mealpilot.app.Valami.fut:42',
+          fingerprint: 'hu.mealpilot.app.Valami.fut',
+        },
+      ],
+    })
+
+    const insert = batches
+      .flat()
+      .find((s: any) => String(s.sql).includes('INTO crashes')) as any
+    const stored = (insert.args as unknown[]).map(String)
+    expect(stored).toContain('java.lang.IllegalStateException')
+    expect(stored).toContain('hu.mealpilot.app.Valami.fut:42')
+    expect(stored).toContain('Pixel 8')
+  })
+})
