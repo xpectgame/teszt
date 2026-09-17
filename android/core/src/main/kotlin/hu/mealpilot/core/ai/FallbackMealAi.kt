@@ -33,6 +33,16 @@ class FallbackMealAi(
     /** A terv összefoglalója, ha egyetlen nap sem jött meg az elsődlegestől. */
     private val fallbackSummary: String,
     /**
+     * Megjegyzés arra az esetre, ha a TARTALÉK IS elbukott, de néhány nap már megvan.
+     *
+     * Ilyenkor rövidebb terv megy ki, mint amit a felhasználó kért. Eddig ez némán
+     * történt: a képernyőn két nap jelent meg hét helyett, magyarázat nélkül. A
+     * sablonbank akkor mond nemet, ha a kizárások kimerítik — vagyis pont a
+     * legérzékenyebb felhasználónál, aki a legkevésbé érti, mi történt.
+     */
+    private val shortPlanNote: (deliveredDays: Int, requestedDays: Int) -> String =
+        { delivered, requested -> "A terv $delivered napra készült el a kért $requested helyett." },
+    /**
      * Értesítés a váltásról: a hiba, és hogy az elsődleges hány napot adott át előtte.
      *
      * A napok száma nem statisztika, hanem döntési alap: ha nulla, akkor a
@@ -115,6 +125,15 @@ class FallbackMealAi(
         // Ha a tartalék is elbukik, az eredeti hibát adjuk vissza: azt kell megérteni,
         // nem azt, hogy a mentőöv is kilyukadt.
         if (rest.isFailure && days.isEmpty()) return attempt
+
+        // A tartalék elbukott, de néhány nap már megvan: rövidebb terv megy ki, mint
+        // amit kértek. Ezt KIMONDJUK. A hiányzó napokat a felhasználó úgyis látja;
+        // ha nem írjuk oda, miért, akkor az app tűnik hibásnak.
+        if (days.size < request.days) {
+            // A lista ELEJÉRE: az `assemble` hatnál többet nem visz tovább, és ez a
+            // megjegyzés fontosabb minden tippnél, amit a terv mellé kaptunk.
+            notes.add(0, shortPlanNote(days.size, request.days))
+        }
 
         onProgress(
             GenerationProgress(

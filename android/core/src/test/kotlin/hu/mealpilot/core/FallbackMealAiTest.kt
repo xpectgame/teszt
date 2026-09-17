@@ -109,8 +109,30 @@ class FallbackMealAiTest {
         switchMessage = "Átváltás a beépített tervezőre…",
         fallbackNote = "A hiányzó napok sablonból készültek.",
         fallbackSummary = "sablon összefoglaló",
+        shortPlanNote = { delivered, requested -> "Csak $delivered nap készült el a kért $requested-ból." },
         onFallback = onFallback,
     )
+
+    /** Sablonos tervező, ami szintén nemet mond — pl. a kizárások kimerítik a bankot. */
+    private class NoTemplates : MealAi {
+        override val isConfigured = true
+        override val canEstimate = false
+        override suspend fun generatePlan(
+            request: PlanRequest,
+            onProgress: (GenerationProgress) -> Unit,
+            onChunk: suspend (AiPlanResponse) -> Unit,
+        ): Result<AiPlanResponse> =
+            Result.failure(IllegalStateException("a kizárások kimerítették a sablonbankot"))
+
+        override suspend fun refineDay(request: PlanRequest, currentDayJson: String, instruction: String) =
+            Result.failure<AiDayResponse>(IllegalStateException("sablon"))
+
+        override suspend fun chat(context: ChatContext, history: List<ChatTurn>, message: String) =
+            Result.failure<AiChatResponse>(IllegalStateException("sablon"))
+
+        override suspend fun estimate(description: String) =
+            Result.failure<AiMealEstimate>(IllegalStateException("sablon"))
+    }
 
     @Test
     fun `a total failure is answered by the built-in planner`() = runTest {
@@ -175,5 +197,72 @@ class FallbackMealAiTest {
         val ai = fallback(Flaky(0, RuntimeException("nincs hálózat")))
         assertEquals("nincs hálózat", ai.chat(emptyContext, emptyList(), "szia").exceptionOrNull()?.message)
         assertEquals("nincs hálózat", ai.refineDay(request, "{}", "kevesebb szénhidrát").exceptionOrNull()?.message)
+    }
+
+    /**
+     * A tartalék is elbukhat: a sablonbank akkor mond nemet, ha a kizárások kimerítik.
+     * Ilyenkor rövidebb terv megy ki — és ezt ki kell mondani, különben a felhasználó
+     * csak annyit lát, hogy hét nap helyett három jött, magyarázat nélkül.
+     */
+    @Test
+    fun `a truncated plan says why it is short`() = runTest {
+        val ai = FallbackMealAi(
+            primary = Flaky(3, RuntimeException("megszakadt")),
+            fallback = NoTemplates(),
+            isRecoverable = { true },
+            switchMessage = "Átváltás…",
+            fallbackNote = "A hiányzó napok sablonból készültek.",
+            fallbackSummary = "sablon összefoglaló",
+            shortPlanNote = { delivered, requested -> "Csak $delivered nap készült el a kért $requested-ból." },
+        )
+
+        val plan = ai.generatePlan(request).getOrThrow()
+
+        assertEquals(3, plan.days.size)
+        assertTrue(
+            "a rövidülés magyarázat nélkül maradt: ${plan.coachNotes}",
+            plan.coachNotes.contains("Csak 3 nap készült el a kért 7-ból."),
+        )
+    }
+
+    @Test
+    fun `a plan that is short even after the templates says so`() = runTest {
+        // A sablonos tervező csak annyit ad, amennyit kérnek — itt viszont eleve
+        // kevesebbet kap, mint a hiány, tehát a terv így is rövid marad.
+        val ai = FallbackMealAi(
+            primary = Flaky(2, RuntimeException("megszakadt")),
+            fallback = object : MealAi by NoTemplates() {
+                override suspend fun generatePlan(
+                    request: PlanRequest,
+                    onProgress: (GenerationProgress) -> Unit,
+                    onChunk: suspend (AiPlanResponse) -> Unit,
+                ): Result<AiPlanResponse> {
+                    val plan = AiPlanResponse(
+                        days = listOf(AiDay(dayIndex = request.startDayIndex)),
+                        coachNotes = emptyList(),
+                    )
+                    onChunk(plan)
+                    return Result.success(plan)
+                }
+            },
+            isRecoverable = { true },
+            switchMessage = "Átváltás…",
+            fallbackNote = "A hiányzó napok sablonból készültek.",
+            fallbackSummary = "sablon összefoglaló",
+            shortPlanNote = { delivered, requested -> "Csak $delivered nap készült el a kért $requested-ból." },
+        )
+
+        val plan = ai.generatePlan(request).getOrThrow()
+
+        assertEquals(3, plan.days.size)
+        assertTrue(plan.coachNotes.contains("Csak 3 nap készült el a kért 7-ból."))
+    }
+
+    @Test
+    fun `a complete plan carries no shortness note`() = runTest {
+        val plan = fallback(Flaky(3, RuntimeException("megszakadt"))).generatePlan(request).getOrThrow()
+
+        assertEquals(7, plan.days.size)
+        assertTrue(plan.coachNotes.none { it.startsWith("Csak ") })
     }
 }

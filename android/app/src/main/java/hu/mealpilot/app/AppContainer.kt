@@ -243,6 +243,19 @@ class AppContainer(context: Context) {
                     "vannak méretezve, de a szabad szöveges kérésedet ez a változat nem vette " +
                     "figyelembe."
             },
+            // Ha a beépített tervező sem tud napot adni (a kizárások kimerítik a
+            // sablonbankot), rövidebb terv megy ki. Ezt is kimondjuk.
+            shortPlanNote = { delivered, requested ->
+                if (english) {
+                    "This plan covers $delivered of the $requested days you asked for: the " +
+                        "planning service stopped, and the built-in planner could not fill the " +
+                        "rest either. Try again later for the missing days."
+                } else {
+                    "Ez a terv a kért $requested napból $delivered napra készült el: a " +
+                        "tervezőszolgáltatás elakadt, a beépített tervező pedig nem tudta " +
+                        "pótolni a többit. A hiányzó napokat próbáld meg később újra."
+                }
+            },
             onFallback = { error, daysFromService ->
                 android.util.Log.w(
                     "MealAi",
