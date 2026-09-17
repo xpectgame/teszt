@@ -16,28 +16,34 @@ enum class DietRestriction(
     val group: Group,
     val severity: Severity,
     /** Rövid magyarázat a felületre. */
-    val note: String = "",
+    val noteHu: String = "",
     /** Az AI-nak adott kizárási szabály. */
-    val rule: String,
+    val ruleHu: String,
     /** Magyar hozzávaló-kulcsszavak a gépi ellenőrzéshez. */
-    val keywords: List<String>,
+    val keywordsHu: List<String>,
     /**
      * Ha a hozzávaló neve ezek valamelyikét tartalmazza, a találat nem valódi
      * (pl. „gluténmentes tészta”). Kazeinallergiánál szándékosan üres: a laktózmentes
      * tej is tartalmaz tejfehérjét.
      */
-    val safeMarkers: List<String> = emptyList(),
+    val safeMarkersHu: List<String> = emptyList(),
     /**
      * Szavak, amiket a kulcsszóegyezés ellenére NEM tekintünk találatnak.
      * A magyar szóelejű egyezés miatt kellenek: a „bor" különben eltalálná a borsót,
      * a borsot és a borjút is, a „bab" pedig a babérlevelet.
      */
-    val exceptions: List<String> = emptyList(),
+    val exceptionsHu: List<String> = emptyList(),
 
     // ---------- Angol változat ----------
     // Nem fordítás, hanem külön adat: az angol kulcsszavak nélkül az allergiaszűrés egy
     // angol étrenden némán nem találna semmit. Ez a legrosszabb hibafajta, amit ez az
     // app el tud követni, ezért minden tételnek KÖTELEZŐ angol listát hoznia.
+    //
+    // Ezért van a magyar mezők nevében is a `Hu` végződés: így a `keywords`, a `rule`
+    // és a többi CSAK nyelvvel együtt olvasható ki (lásd a lenti függvényeket), a
+    // nyelv nélküli hozzáférés pedig fordítási hiba. Az achievementeknél pontosan ez
+    // a hiba élt hónapokig: a magyar mező neve volt a „természetes", és mindenki azt
+    // írta ki.
     override val en: String,
     val noteEn: String = "",
     val ruleEn: String,
@@ -67,7 +73,7 @@ enum class DietRestriction(
             // fogja meg, nem a gluténé.
             "rántott ", "rantott ",
         ),
-        safeMarkers = listOf("gluténmentes", "glutenmentes", "gluténmentesen", "gm "),
+        safeMarkersHu = listOf("gluténmentes", "glutenmentes", "gluténmentesen", "gm "),
         en = "Gluten",
         noteEn = "Wheat, rye, barley. With coeliac disease cross-contamination counts too.",
         ruleEn = "No gluten-containing grain (wheat, rye, barley, spelt), flour, pasta, bread, breadcrumbs, bulgur, couscous or seitan. Oats only if certified gluten-free.",
@@ -99,9 +105,9 @@ enum class DietRestriction(
             "kefir", "író", "mascarpone", "ricotta", "feta", "mozzarella", "parmezán", "parmezan",
             "camembert", "cottage", "tejpor", "trappista", "gouda", "cheddar", "brie", "eidami", "körözött", "korozott",
         ),
-        safeMarkers = listOf("laktózmentes", "laktozmentes", "növényi", "novenyi", "zabtej", "szójatej", "szojatej", "mandulatej", "rizstej"),
+        safeMarkersHu = listOf("laktózmentes", "laktozmentes", "növényi", "novenyi", "zabtej", "szójatej", "szojatej", "mandulatej", "rizstej"),
         // A vajbab és a vajretek zöldség — a „vaj" előtag ragadt beléjük.
-        exceptions = listOf(
+        exceptionsHu = listOf(
             "vajbab", "vajretek",
             // A szóvégi egyezés HÁROM betűtől fut, ezért a „tej" és a „vaj" beleragad
             // az összetételekbe. Ez a nyereség (kecsketej, bivalytej, teavaj) ára: a
@@ -145,9 +151,9 @@ enum class DietRestriction(
             "kefir", "író", "mascarpone", "ricotta", "feta", "mozzarella", "parmezán", "parmezan",
             "camembert", "cottage", "tejpor", "kazein", "tejsavó", "tejsavo", "trappista", "gouda", "cheddar", "brie", "eidami", "körözött", "korozott",
         ),
-        safeMarkers = listOf("növényi", "novenyi", "zabtej", "szójatej", "szojatej", "mandulatej", "rizstej", "kókusztej", "kokusztej"),
+        safeMarkersHu = listOf("növényi", "novenyi", "zabtej", "szójatej", "szojatej", "mandulatej", "rizstej", "kókusztej", "kokusztej"),
         // A vajbab és a vajretek zöldség — a „vaj" előtag ragadt beléjük.
-        exceptions = listOf(
+        exceptionsHu = listOf(
             "vajbab", "vajretek",
             // A szóvégi egyezés HÁROM betűtől fut, ezért a „tej" és a „vaj" beleragad
             // az összetételekbe. Ez a nyereség (kecsketej, bivalytej, teavaj) ára: a
@@ -205,7 +211,7 @@ enum class DietRestriction(
         ),
         // A „hal" előtag beleragad a halloumiba (sajt), a halványítóba (halványító
         // zeller) és a halvába (szezámos édesség). Egyik sem hal.
-        exceptions = listOf("halloumi", "halvány", "halvany", "halva"),
+        exceptionsHu = listOf("halloumi", "halvány", "halvany", "halva"),
         en = "Fish",
         noteEn = "",
         ruleEn = "No fish, fish products, fish sauce or fish oil.",
@@ -233,7 +239,7 @@ enum class DietRestriction(
             "tarisznyarák", "remeterák",
         ),
         // A Rákóczi túrós nem tengeri herkentyű.
-        exceptions = listOf("rákóczi", "rakoczi"),
+        exceptionsHu = listOf("rákóczi", "rakoczi"),
         en = "Crustaceans",
         noteEn = "",
         ruleEn = "No crab, prawn, shrimp, lobster or any crustacean.",
@@ -246,7 +252,7 @@ enum class DietRestriction(
         "Kagyló, tintahal, polip, csiga nem szerepelhet.",
         listOf("kagyló", "kagylo", "tintahal", "polip", "csiga", "osztriga", "kalamári", "kalamari"),
         // A csigatészta a húsleves tartozéka, nem csiga.
-        exceptions = listOf("csigatészt", "csigateszt"),
+        exceptionsHu = listOf("csigatészt", "csigateszt"),
         en = "Molluscs",
         noteEn = "",
         ruleEn = "No mussels, squid, octopus or snails.",
@@ -275,7 +281,7 @@ enum class DietRestriction(
             "mogyoró", "mogyoro",
         ),
         // A mogyoróhagyma (salotta) nem mogyoró, csak így hívják.
-        exceptions = listOf("mogyoróhagym", "mogyorohagym"),
+        exceptionsHu = listOf("mogyoróhagym", "mogyorohagym"),
         en = "Peanut",
         noteEn = "",
         ruleEn = "No peanuts, peanut butter or arachis oil.",
@@ -292,7 +298,7 @@ enum class DietRestriction(
             "pekándió", "pekandio", "makadámia", "makadamia", "marcipán", "marcipan",
         ),
         // A mogyoróhagyma (salotta) hagyma, nem dióféle.
-        exceptions = listOf("mogyoróhagym", "mogyorohagym"),
+        exceptionsHu = listOf("mogyoróhagym", "mogyorohagym"),
         en = "Tree nuts",
         noteEn = "Walnut, almond, hazelnut, cashew, pistachio.",
         ruleEn = "No tree nuts at all (walnut, almond, hazelnut, cashew, pistachio, pecan, macadamia).",
@@ -419,7 +425,7 @@ enum class DietRestriction(
             "karfiol, alma, körte kerülendő.",
         listOf("hagyma", "fokhagyma", "bab", "lencse", "csicseriborsó", "csicseriborso", "karfiol", "alma", "körte", "korte"),
         // A babapiskóta keksz, nem hüvelyes; a toldalék miatt tőalakban.
-        exceptions = listOf(
+        exceptionsHu = listOf(
             "babérlevél", "baberlevel", "babér", "baber", "babapiskót",
             // A zöldbab alacsony FODMAP-tartalmú — a szóvégi „bab" ragadt bele.
             "zöldbab", "zoldbab",
@@ -534,7 +540,7 @@ enum class DietRestriction(
         "Sertés, rákfélék, puhatestűek nem szerepelhetnek, és egy fogásban ne legyen együtt hús és tejtermék.",
         // „rak" nincs a listán: lásd a CRUSTACEAN indoklását — a rakott krumpli nem rák.
         listOf("zselatin", "kocsonya", "aszpik", "sertés", "sertes", "szalonna", "sonka", "bacon", "rák", "garnéla", "garnela", "kagyló", "kagylo"),
-        exceptions = listOf("rákóczi", "rakoczi"),
+        exceptionsHu = listOf("rákóczi", "rakoczi"),
         en = "Kosher",
         noteEn = "No pork, and no meat and dairy in the same dish.",
         ruleEn = "No pork, crustaceans or molluscs, and do not put meat and dairy in the same dish.",
@@ -548,19 +554,19 @@ enum class DietRestriction(
     );
 
     fun note(language: AppLanguage): String =
-        if (language == AppLanguage.EN) noteEn else note
+        if (language == AppLanguage.EN) noteEn else noteHu
 
     fun rule(language: AppLanguage): String =
-        if (language == AppLanguage.EN) ruleEn else rule
+        if (language == AppLanguage.EN) ruleEn else ruleHu
 
     fun keywords(language: AppLanguage): List<String> =
-        if (language == AppLanguage.EN) keywordsEn else keywords
+        if (language == AppLanguage.EN) keywordsEn else keywordsHu
 
     fun safeMarkers(language: AppLanguage): List<String> =
-        if (language == AppLanguage.EN) safeMarkersEn else safeMarkers
+        if (language == AppLanguage.EN) safeMarkersEn else safeMarkersHu
 
     fun exceptions(language: AppLanguage): List<String> =
-        if (language == AppLanguage.EN) exceptionsEn else exceptions
+        if (language == AppLanguage.EN) exceptionsEn else exceptionsHu
 
     enum class Group(override val hu: String, override val en: String) : Localized {
         CEREAL_DAIRY("Gabona és tej", "Grains and dairy"),

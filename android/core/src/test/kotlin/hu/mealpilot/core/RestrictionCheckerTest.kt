@@ -176,8 +176,8 @@ class RestrictionCheckerTest {
     @Test
     fun `every restriction has keywords and a rule`() {
         DietRestriction.entries.forEach {
-            assertTrue("${it.name}: hiányzik a kulcsszó", it.keywords.isNotEmpty())
-            assertTrue("${it.name}: hiányzik a szabály", it.rule.isNotBlank())
+            assertTrue("${it.name}: hiányzik a kulcsszó", it.keywordsHu.isNotEmpty())
+            assertTrue("${it.name}: hiányzik a szabály", it.ruleHu.isNotBlank())
             assertTrue("${it.name}: hiányzik a magyar név", it.hu.isNotBlank())
         }
         assertEquals(DietRestriction.entries.size, DietRestriction.byGroup().values.sumOf { it.size })

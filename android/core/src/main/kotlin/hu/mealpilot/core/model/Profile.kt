@@ -42,7 +42,7 @@ enum class DietStyle(
     override val hu: String,
     override val en: String,
     /** Egy mondat a promptba arról, mit zár ki ez a stílus. Üres, ha nem korlátoz. */
-    val rule: String = "",
+    val ruleHu: String = "",
     val ruleEn: String = "",
 ) : Localized {
     OMNIVORE("Mindenevő", "Omnivore"),
@@ -79,7 +79,7 @@ enum class DietStyle(
         "Lean on olive oil, fish, pulses, vegetables and whole grains; red meat rarely.",
     );
 
-    fun rule(language: AppLanguage): String = if (language == AppLanguage.EN) ruleEn else rule
+    fun rule(language: AppLanguage): String = if (language == AppLanguage.EN) ruleEn else ruleHu
 }
 
 enum class MacroPreset(
