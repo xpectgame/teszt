@@ -95,6 +95,13 @@ jobs:
       - name: Nincs beégetett magyar szöveg
         run: python3 tools/check-hardcoded-strings.py
 
+      # Az alapértelmezett `values/` ANGOL, a magyar a `values-hu/` alatt él. Ha egy
+      # kulcs csak az egyikben van meg, az Android nem hibázik — csendben az
+      # alapértelmezettet adja. A magyar felhasználó tehát egy angol mondatot lát a
+      # magyar app közepén, és semmi nem szól róla.
+      - name: Minden szöveg megvan mindkét nyelven
+        run: python3 tools/check-translations.py
+
       # A `LegalLinks.VERSION` dönti el, hogy a felhasználónak újra el kell-e fogadnia
       # a feltételeket. Ha a szöveg megváltozik, de a verzió marad, a Beállítások egy
       # olyan szövegre írja ki, hogy „elfogadva", amit a felhasználó soha nem látott —
