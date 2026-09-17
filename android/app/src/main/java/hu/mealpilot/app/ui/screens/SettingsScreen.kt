@@ -461,7 +461,16 @@ fun SettingsScreen(
 
         Spacer(Modifier.height(12.dp))
         SectionCard(title = stringResource(R.string.settings_profile)) {
-            ProfileForm(profile = profile, onChange = { editedProfile = it })
+            // A hibás számot a mező nem adja tovább, tehát a `profile` a RÉGI értéket
+            // hordozza. Mentés gomb nélkül ez azt jelentette, hogy a felhasználó a
+            // beírt számát látta, kapott egy „Profil elmentve." üzenetet, és közben az
+            // app a régivel számolt tovább. A gombot ezért a mezők érvényessége tiltja.
+            var profileValid by remember { mutableStateOf(true) }
+            ProfileForm(
+                profile = profile,
+                onChange = { editedProfile = it },
+                onValidityChange = { profileValid = it },
+            )
             Spacer(Modifier.height(12.dp))
             Button(
                 onClick = {
@@ -470,6 +479,7 @@ fun SettingsScreen(
                         snackbarHostState.showSnackbar(context.getString(R.string.settings_profile_saved))
                     }
                 },
+                enabled = profileValid,
                 modifier = Modifier.fillMaxWidth(),
             ) { Text(stringResource(R.string.settings_save_profile)) }
         }

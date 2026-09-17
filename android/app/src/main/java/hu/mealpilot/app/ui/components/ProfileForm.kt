@@ -21,11 +21,15 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -42,6 +46,13 @@ import hu.mealpilot.core.model.MacroPreset
 import hu.mealpilot.core.model.Sex
 import hu.mealpilot.core.model.UserProfile
 
+/** A profilmezők jelölői — a modul tesztjei ezekkel címzik meg a mezőket. */
+internal const val PROFILE_FIELD_AGE = "profile-age"
+internal const val PROFILE_FIELD_HEIGHT = "profile-height"
+internal const val PROFILE_FIELD_WEIGHT = "profile-weight"
+internal const val PROFILE_FIELD_TARGETWEIGHT = "profile-target-weight"
+internal const val PROFILE_FIELD_BODYFAT = "profile-body-fat"
+
 /**
  * A profil szerkesztő űrlapja. Az onboarding és a beállítások ugyanezt használja,
  * hogy a validáció és a mezők ne csússzanak szét a két helyen.
@@ -52,8 +63,22 @@ fun ProfileForm(
     profile: UserProfile,
     onChange: (UserProfile) -> Unit,
     modifier: Modifier = Modifier,
+    /**
+     * Hamis, amíg bármelyik szám a megengedett tartományon kívül esik.
+     *
+     * A hívónak EZZEL kell tiltania a továbblépést. A hibás értéket ugyanis nem adjuk
+     * tovább — a profilban a régi szám marad —, tehát mentés után a felhasználó azt
+     * hinné, hogy az általa beírt adatokkal számolunk.
+     */
+    onValidityChange: (Boolean) -> Unit = {},
 ) {
     val language = LocalAppLanguage.current
+    val invalidFields = remember { mutableStateMapOf<String, Unit>() }
+    val valid = invalidFields.isEmpty()
+    LaunchedEffect(valid) { onValidityChange(valid) }
+    fun report(key: String): (Boolean) -> Unit = { isError ->
+        if (isError) invalidFields[key] = Unit else invalidFields.remove(key)
+    }
 
     Column(modifier.fillMaxWidth()) {
 
@@ -93,6 +118,8 @@ fun ProfileForm(
                 label = stringResource(R.string.profile_age),
                 onValidValue = { onChange(profile.copy(ageYears = it.toInt())) },
                 validRange = ProfileLimits.AGE_YEARS,
+                onErrorChange = report("age"),
+                tag = PROFILE_FIELD_AGE,
                 modifier = Modifier.weight(1f),
             )
             NumberField(
@@ -101,6 +128,8 @@ fun ProfileForm(
                 decimal = true,
                 onValidValue = { onChange(profile.copy(heightCm = it)) },
                 validRange = ProfileLimits.HEIGHT_CM,
+                onErrorChange = report("height"),
+                tag = PROFILE_FIELD_HEIGHT,
                 modifier = Modifier.weight(1f),
             )
         }
@@ -113,6 +142,8 @@ fun ProfileForm(
                 decimal = true,
                 onValidValue = { onChange(profile.copy(weightKg = it)) },
                 validRange = ProfileLimits.WEIGHT_KG,
+                onErrorChange = report("weight"),
+                tag = PROFILE_FIELD_WEIGHT,
                 modifier = Modifier.weight(1f),
             )
             NumberField(
@@ -123,6 +154,8 @@ fun ProfileForm(
                 onValidValue = { onChange(profile.copy(targetWeightKg = it)) },
                 onCleared = { onChange(profile.copy(targetWeightKg = null)) },
                 validRange = ProfileLimits.WEIGHT_KG,
+                onErrorChange = report("targetWeight"),
+                tag = PROFILE_FIELD_TARGETWEIGHT,
                 modifier = Modifier.weight(1f),
             )
         }
@@ -136,6 +169,8 @@ fun ProfileForm(
             onValidValue = { onChange(profile.copy(bodyFatPercent = it)) },
             onCleared = { onChange(profile.copy(bodyFatPercent = null)) },
             validRange = ProfileLimits.BODY_FAT_PERCENT,
+            onErrorChange = report("bodyFat"),
+            tag = PROFILE_FIELD_BODYFAT,
             modifier = Modifier.fillMaxWidth(),
         )
         Spacer(Modifier.height(16.dp))
@@ -387,10 +422,24 @@ private fun NumberField(
     allowEmpty: Boolean = false,
     onCleared: () -> Unit = {},
     validRange: ClosedFloatingPointRange<Double> = 0.0..1_000_000.0,
+    /**
+     * Jelzés a szülőnek, hogy ez a mező éppen hibás.
+     *
+     * Enélkül a hibás érték CSENDES volt: a mező pirosra váltott, az értéket viszont
+     * nem adtuk tovább, tehát a profilban a régi szám maradt. A felhasználó a beírt
+     * számot látta a mezőben, az app a régivel számolt — és a Beállításokban még egy
+     * „Profil elmentve." üzenetet is kapott rá.
+     */
+    onErrorChange: (Boolean) -> Unit = {},
+    /** A mező jelölője — a teszt ezzel találja meg; a címke szövegével nem megbízható. */
+    tag: String? = null,
 ) {
     var text by remember { mutableStateOf(initial) }
     val parsed = text.toDoubleOrNull()
     val isError = if (text.isBlank()) !allowEmpty else parsed == null || parsed !in validRange
+
+    LaunchedEffect(isError) { onErrorChange(isError) }
+    DisposableEffect(Unit) { onDispose { onErrorChange(false) } }
 
     OutlinedTextField(
         value = text,
@@ -405,10 +454,25 @@ private fun NumberField(
         label = { Text(label) },
         singleLine = true,
         isError = isError,
+        // A piros keret megmondja, hogy baj van; azt nem, hogy mi. A határokat a
+        // felhasználónak nem kell kitalálnia.
+        supportingText = if (isError) {
+            {
+                Text(
+                    stringResource(
+                        R.string.profile_range_hint,
+                        validRange.start.trimmed(),
+                        validRange.endInclusive.trimmed(),
+                    )
+                )
+            }
+        } else {
+            null
+        },
         keyboardOptions = KeyboardOptions(
             keyboardType = if (decimal) KeyboardType.Decimal else KeyboardType.Number
         ),
-        modifier = modifier,
+        modifier = if (tag == null) modifier else modifier.testTag(tag),
     )
 }
 

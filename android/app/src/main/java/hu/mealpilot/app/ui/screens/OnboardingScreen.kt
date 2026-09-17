@@ -73,6 +73,10 @@ fun OnboardingScreen(
     val stored by viewModel.storedProfile.collectAsState(initial = UserProfile())
     var profile by remember { mutableStateOf<UserProfile?>(null) }
     var consented by remember { mutableStateOf(false) }
+    // A hibás számot a mező NEM adja tovább — a profilban a régi érték maradna. Ha a
+    // gomb ilyenkor is indítana, a felhasználó a beírt adatait látná a képernyőn, az
+    // egész kalóriakeret viszont a régiekből készülne.
+    var profileValid by remember { mutableStateOf(true) }
     val context = LocalContext.current
 
     // A mentett értékekkel indulunk, de a szerkesztés közben nem írjuk felül a felhasználót.
@@ -102,7 +106,11 @@ fun OnboardingScreen(
         )
         Spacer(Modifier.height(20.dp))
 
-        ProfileForm(profile = current, onChange = { profile = it })
+        ProfileForm(
+            profile = current,
+            onChange = { profile = it },
+            onValidityChange = { profileValid = it },
+        )
 
         Spacer(Modifier.height(20.dp))
         SectionCard(title = stringResource(R.string.budget_title)) {
@@ -175,7 +183,7 @@ fun OnboardingScreen(
         Spacer(Modifier.height(12.dp))
         Button(
             onClick = { viewModel.finish(current) },
-            enabled = consented,
+            enabled = consented && profileValid,
             modifier = Modifier.fillMaxWidth(),
         ) { Text(stringResource(R.string.onboarding_start)) }
         Spacer(Modifier.height(32.dp))
