@@ -101,7 +101,14 @@ enum class DietRestriction(
         ),
         safeMarkers = listOf("laktózmentes", "laktozmentes", "növényi", "novenyi", "zabtej", "szójatej", "szojatej", "mandulatej", "rizstej"),
         // A vajbab és a vajretek zöldség — a „vaj" előtag ragadt beléjük.
-        exceptions = listOf("vajbab", "vajretek"),
+        exceptions = listOf(
+            "vajbab", "vajretek",
+            // A szóvégi egyezés HÁROM betűtől fut, ezért a „tej" és a „vaj" beleragad
+            // az összetételekbe. Ez a nyereség (kecsketej, bivalytej, teavaj) ára: a
+            // növényi „tejek" és a magvajak nem tejtermékek.
+            "kókusztej", "kokusztej", "kesutej", "kendertej", "borsótej", "borsotej",
+            "mogyoróvaj", "mogyorovaj", "mandulavaj", "kesuvaj", "sheavaj", "kakaóvaj", "kakaovaj",
+        ),
         en = "Lactose",
         noteEn = "Lactose-free dairy stays allowed.",
         ruleEn = "No lactose-containing dairy; lactose-free versions are fine.",
@@ -140,7 +147,14 @@ enum class DietRestriction(
         ),
         safeMarkers = listOf("növényi", "novenyi", "zabtej", "szójatej", "szojatej", "mandulatej", "rizstej", "kókusztej", "kokusztej"),
         // A vajbab és a vajretek zöldség — a „vaj" előtag ragadt beléjük.
-        exceptions = listOf("vajbab", "vajretek"),
+        exceptions = listOf(
+            "vajbab", "vajretek",
+            // A szóvégi egyezés HÁROM betűtől fut, ezért a „tej" és a „vaj" beleragad
+            // az összetételekbe. Ez a nyereség (kecsketej, bivalytej, teavaj) ára: a
+            // növényi „tejek" és a magvajak nem tejtermékek.
+            "kókusztej", "kokusztej", "kesutej", "kendertej", "borsótej", "borsotej",
+            "mogyoróvaj", "mogyorovaj", "mandulavaj", "kesuvaj", "sheavaj", "kakaóvaj", "kakaovaj",
+        ),
         en = "Milk protein (casein)",
         noteEn = "Stricter than lactose intolerance: lactose-free milk is out too.",
         ruleEn = "No dairy-derived ingredient at all, not even lactose-free ones (they still contain casein and whey). Plant alternatives are fine.",
@@ -405,7 +419,11 @@ enum class DietRestriction(
             "karfiol, alma, körte kerülendő.",
         listOf("hagyma", "fokhagyma", "bab", "lencse", "csicseriborsó", "csicseriborso", "karfiol", "alma", "körte", "korte"),
         // A babapiskóta keksz, nem hüvelyes; a toldalék miatt tőalakban.
-        exceptions = listOf("babérlevél", "baberlevel", "babér", "baber", "babapiskót"),
+        exceptions = listOf(
+            "babérlevél", "baberlevel", "babér", "baber", "babapiskót",
+            // A zöldbab alacsony FODMAP-tartalmú — a szóvégi „bab" ragadt bele.
+            "zöldbab", "zoldbab",
+        ),
         en = "FODMAP sensitivity",
         noteEn = "Common with IBS. Follows the low-FODMAP approach.",
         ruleEn = "Plan a low-FODMAP diet: avoid onion, garlic, wheat, beans, lentils, chickpeas, cauliflower, apple and pear.",
@@ -424,7 +442,7 @@ enum class DietRestriction(
     NO_PORK(
         "Sertéshús nélkül", Group.CHOICE, Severity.PREFERENCE, "",
         "Sertéshús és sertésből készült termék (szalonna, sonka, kolbász) nem szerepelhet.",
-        listOf(
+        listOf("zselatin", "kocsonya", "aszpik", 
             "sertés", "sertes", "szalonna", "sonka", "bacon", "tarja", "karaj",
             "csülök", "csulok", "kolbász", "kolbasz", "disznó", "diszno",
             "tepertő", "teperto", "szalámi", "szalami",
@@ -444,7 +462,7 @@ enum class DietRestriction(
         "Vörös hús nélkül", Group.CHOICE, Severity.PREFERENCE,
         "Baromfi és hal maradhat.",
         "Marha, sertés, bárány, borjú és vadhús nem szerepelhet. Baromfi és hal használható.",
-        listOf(
+        listOf("zselatin", "kocsonya", "aszpik", 
             "marha", "sertés", "sertes", "bárány", "barany", "birka", "borjú", "borju",
             "vadhús", "vadhus", "szarvas", "őz", "szalonna", "sonka", "disznó", "diszno",
             "kolbász", "kolbasz", "szalámi", "szalami", "tepertő", "teperto",
@@ -515,7 +533,7 @@ enum class DietRestriction(
         "Sertés és a hús-tej együttes használata kizárva.",
         "Sertés, rákfélék, puhatestűek nem szerepelhetnek, és egy fogásban ne legyen együtt hús és tejtermék.",
         // „rak" nincs a listán: lásd a CRUSTACEAN indoklását — a rakott krumpli nem rák.
-        listOf("sertés", "sertes", "szalonna", "sonka", "bacon", "rák", "garnéla", "garnela", "kagyló", "kagylo"),
+        listOf("zselatin", "kocsonya", "aszpik", "sertés", "sertes", "szalonna", "sonka", "bacon", "rák", "garnéla", "garnela", "kagyló", "kagylo"),
         exceptions = listOf("rákóczi", "rakoczi"),
         en = "Kosher",
         noteEn = "No pork, and no meat and dairy in the same dish.",

@@ -1,5 +1,6 @@
 package hu.mealpilot.core.model
 
+import hu.mealpilot.core.i18n.AppLanguage
 import hu.mealpilot.core.i18n.Localized
 
 /** Biológiai nem — kizárólag az anyagcsere-képletek (Mifflin-St Jeor, Keytel) bemenete. */
@@ -25,13 +26,60 @@ enum class ActivityLevel(
     EXTREME(1.90, "Napi kétszeri edzés vagy nehéz fizikai munka", "Twice-daily training or heavy labour");
 }
 
-enum class DietStyle(override val hu: String, override val en: String) : Localized {
+/**
+ * Étrendi stílus — és az, hogy MIT JELENT.
+ *
+ * A [rule] azért van, mert a stílus eddig puszta CÍMKEKÉNT ment a promptba: a modell
+ * annyit látott, hogy „Vegán", a többit neki kellett kitalálnia. A gépi ellenőrzés
+ * ugyan kizárásokat is származtat belőle (lásd DietRestriction.impliedBy), de vannak
+ * dolgok, amiket kulcsszóval nem lehet elkapni — a méz a legjobb példa: a vegán
+ * étrendből kimarad, de nincs olyan allergia-kizárás, ami lefedné.
+ *
+ * Amit a szabály kimond, azt a modell betartja; amit a kulcsszólista fog, azt
+ * ellenőrizni is tudjuk. A kettő együtt kell.
+ */
+enum class DietStyle(
+    override val hu: String,
+    override val en: String,
+    /** Egy mondat a promptba arról, mit zár ki ez a stílus. Üres, ha nem korlátoz. */
+    val rule: String = "",
+    val ruleEn: String = "",
+) : Localized {
     OMNIVORE("Mindenevő", "Omnivore"),
-    VEGETARIAN("Vegetáriánus", "Vegetarian"),
-    VEGAN("Vegán", "Vegan"),
-    PESCATARIAN("Pescatariánus", "Pescatarian"),
-    LOW_CARB("Alacsony szénhidrát", "Low carb"),
-    MEDITERRANEAN("Mediterrán", "Mediterranean");
+    VEGETARIAN(
+        "Vegetáriánus", "Vegetarian",
+        "Hús, hal és tenger gyümölcsei nem szerepelhetnek, és állati eredetű zselatin " +
+            "sem (kocsonya, aszpik, gumicukor). Tojás és tejtermék használható.",
+        "No meat, fish or seafood, and no animal gelatin either (aspic, jelly, gummy sweets). " +
+            "Eggs and dairy are fine.",
+    ),
+    VEGAN(
+        "Vegán", "Vegan",
+        "Semmilyen állati eredetű összetevő: hús, hal, tojás, tejtermék, MÉZ és zselatin " +
+            "sem. A méz is kimarad — erre külön figyelj, mert könnyű elfelejteni.",
+        "No animal-derived ingredient at all: no meat, fish, eggs, dairy, HONEY or gelatin. " +
+            "Honey is excluded too — watch for that one, it is easy to forget.",
+    ),
+    PESCATARIAN(
+        "Pescatariánus", "Pescatarian",
+        "Hús nem szerepelhet, hal és tenger gyümölcsei igen.",
+        "No meat; fish and seafood are fine.",
+    ),
+    LOW_CARB(
+        "Alacsony szénhidrát", "Low carb",
+        "A szénhidrát elsősorban zöldségből és kevés gyümölcsből jöjjön; kenyér, tészta, " +
+            "rizs és burgonya csak kis adagban.",
+        "Carbohydrate should come mainly from vegetables and a little fruit; bread, pasta, " +
+            "rice and potato only in small portions.",
+    ),
+    MEDITERRANEAN(
+        "Mediterrán", "Mediterranean",
+        "Olívaolaj, hal, hüvelyesek, zöldség és teljes értékű gabona domináljon; " +
+            "vörös hús ritkán.",
+        "Lean on olive oil, fish, pulses, vegetables and whole grains; red meat rarely.",
+    );
+
+    fun rule(language: AppLanguage): String = if (language == AppLanguage.EN) ruleEn else rule
 }
 
 enum class MacroPreset(

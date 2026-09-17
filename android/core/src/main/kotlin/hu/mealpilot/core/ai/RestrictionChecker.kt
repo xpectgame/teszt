@@ -171,9 +171,16 @@ object RestrictionChecker {
         return words.any { word ->
             word.startsWith(keyword) ||
                 (lengthened != null && word.startsWith(lengthened)) ||
-                // A szóvégi egyezés csak elég hosszú kulcsszónál biztonságos: rövidnél
-                // véletlen szóvégekre is illeszkedne.
-                (keyword.length >= 4 && word.endsWith(keyword))
+                // A szóvégi egyezés HÁROM betűtől fut. Négyes küszöbbel a magyar
+                // legfontosabb rövid allergénszavai kimaradtak a összetételekből:
+                // a „kecsketej", a „bivalytej" és a „teavaj" nem számított
+                // tejterméknek, az „akácméz" nem fruktóznak, a „tarisznyarák" nem
+                // ráknak. Mind hétköznapi szó, és mind némán csúszott át.
+                //
+                // A kettes küszöb már valóban veszélyes lenne (a „bor" minden
+                // -bor végűre illeszkedne), a hármas viszont csak néhány ismert
+                // kivételt igényel — azok a kizárásoknál fel vannak sorolva.
+                (keyword.length >= 3 && word.endsWith(keyword))
         }
     }
 

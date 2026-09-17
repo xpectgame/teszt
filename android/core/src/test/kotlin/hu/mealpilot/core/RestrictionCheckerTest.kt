@@ -514,4 +514,49 @@ class RestrictionCheckerTest {
         assertEquals(emptyList<DietRestriction>(), en("buckwheat flour", DietRestriction.FODMAP))
         assertEquals(emptyList<DietRestriction>(), en("buckwheat pancake", DietRestriction.GLUTEN))
     }
+
+    @Test
+    fun `three-letter allergen words are caught at the end of compounds too`() {
+        // A szóvégi egyezés négyes küszöbe kihagyta a magyar legfontosabb RÖVID
+        // allergénszavait az összetételekből. A kecsketej és a bivalytej tejtermék, a
+        // teavaj vaj — egyik sem számított annak.
+        assertEquals(listOf(DietRestriction.LACTOSE), hits("kecsketej", DietRestriction.LACTOSE))
+        assertEquals(listOf(DietRestriction.LACTOSE), hits("bivalytej", DietRestriction.LACTOSE))
+        assertEquals(listOf(DietRestriction.LACTOSE), hits("teavaj", DietRestriction.LACTOSE))
+        assertEquals(listOf(DietRestriction.MILK_PROTEIN), hits("juhtej", DietRestriction.MILK_PROTEIN))
+        assertEquals(listOf(DietRestriction.FRUCTOSE), hits("akácméz", DietRestriction.FRUCTOSE))
+        assertEquals(listOf(DietRestriction.FISH), hits("busahal", DietRestriction.FISH))
+    }
+
+    @Test
+    fun `plant milks and nut butters are not dairy`() {
+        // A hármas küszöb ára: a „tej" és a „vaj" beleragad olyan szavakba is, amik
+        // nem tejtermékek. Ezek pont azok az ételek, amiket egy tejallergiás KAP —
+        // tehát minden téves találat nála sülne el.
+        for (name in listOf("kókusztej", "zabtej", "rizstej", "mandulatej", "mogyoróvaj", "mandulavaj")) {
+            assertEquals(name, emptyList<DietRestriction>(), hits(name, DietRestriction.LACTOSE))
+            assertEquals(name, emptyList<DietRestriction>(), hits(name, DietRestriction.MILK_PROTEIN))
+        }
+        // A zöldbab alacsony FODMAP-tartalmú, a lóbab nem.
+        assertEquals(emptyList<DietRestriction>(), hits("zöldbab", DietRestriction.FODMAP))
+        assertEquals(listOf(DietRestriction.FODMAP), hits("lóbab", DietRestriction.FODMAP))
+        // A rövid kulcsszavak régi csapdái sem élednek újra.
+        assertEquals(emptyList<DietRestriction>(), hits("borsó", DietRestriction.NO_ALCOHOL))
+        assertEquals(emptyList<DietRestriction>(), hits("babérlevél", DietRestriction.FODMAP))
+    }
+
+    @Test
+    fun `gelatin is excluded for vegetarians and vegans`() {
+        // A zselatin állati eredetű, a kocsonya és az aszpik pedig kifejezetten sertés.
+        // A halal listán ott volt, a vegetáriánusén nem.
+        for (style in listOf(DietStyle.VEGETARIAN, DietStyle.VEGAN)) {
+            val r = UserProfile(dietStyle = style).effectiveRestrictions
+            for (food in listOf("zselatin", "kocsonya", "aszpik")) {
+                assertTrue(
+                    "$style: $food nem mehet át",
+                    RestrictionChecker.violations(food, r).isNotEmpty(),
+                )
+            }
+        }
+    }
 }

@@ -247,6 +247,10 @@ Every quantity must be a number, not text. "day_index" follows the requested ran
             "- Daily activity: ${p.activityLevel.label(language)}"))
         sb.appendLine(s("- Étrendi stílus: ${p.dietStyle.label(language)}",
             "- Diet style: ${p.dietStyle.label(language)}"))
+        // A stílus eddig puszta CÍMKEKÉNT ment át: a modell annyit látott, hogy „Vegán".
+        // A kulcsszavas ellenőrzés nem fed le mindent — a mézre például nincs kizárás —,
+        // tehát amit a szűrő nem tud megfogni, azt legalább ki kell mondani.
+        p.dietStyle.rule(language).takeIf { it.isNotBlank() }?.let { sb.appendLine("  $it") }
         sb.appendLine()
 
         val restrictions = p.effectiveRestrictions
