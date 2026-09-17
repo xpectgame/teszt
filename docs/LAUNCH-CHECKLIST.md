@@ -50,9 +50,11 @@ Amit a kód már tud, és amit neked kell elintézned ahhoz, hogy eladható legy
 **Termékazonosító a kódban:** `mealpilot_premium_monthly`
 (`app/src/main/java/hu/mealpilot/app/billing/BillingGateway.kt`)
 
-**Az ingyenes sáv korlátai** (`Tiers.FREE` és `backend/src/limits.ts`): havi 1 étrend,
-havi 10 üzenet, legfeljebb 3 napos terv, nap-átírás nincs. A kliens csak kiírja őket,
-a döntést a szerver hozza — a két helyen ugyanazok a számok legyenek.
+**Az ingyenes sáv korlátai** (`Tiers.FREE` és `backend/src/limits.ts`): 3 étrend,
+20 üzenet, legfeljebb 3 napos terv, nap-átírás nincs. Ez EGYSZERI próbakeret, nem havi:
+a kulcsa `trial`, és sosem fordul. A kliens csak kiírja a számokat, a döntést a szerver
+hozza — a két helyen ugyanazoknak kell állniuk, és ezt a `tools/check-tier-limits.py`
+ellenőrzi a CI-ban (ezt a bekezdést is).
 
 ---
 
@@ -291,9 +293,11 @@ prémium plafon a nettó bevétel alatt van: **egyetlen előfizető sem tud vesz
 termelni**, akkor sem, ha a klienst átírják. A tipikus használatnál a fedezet 75–85%.
 
 Az ingyenes sáv a valódi kitettség, mert nem hoz bevételt: felhasználónként tipikusan
-~0,11 USD, a plafon miatt legfeljebb 0,80 USD havonta. Száz ingyenes felhasználó a
-tipikus szinten ~11 USD, a legrosszabb esetben 80 USD havonta — ezért érdemes az
-Anthropic-fiókon keménylimitet állítani (lásd [`MONETIZATION.md`](MONETIZATION.md)).
+~0,11 USD, a plafon miatt legfeljebb 0,80 USD — EGYSZER, nem havonta. Az ingyenes keret
+nem töltődik újra, tehát ez szerzési költség: száz ÚJ ingyenes felhasználó a tipikus
+szinten ~11 USD, a legrosszabb esetben 80 USD, egyszer. A havi kiadásod tehát attól
+függ, hányan telepítik újonnan az appot — ezért is érdemes az Anthropic-fiókon
+keménylimitet állítani (lásd [`MONETIZATION.md`](MONETIZATION.md)).
 
 A tényleges számokat ne becsüld, hanem nézd meg — a backend minden hívást könyvel:
 

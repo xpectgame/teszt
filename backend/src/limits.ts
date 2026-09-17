@@ -38,9 +38,13 @@ export const DEFAULT_LIMITS: Record<Tier, TierLimits> = {
     chatMessages: 20,
     maxPlanDays: 3,
     canRefineDays: false,
-    // ≈ 0,60 USD egyszeri költség telepítésenként. Ezt szerzési költségnek tekintjük,
+    // ≈ 0,80 USD egyszeri költség telepítésenként. Ezt szerzési költségnek tekintjük,
     // nem kiszolgálásnak: egyszer fizetjük ki egy emberért, nem havonta.
-    outputTokenCap: 60_000,
+    //
+    // A szám a `wrangler.toml` FREE_OUTPUT_TOKEN_CAP értékével EGYEZIK. Korábban itt
+    // 60 000 állt, a telepítésben 80 000 — vagyis ez az alapérték soha nem futott, a
+    // mellette álló „0,60 USD" viszont ezt a fájlt olvasva tűnt az igazságnak.
+    outputTokenCap: 80_000,
   },
   PREMIUM: {
     aiPlans: -1,

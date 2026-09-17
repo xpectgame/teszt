@@ -89,23 +89,33 @@ Amit állíts be indulás előtt:
 
 ### 3.2 A tokenplafon a szerveren van, nem az appban
 
-A darabszám-korlátokat (havi 1 terv, 10 üzenet) egy módosított kliens megpróbálhatná
+A darabszám-korlátokat (3 terv, 20 üzenet) egy módosított kliens megpróbálhatná
 megkerülni. A kimeneti tokenplafont nem: azt a `backend/src/limits.ts` számolja, minden
-hívás előtt, a D1-ben tárolt havi összeg alapján.
+hívás előtt, a D1-ben tárolt összeg alapján.
 
-| Csomag | Tokenplafon / hó | Felső határ Sonnet 5-ön |
-|---|---|---|
-| Ingyenes | 80 000 | ~0,80 USD |
-| Prémium | 400 000 | ~4,00 USD |
-| Tulajdonosi (a te telefonod) | 1 500 000 | ~15,00 USD |
+Az elszámolási IDŐSZAK csomagfüggő, és ez a különbség hordozza az üzleti modellt: az
+ingyenes sáv EGYSZERI próbakeret (a kulcsa `trial`, sosem fordul), a fizetős sáv
+naptári hónaponként nullázódik.
+
+| Csomag | Tokenplafon | Meddig szól | Felső határ Sonnet 5-ön |
+|---|---|---|---|
+| Ingyenes | 80 000 | egyszer, telepítésenként | ~0,80 USD **egyszer** |
+| Prémium | 400 000 | havonta | ~4,00 USD / hó |
+| Tulajdonosi (a te telefonod) | 1 500 000 | havonta | ~15,00 USD / hó |
 
 A tulajdonosi sáv is kap plafont. Nem azért, mert magadban nem bízol, hanem mert egy
 elszabadult ciklus vagy egy kiszivárgott `OWNER_KEY` ugyanúgy költ.
 
 ### 3.3 Az ingyenes sáv szándékosan szűk
 
-Havi **1 étrend**, legfeljebb **3 napos**, **10 üzenet**, nap-átírás nincs. Ez pont
-annyi, hogy valaki eldönthesse, kell-e neki — de nem annyi, hogy ingyen használja.
+**3 étrend**, egyenként legfeljebb **3 napos**, **20 üzenet**, nap-átírás nincs — és
+ez EGYSZER jár egy telepítésnek, nem havonta. Három terv elég ahhoz, hogy valaki
+eldöntse, kell-e neki: egy első terv, egy igazítás utáni, és egy harmadik a következő
+hétre. Ennél kevesebb nem mutatja meg a terméket, ennél több már ingyen kiszolgálás.
+
+Hogy a keret nem töltődik újra, nem apró részlet: egy havi ingyenes keret minden
+felhasználót örökös, visszatérő költséggé tenne bevétel nélkül, és a szolgáltatás
+annál többet veszítene, minél népszerűbb.
 
 ### 3.4 A modell és a plafonok kódkiadás nélkül állíthatók
 
@@ -164,8 +174,11 @@ a feltétel időnként változik).
 
 | | |
 |---|---|
-| Tipikus | 12 × ~0,11 USD ≈ **1,3 USD / hó** |
-| Legrosszabb eset (mind kimaxolja) | 12 × 0,80 USD = **9,6 USD / hó** |
+| Tipikus | 12 × ~0,11 USD ≈ **1,3 USD, egyszer** |
+| Legrosszabb eset (mind kimaxolja) | 12 × 0,80 USD = **9,6 USD, egyszer** |
+
+Nem havi tétel: az ingyenes keret nem töltődik újra, tehát a tesztelők a próbakeretük
+kimerítése után nem kerülnek több pénzbe.
 
 A **licenctesztelőknek** felvett fiókok ráadásul valódi terhelés nélkül próbálhatják
 végig a vásárlást — tehát a fizetési folyamatot ingyen teszteled.
@@ -177,8 +190,12 @@ felhasználónál:
 
 | | |
 |---|---|
-| Tipikus | ~11 USD / hó |
-| Legrosszabb eset | 80 USD / hó |
+| Tipikus | ~11 USD, egyszer (~0,11 USD / új felhasználó) |
+| Legrosszabb eset | 80 USD, egyszer (0,80 USD / új felhasználó) |
+
+Ez SZERZÉSI költség, nem kiszolgálás: egy felhasználóért egyszer fizetsz. A havi
+kiadásod tehát nem az összes ingyenes felhasználótól függ, hanem attól, hányan
+telepítik újonnan az appot abban a hónapban.
 
 Ha ez sok, nem kell megvárni a katasztrófát: a `FREE_OUTPUT_TOKEN_CAP` lejjebb vihető,
 vagy a `PLAN_MODEL` átállítható Haikura. Mindkettő egy deploy.
@@ -188,7 +205,7 @@ vagy a `PLAN_MODEL` átállítható Haikura. Mindkettő egy deploy.
 Minden előfizető **legalább 0,25 USD** hasznot hoz (a legrosszabb esetben), tipikusan
 **3,3–3,7 USD**-t. Az ingyenes sáv költségét a fizetők fedezik:
 
-| Ingyenes felhasználó | Tipikus havi költségük | Ennyi előfizető fedezi |
+| Új ingyenes felhasználó / hó | Tipikus költségük | Ennyi előfizető fedezi |
 |---|---|---|
 | 100 | ~11 USD | 3–4 |
 | 500 | ~55 USD | 15–17 |
@@ -213,7 +230,7 @@ Sorrendben, a legkevésbé fájdalmastól:
    felhasználó kap egy tervet, ami a kalóriakeretét pontosan tartja, és egy
    megjegyzést arról, hogy ez sablonból készült. A napló, a bevásárlólista, a meglévő
    tervek és a statisztika érintetlenül működnek, mert minden adat a telefonon van.
-   Egy végig sablonból kirakott terv ráadásul **nem fogyasztja a felhasználó havi
+   Egy végig sablonból kirakott terv ráadásul **nem fogyasztja a felhasználó
    keretét** — nem fizettethetjük meg vele a mi kimaradásunkat.
 
 Egyik lépéshez sem kell app-kiadás, és egyik sem visszafordíthatatlan.

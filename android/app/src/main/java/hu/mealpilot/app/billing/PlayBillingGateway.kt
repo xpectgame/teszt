@@ -25,9 +25,18 @@ import kotlinx.coroutines.flow.asStateFlow
  *
  * A vásárlás igazolása itt, a kliensen történik — ez elég a bolt működéséhez, de
  * önmagában nem visszaélésbiztos: egy módosított app hazudhat a jogosultságáról.
- * Az igazi ellenőrzés a backend dolga lesz (Play Developer API `purchases.subscriptions.get`),
- * lásd docs/LAUNCH-CHECKLIST.md. Addig is minden tényleges költség (a modellhívás) a
- * felhasználó saját kulcsán fut, tehát a kockázat nem pénzügyi.
+ * Ezért a FELÜLETÉRT felel, nem a jogosultságért: abból tudja az app, mit írjon ki és
+ * mit ajánljon fel.
+ *
+ * A tényleges ellenőrzést a backend végzi, a Play Developer API
+ * `purchases.subscriptionsv2` hívásával (`backend/src/play.ts`, 6 órás gyorsítótárral);
+ * a vásárlási tokent az app minden kéréshez elküldi, és a kiszolgálásról a szerver
+ * dönt. Ez nem terv, hanem működő állapot.
+ *
+ * FONTOS: a modellhívás költsége a SZOLGÁLTATÁS Anthropic-fiókján keletkezik, nem a
+ * felhasználóén. Amíg a tervezés a felhasználó saját kulcsán futott, egy hazudott
+ * jogosultság csak a felületet tévesztette meg; ma pénzbe kerülne. A védelem ezért a
+ * szerveren van — a kvóta és a kimeneti tokenplafon —, nem itt.
  */
 class PlayBillingGateway(
     context: Context,
