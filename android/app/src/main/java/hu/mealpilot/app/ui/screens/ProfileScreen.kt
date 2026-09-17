@@ -26,7 +26,7 @@ import androidx.compose.material.icons.filled.Restaurant
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.filled.ShoppingCart
 import androidx.compose.material.icons.filled.TrackChanges
-import androidx.compose.material.icons.filled.TrendingDown
+import androidx.compose.material.icons.automirrored.filled.TrendingDown
 import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Card
@@ -376,12 +376,16 @@ private fun AchievementRow(state: AchievementState) {
  * Az achievementekhez ikon, nem emoji: az emoji platformonként máshogy néz ki, és
  * felületen elszórva olcsóvá teszi a megjelenést. Az értesítésben marad emoji, ott
  * viszont pont hasznos, mert onnan hiányzik a színes ikonkészlet.
+ *
+ * A lefelé mutató trend ikon az AutoMirrored változat: a jobbról balra író nyelveken
+ * a „lefelé, jobbra" irány „lefelé, balra" lesz. Ugyanaz a megfontolás, ami miatt a
+ * [BackButton] nyila sem karakter, hanem AutoMirrored ikon.
  */
 private fun achievementIcon(key: String): ImageVector = when {
     key.startsWith("streak") -> Icons.Filled.LocalFireDepartment
     key.startsWith("target") -> Icons.Filled.TrackChanges
     key.startsWith("protein") -> Icons.Filled.Egg
-    key.startsWith("lost") -> Icons.Filled.TrendingDown
+    key.startsWith("lost") -> Icons.AutoMirrored.Filled.TrendingDown
     key.startsWith("weigh") -> Icons.Filled.MonitorWeight
     key.startsWith("shopping") -> Icons.Filled.ShoppingCart
     key.startsWith("recipes") -> Icons.Filled.Restaurant
