@@ -68,6 +68,6 @@ class CrashReporterTest {
         repeat(50) { error = RuntimeException("réteg", error) }
 
         val rendered = CrashReporter.renderStack(thread, error)
-        assertTrue("A lánc korlátozva van", rendered.lineSequence().count { it.startsWith("okozó:") } <= 5)
+        assertTrue("A lánc korlátozva van", rendered.lineSequence().count { it.startsWith("caused by:") } <= 5)
     }
 }

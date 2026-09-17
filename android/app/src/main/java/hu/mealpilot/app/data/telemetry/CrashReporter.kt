@@ -74,7 +74,9 @@ object CrashReporter {
      * nekünk szólt.
      */
     internal fun renderStack(thread: Thread, error: Throwable): String = buildString {
-        appendLine("szál: ${thread.name}")
+        // A címkék angolul: ez GÉPI jelentésformátum, nem felületi szöveg. Így a
+        // beégetett-magyar-szöveg ellenőrzés sem kap rá kivételt.
+        appendLine("thread: ${thread.name}")
         appendLine(error.javaClass.name)
         error.stackTrace.take(MAX_FRAMES).forEach { frame ->
             appendLine("  ${frame.className}.${frame.methodName}:${frame.lineNumber}")
@@ -82,7 +84,7 @@ object CrashReporter {
         var cause = error.cause
         var depth = 0
         while (cause != null && depth < MAX_CAUSES) {
-            appendLine("okozó: ${cause.javaClass.name}")
+            appendLine("caused by: ${cause.javaClass.name}")
             cause.stackTrace.take(MAX_CAUSE_FRAMES).forEach { frame ->
                 appendLine("  ${frame.className}.${frame.methodName}:${frame.lineNumber}")
             }

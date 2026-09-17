@@ -140,6 +140,17 @@
     <string name="entry_kcal">Kalória (kcal)</string>
     <string name="entry_kcal_range">A kalória %1$d és %2$d között lehet. Javítsd ki, vagy vedd fel két bejegyzésként.</string>
     <string name="meal_breaks_exclusions">Ez a fogás ütközik egy utólag felvett kizárásoddal: %1$s. Írasd át a napot, vagy egyél mást.</string>
+    <string name="gen_headline_plan">Összeállítom az étrended</string>
+    <string name="gen_detail_start">Indulás…</string>
+    <string name="gen_detail_partial">%1$d nap már használható — a maradék %2$d napon dolgozom.</string>
+    <string name="gen_detail_finishing">Utolsó simítások…</string>
+    <string name="gen_detail_validating">Ellenőrzöm a tápértékeket…</string>
+    <string name="gen_detail_repairing">Igazítok a kalóriakeretre…</string>
+    <string name="gen_detail_writing">Írom a recepteket… mindjárt megvan az első pár nap.</string>
+    <string name="gen_detail_thinking">Még gondolkodom az első napokon — pár másodperc.</string>
+    <string name="gen_detail_gathering">Összeválogatom az alapanyagokat…</string>
+    <string name="gen_action_failed">Nem sikerült.</string>
+    <string name="chat_thinking">Gondolkodom…</string>
     <string name="entry_protein">Fehérje (g)</string>
     <string name="entry_carbs">Szénhidrát (g)</string>
     <string name="entry_fat">Zsír (g)</string>

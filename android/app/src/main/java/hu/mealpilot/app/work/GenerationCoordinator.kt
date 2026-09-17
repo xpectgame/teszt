@@ -101,7 +101,7 @@ class GenerationCoordinator(private val container: AppContainer) {
 
             try {
                 container.telemetry.record(TelemetryEvent.PLAN_REQUESTED)
-                begin(totalDays = allowedDays, headline = "Összeállítom az étrended")
+                begin(totalDays = allowedDays, headline = container.strings[R.string.gen_headline_plan])
                 val profile = container.settings.currentProfile()
                 val budget = EnergyCalculator.budget(profile, container.language)
                 // -1 = nem volt visszaesés; 0 vagy több = ennyi nap jött a szolgáltatástól,
@@ -162,7 +162,7 @@ class GenerationCoordinator(private val container: AppContainer) {
             } catch (error: Throwable) {
                 Log.e(TAG, "A művelet megszakadt.", error)
                 offerUpgradeIfQuota(error)
-                _actionResult.value = error.message ?: "Nem sikerült."
+                _actionResult.value = error.message ?: container.strings[R.string.gen_action_failed]
             } finally {
                 end()
             }
@@ -185,7 +185,7 @@ class GenerationCoordinator(private val container: AppContainer) {
             running = true,
             totalDays = totalDays,
             headline = headline,
-            detail = "Indulás…",
+            detail = container.strings[R.string.gen_detail_start],
             startedAtMillis = System.currentTimeMillis(),
         )
         GenerationService.start(container.appContext)
@@ -217,6 +217,10 @@ class GenerationCoordinator(private val container: AppContainer) {
      * Egy hosszú műveletnél a legrosszabb, ha a felhasználó nem tudja, halad-e egyáltalán.
      * Ezért mindig azt mondjuk, ami éppen történik, és ha van már használható nap, azt is,
      * hogy nem kell tovább várnia.
+     *
+     * A szövegek az `AppStrings`-ből jönnek, nem beégetve: ez a sáv háttérmunka közben
+     * szól, tehát nincs Compose-kontextus, a rendszer nyelve pedig nem feltétlenül
+     * ugyanaz, mint amit a felhasználó az appban választott.
      */
     private fun reassure(progress: GenerationProgress, current: Status): String {
         val total = current.totalDays
@@ -225,13 +229,15 @@ class GenerationCoordinator(private val container: AppContainer) {
 
         return when {
             ready in 1 until total ->
-                "$ready nap már használható — a maradék ${total - ready} napon dolgozom."
-            ready >= total && total > 0 -> "Utolsó simítások…"
-            progress.stage == GenerationProgress.Stage.VALIDATING -> "Ellenőrzöm a tápértékeket…"
-            progress.stage == GenerationProgress.Stage.REPAIRING -> "Igazítok a kalóriakeretre…"
-            progress.receivedChars > 2000 -> "Írom a recepteket… mindjárt megvan az első pár nap."
-            elapsedSec > 25 -> "Még gondolkodom az első napokon — pár másodperc."
-            else -> "Összeválogatom az alapanyagokat…"
+                container.strings[R.string.gen_detail_partial, ready, total - ready]
+            ready >= total && total > 0 -> container.strings[R.string.gen_detail_finishing]
+            progress.stage == GenerationProgress.Stage.VALIDATING ->
+                container.strings[R.string.gen_detail_validating]
+            progress.stage == GenerationProgress.Stage.REPAIRING ->
+                container.strings[R.string.gen_detail_repairing]
+            progress.receivedChars > 2000 -> container.strings[R.string.gen_detail_writing]
+            elapsedSec > 25 -> container.strings[R.string.gen_detail_thinking]
+            else -> container.strings[R.string.gen_detail_gathering]
         }
     }
 

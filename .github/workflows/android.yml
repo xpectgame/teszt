@@ -87,6 +87,14 @@ jobs:
       - name: A csomagkorlátok egyeznek a backenddel
         run: python3 tools/check-tier-limits.py
 
+      # Az app két nyelven fut, de a HÁTTÉRBEN futó részek — a tervezés
+      # folyamatjelzője, az értesítések, a visszaadott hibaüzenetek — könnyen
+      # kimaradnak az erőforrásokból: ott nincs `stringResource`, és egy beégetett
+      # magyar mondat magyar gépen tökéletesen működik. A tervezés teljes
+      # narrációja így maradt magyar az angol appban is, és semmi nem szólt.
+      - name: Nincs beégetett magyar szöveg
+        run: python3 tools/check-hardcoded-strings.py
+
       # A backend címe a gradle.properties-ből jön, tehát a debug APK-ba be KELL kerülnie.
       # Ha valaki elírja vagy törli a beállítást, az app csendben visszaesne a saját
       # kulcsot kérő fejlesztői útra — a telepítőn semmi nem látszana belőle.

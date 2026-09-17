@@ -464,7 +464,7 @@ fun ChatScreen(
                             CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp)
                             Spacer(Modifier.size(10.dp))
                             Text(
-                                if (generation.running) generation.headline else "Gondolkodom…",
+                                if (generation.running) generation.headline else stringResource(R.string.chat_thinking),
                                 style = MaterialTheme.typography.bodyMedium,
                             )
                         }

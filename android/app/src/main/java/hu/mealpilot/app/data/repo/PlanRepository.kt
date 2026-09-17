@@ -165,7 +165,12 @@ class PlanRepository(
         val error = result.exceptionOrNull()
         if (savedDays == 0) {
             planDao.delete(planId)
-            return Result.failure(error ?: MealAiException("A válasz egyetlen napot sem tartalmazott."))
+            return Result.failure(
+                error ?: MealAiException(
+                    if (language == AppLanguage.EN) "The reply contained no days at all."
+                    else "A válasz egyetlen napot sem tartalmazott."
+                )
+            )
         }
 
         return Result.success(
@@ -188,12 +193,21 @@ class PlanRepository(
         instruction: String,
         language: AppLanguage = AppLanguage.DEFAULT,
     ): Result<String> {
-        val plan = planDao.byId(planId) ?: return Result.failure(MealAiException("A terv nem található."))
+        val plan = planDao.byId(planId) ?: return Result.failure(
+            MealAiException(
+                if (language == AppLanguage.EN) "That plan is gone." else "A terv nem található."
+            )
+        )
         val startDate = LocalDate.ofEpochDay(plan.startEpochDay)
         val date = startDate.plusDays(dayIndex.toLong())
 
         val current = mealDao.mealsInRange(planId, date.toEpochDay(), date.toEpochDay())
-        if (current.isEmpty()) return Result.failure(MealAiException("Ehhez a naphoz nincs étkezés."))
+        if (current.isEmpty()) return Result.failure(
+            MealAiException(
+                if (language == AppLanguage.EN) "There are no meals for that day."
+                else "Ehhez a naphoz nincs étkezés."
+            )
+        )
 
         val request = PlanRequest(
             profile = profile,
@@ -212,7 +226,11 @@ class PlanRepository(
         insertDay(planId, startDate, response.day.copy(dayIndex = dayIndex))
         rebuildShoppingList(planId, plan.startEpochDay, plan.endEpochDay)
 
-        return Result.success(response.explanation.ifBlank { "A napot frissítettem." })
+        return Result.success(
+            response.explanation.ifBlank {
+                if (language == AppLanguage.EN) "I have rewritten the day." else "A napot frissítettem."
+            }
+        )
     }
 
     private suspend fun insertDay(planId: Long, startDate: LocalDate, day: AiDay) {
