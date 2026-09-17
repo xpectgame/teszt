@@ -1,7 +1,7 @@
 import { Hono } from 'hono'
 import { cors } from 'hono/cors'
 import { AnthropicError, costMicros, emptyUsage, failureLabel, streamMessage } from './anthropic.js'
-import { AuthError, resolveCaller, type Caller } from './auth.js'
+import { AuthError, resolveCaller, secretMatches, type Caller } from './auth.js'
 import { addUsage, logRequest, readSubscription, readUsage, sha256Hex, writeSubscription } from './db.js'
 import type { Env } from './env.js'
 import {
@@ -65,6 +65,22 @@ const TASK_CONFIG: Record<
 
 /** Egy feltöltésben ennyi fér el — a többit a kliens eldobja, nem gyűjtjük végtelenül. */
 const MAX_CRASHES_PER_UPLOAD = 10
+
+/**
+ * Felhasználónként, naponta ennyi sor mehet a bejelentés- és az összeomlás-táblába.
+ *
+ * A telepítési azonosító nem jogosultság: bárki generál magának újat. A tervezésnél
+ * ezt a kimeneti tokenplafon fogja meg, a `/v1/report` és a `/v1/telemetry` viszont
+ * korlátlanul fogadott több kilobájtos sorokat. Nem a tartalom a baj, hanem a
+ * mennyiség: a D1 napi írási keretének kimerítése a KÖNYVELÉST és a kvótaszámlálást
+ * is megbénítaná, vagyis a fizető felhasználókat.
+ *
+ * A számok bőven a valódi használat fölött vannak: az app naponta legfeljebb néhány
+ * bejelentést küld, összeomlásból pedig feltöltésenként legfeljebb tízet.
+ */
+const MAX_REPORTS_PER_DAY = 20
+const MAX_CRASHES_PER_DAY = 50
+const DAY_MILLIS = 24 * 60 * 60 * 1000
 const MAX_STACK_CHARS = 20_000
 const MAX_EVENT_NAMES = 40
 const MAX_EVENT_COUNT = 100_000
@@ -438,9 +454,16 @@ app.post('/v1/report', async (c) => {
     ? String(body.kind).toUpperCase()
     : 'PLAN'
 
+  // A napi korlátot MAGA A BESZÚRÁS tartja be: így nem kell külön lekérdezés, és két
+  // egyszerre futó kérés sem tudja megkerülni egy beolvasás-majd-írás réssel. A
+  // felhasználó ugyanazt a választ kapja akkor is, ha a sor nem született meg — a
+  // bejelentőnek nincs mit kezdenie azzal, hogy elérte a napi keretet, és egy
+  // elárasztónak sem adunk visszajelzést arról, hol a határ.
+  const now = Date.now()
   await c.env.DB.prepare(
     `INSERT INTO reports (id, user_id, kind, reason, detail, payload, app_version, created_at)
-     VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)`,
+     SELECT ?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8
+     WHERE (SELECT COUNT(*) FROM reports WHERE user_id = ?2 AND created_at > ?9) < ?10`,
   )
     .bind(
       crypto.randomUUID(),
@@ -450,7 +473,9 @@ app.post('/v1/report', async (c) => {
       body.detail ? String(body.detail).slice(0, 2000) : null,
       body.payload ? String(body.payload).slice(0, 20_000) : null,
       caller.appVersion,
-      Date.now(),
+      now,
+      now - DAY_MILLIS,
+      MAX_REPORTS_PER_DAY,
     )
     .run()
 
@@ -499,7 +524,8 @@ app.post('/v1/telemetry', async (c) => {
       c.env.DB.prepare(
         `INSERT INTO crashes
            (id, user_id, app_version, android_api, device, exception, stack, fingerprint, happened_at, received_at)
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)`,
+         SELECT ?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10
+         WHERE (SELECT COUNT(*) FROM crashes WHERE user_id = ?2 AND received_at > ?11) < ?12`,
       ).bind(
         crypto.randomUUID(),
         caller.userId,
@@ -511,6 +537,8 @@ app.post('/v1/telemetry', async (c) => {
         String(crash.fingerprint ?? crash.exception).slice(0, 64),
         crash.happened_at ?? now,
         now,
+        now - DAY_MILLIS,
+        MAX_CRASHES_PER_DAY,
       ),
     )
   }
@@ -554,7 +582,8 @@ app.post('/v1/telemetry', async (c) => {
  */
 app.post('/v1/play/rtdn', async (c) => {
   const expected = c.env.RTDN_SHARED_SECRET
-  if (!expected || c.req.query('secret') !== expected) {
+  const provided = c.req.query('secret') ?? ''
+  if (!expected || !secretMatches(provided, expected)) {
     return c.json({ error: 'FORBIDDEN' }, 403)
   }
 

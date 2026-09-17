@@ -79,8 +79,13 @@ function limitsFor(env: Env, tier: Tier): TierLimits {
  *
  * Egy sima `===` a nem egyező karakternél azonnal visszatér, amiből elvileg ki lehet
  * mérni a kulcsot. Itt nem valószínű támadás, de a helyes forma nem kerül semmibe.
+ *
+ * Exportált, mert NEM csak az `OWNER_KEY`-re vonatkozik: az RTDN-végpont közös titka
+ * ugyanígy titok, ráadásul az URL lekérdezési részében utazik. A szabályt itt
+ * mondtuk ki, tehát mindenhol ezt kell használni — különben a következő titok megint
+ * `===`-szel kerül összehasonlításra.
  */
-function secretMatches(provided: string, expected: string): boolean {
+export function secretMatches(provided: string, expected: string): boolean {
   if (provided.length !== expected.length) return false
   let diff = 0
   for (let i = 0; i < provided.length; i++) {

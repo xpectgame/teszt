@@ -1,4 +1,6 @@
 import { describe, expect, it } from 'vitest'
+import { readFileSync } from 'node:fs'
+import { fileURLToPath } from 'node:url'
 import app from '../src/index.js'
 
 const env = { ANDROID_PACKAGE: 'hu.mealpilot.app' } as any
@@ -200,5 +202,144 @@ describe('globális napi mennyezet a kérés útján', () => {
     } finally {
       globalThis.fetch = original
     }
+  })
+})
+
+describe('a bejelentés és az összeomlás napi korlátja', () => {
+  /**
+   * A telepítési azonosító nem jogosultság: bárki generál magának újat. A tervezésnél
+   * ezt a kimeneti tokenplafon fogja meg, a `/v1/report` és a `/v1/telemetry` viszont
+   * korlátlanul fogadott több kilobájtos sorokat. A D1 napi írási keretének
+   * kimerítése a KÖNYVELÉST is megbénítaná, tehát a fizető felhasználókat.
+   */
+  function envRecordingSql(statements: Array<{ sql: string; args: unknown[] }>) {
+    const bind = (sql: string) => (...args: unknown[]) => ({
+      sql,
+      args,
+      run: async () => {
+        statements.push({ sql, args })
+        return {}
+      },
+      first: async () => null,
+      all: async () => ({ results: [] }),
+    })
+    return {
+      ANDROID_PACKAGE: 'hu.mealpilot.app',
+      DB: {
+        prepare: (sql: string) => ({ bind: bind(sql) }),
+        batch: async (list: any[]) => {
+          for (const s of list) statements.push({ sql: s.sql, args: s.args })
+          return []
+        },
+      },
+    } as any
+  }
+
+  function post(env: any, path: string, body: unknown) {
+    return app.fetch(
+      new Request(`https://example.workers.dev${path}`, {
+        method: 'POST',
+        headers: {
+          authorization: 'Bearer aaaaaaaaaaaaaaaaaaaaaaaa',
+          'content-type': 'application/json',
+        },
+        body: JSON.stringify(body),
+      }),
+      env,
+      ctx,
+    )
+  }
+
+  it('a bejelentés beszúrása maga tartja be a napi keretet', async () => {
+    const statements: Array<{ sql: string; args: unknown[] }> = []
+    const r = await post(envRecordingSql(statements), '/v1/report', {
+      kind: 'PLAN',
+      reason: 'WRONG_NUTRITION',
+      payload: 'x'.repeat(100),
+    })
+
+    expect(r.status).toBe(200)
+    const insert = statements.find((s) => s.sql.includes('INTO reports'))
+    expect(insert, 'a bejelentésnek be kell kerülnie').toBeTruthy()
+    // Nem sima VALUES: a feltételt maga az utasítás hordozza, tehát nincs
+    // beolvasás-majd-írás rés, amin két egyszerre futó kérés átcsúszhatna.
+    expect(insert!.sql).toContain('SELECT COUNT(*)')
+    expect(insert!.sql).not.toContain('VALUES')
+    // Az utolsó paraméter a korlát, az előtte lévő az ablak kezdete.
+    const args = insert!.args
+    expect(Number(args[args.length - 1])).toBeGreaterThan(0)
+    expect(Number(args[args.length - 2])).toBeLessThan(Date.now())
+  })
+
+  it('az összeomlás beszúrása is a saját keretét nézi', async () => {
+    const statements: Array<{ sql: string; args: unknown[] }> = []
+    await post(envRecordingSql(statements), '/v1/telemetry', {
+      day: '2026-09-17',
+      crashes: [{ exception: 'java.lang.IllegalStateException', stack: 'a.b.c:1', fingerprint: 'f' }],
+    })
+
+    const insert = statements.find((s) => String(s.sql).includes('INTO crashes'))
+    expect(insert, 'az összeomlásnak be kell kerülnie').toBeTruthy()
+    expect(String(insert!.sql)).toContain('SELECT COUNT(*)')
+    expect(String(insert!.sql)).not.toContain('VALUES')
+  })
+})
+
+describe('az RTDN-végpont titka', () => {
+  // A közös titok az URL lekérdezési részében utazik. A `secretMatches` szabályát az
+  // `OWNER_KEY`-re már kimondtuk; itt sima `!==` állt.
+  const env = { ANDROID_PACKAGE: 'hu.mealpilot.app', RTDN_SHARED_SECRET: 'abcdef0123456789' } as any
+
+  function rtdn(secret: string | null) {
+    const url = secret === null
+      ? 'https://example.workers.dev/v1/play/rtdn'
+      : `https://example.workers.dev/v1/play/rtdn?secret=${encodeURIComponent(secret)}`
+    return app.fetch(
+      new Request(url, { method: 'POST', body: '{}', headers: { 'content-type': 'application/json' } }),
+      env,
+      ctx,
+    )
+  }
+
+  it('rossz titokkal 403', async () => {
+    expect((await rtdn('rossz')).status).toBe(403)
+    // Ugyanolyan hosszú, de más: a hosszellenőrzés ne fedje el a tartalmi eltérést.
+    expect((await rtdn('abcdef0123456788')).status).toBe(403)
+    expect((await rtdn(null)).status).toBe(403)
+    expect((await rtdn('')).status).toBe(403)
+  })
+
+  it('a jó titkot átengedi', async () => {
+    const r = await rtdn('abcdef0123456789')
+    expect(r.status).toBe(200)
+  })
+
+  /**
+   * Ez FORRÁSELLENŐRZÉS, nem viselkedési teszt — és ezt ki kell mondani.
+   *
+   * A `!==` és a `secretMatches` kimenete azonos; a különbség az IDŐZÍTÉS, amit egy
+   * egységteszt nem tud megfogni. A fenti tesztek ezért csak azt rögzítik, hogy a
+   * végpont kit enged be. Hogy az összehasonlítás közben ne szivárogjon információ,
+   * azt csak így lehet visszaesés ellen védeni.
+   */
+  it('a titkot időzítésre nem árulkodó összehasonlítás nézi', () => {
+    const source = readFileSync(fileURLToPath(new URL('../src/index.ts', import.meta.url)), 'utf8')
+    const handler = source.slice(source.indexOf("app.post('/v1/play/rtdn'"))
+    expect(handler).toContain('secretMatches(provided, expected)')
+    expect(handler.slice(0, handler.indexOf('}'))).not.toContain('provided !== expected')
+  })
+
+  it('titok nélküli telepítésen senki nem jut be', async () => {
+    const bare = { ANDROID_PACKAGE: 'hu.mealpilot.app' } as any
+    const r = await app.fetch(
+      new Request('https://example.workers.dev/v1/play/rtdn?secret=barmi', {
+        method: 'POST',
+        body: '{}',
+        headers: { 'content-type': 'application/json' },
+      }),
+      bare,
+      ctx,
+    )
+    expect(r.status).toBe(403)
   })
 })
