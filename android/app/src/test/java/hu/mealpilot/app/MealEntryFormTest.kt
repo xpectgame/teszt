@@ -130,6 +130,38 @@ class MealEntryFormTest {
     }
 
     @Test
+    fun `a túl nagy kalória megmondja, mi a baj`() {
+        // A becslés 9999-ig tölthette ki a mezőt, a mentés viszont 5000-nél megállt:
+        // aki egy egész pizzát írt be, csak egy letiltott gombot látott. A számokat a
+        // szöveg is kiírja, különben találgatni kell, mennyivel lépte túl.
+        form(
+            onEstimate = {
+                Result.success(AiMealEstimate(name = "Egész pizza", kcal = 6400.0))
+            }
+        )
+
+        compose.onNodeWithTag(TAG_DESCRIPTION).performTextInput("egy egész családi pizza")
+        compose.onNodeWithText("Számold ki").performClick()
+        compose.waitForIdle()
+
+        compose.onNodeWithText("Ezt ettem").assertIsNotEnabled()
+        compose.onNodeWithText(
+            "A kalória 1 és 5000 között lehet. Javítsd ki, vagy vedd fel két bejegyzésként."
+        ).assertIsDisplayed()
+    }
+
+    @Test
+    fun `az üres kalóriamező nem figyelmeztet`() {
+        // A még ki nem töltött űrlap nem hiba. A figyelmeztetés csak akkor jelenjen
+        // meg, ha van beírt szám, és az esik a kereten kívülre.
+        form(initialName = "Valami")
+
+        compose.onNodeWithText(
+            "A kalória 1 és 5000 között lehet. Javítsd ki, vagy vedd fel két bejegyzésként."
+        ).assertDoesNotExist()
+    }
+
+    @Test
     fun `a mentés a beírt értékeket adja tovább`() {
         form(initialName = "Zabkása", initialNutrients = Nutrients(kcal = 420.0, proteinG = 14.0))
 

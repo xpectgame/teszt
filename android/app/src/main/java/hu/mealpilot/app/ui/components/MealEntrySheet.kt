@@ -107,7 +107,8 @@ internal fun MealEntryForm(
     val scope = rememberCoroutineScope()
 
     val kcalValue = kcal.toIntOrNull()
-    val canSave = name.isNotBlank() && kcalValue != null && kcalValue in 1..5000
+    val kcalOk = kcalValue != null && kcalValue in MIN_KCAL..MAX_KCAL
+    val canSave = name.isNotBlank() && kcalOk
 
     Column(
         Modifier
@@ -203,6 +204,14 @@ internal fun MealEntryForm(
         Spacer(Modifier.height(10.dp))
 
         NumberField(kcal, stringResource(R.string.entry_kcal), Modifier.fillMaxWidth()) { kcal = it }
+        // A Mentés gomb a kalóriától függ. Amíg ez a sor nem volt itt, a gomb
+        // MAGYARÁZAT NÉLKÜL tiltódott le: a becslés 9999-ig tölthette ki a mezőt,
+        // a mentés viszont 5000-nél megállt. Aki egy egész pizzát írt be, csak egy
+        // halott gombot látott, és nem tudhatta, melyik szám a baj.
+        if (kcal.isNotBlank() && !kcalOk) {
+            Spacer(Modifier.height(6.dp))
+            WarningNote(stringResource(R.string.entry_kcal_range, MIN_KCAL, MAX_KCAL))
+        }
         Spacer(Modifier.height(10.dp))
 
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -239,6 +248,17 @@ internal fun MealEntryForm(
 
 /** A szöveges leírás mezőjének jelölője — a teszt ezzel találja meg. */
 internal const val TAG_DESCRIPTION = "entry-description"
+
+/**
+ * Amit egyetlen naplóbejegyzés kalóriája felvehet.
+ *
+ * A felső határ elgépelés ellen véd (a 4200 helyett beütött 42000 az egész napi
+ * összesítőt hazuggá tenné), nem a felhasználó ellen: aki tényleg ennyit evett,
+ * két bejegyzésre bontja. A számokat a figyelmeztető szöveg is kiírja, hogy ne
+ * kelljen kitalálni őket.
+ */
+internal const val MIN_KCAL = 1
+internal const val MAX_KCAL = 5000
 
 @Composable
 private fun NumberField(
