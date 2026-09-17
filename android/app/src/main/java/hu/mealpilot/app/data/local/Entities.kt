@@ -174,6 +174,18 @@ data class ShoppingItemEntity(
     val checked: Boolean = false,
 )
 
+/**
+ * Egy TÁROLT bevásárlólista-tartomány. Nem tábla: a `shopping_items` sorainak
+ * csoportosításából jön.
+ *
+ * Azért kell, mert egy tervhez több lista is tartozhat — a „hét" és az „egész terv"
+ * nézet külön sorokat tárol —, és ha a terv változik, MINDET újra kell építeni.
+ */
+data class ShoppingListRange(
+    val fromEpochDay: Long,
+    val toEpochDay: Long,
+)
+
 @Entity(tableName = "achievements")
 data class AchievementEntity(
     @PrimaryKey val key: String,

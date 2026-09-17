@@ -12,6 +12,7 @@ import hu.mealpilot.app.data.local.PlanDao
 import hu.mealpilot.app.data.local.PlanEntity
 import hu.mealpilot.app.data.local.ShoppingDao
 import hu.mealpilot.app.data.local.ShoppingItemEntity
+import hu.mealpilot.app.data.local.ShoppingListRange
 import hu.mealpilot.app.data.local.endEpochDay
 import hu.mealpilot.core.ai.AiDay
 import hu.mealpilot.core.ai.AiIngredient
@@ -224,7 +225,7 @@ class PlanRepository(
         detachLogsOfDay(planId, dayIndex)
         mealDao.deleteDay(planId, dayIndex)
         insertDay(planId, startDate, response.day.copy(dayIndex = dayIndex))
-        rebuildShoppingList(planId, plan.startEpochDay, plan.endEpochDay)
+        rebuildShoppingLists(planId)
 
         return Result.success(
             response.explanation.ifBlank {
@@ -368,6 +369,10 @@ class PlanRepository(
         // már a megváltozott adatokat találná.
         moveMeals(fromA, start.plusDays(indexB.toLong()), indexB)
         moveMeals(fromB, start.plusDays(indexA.toLong()), indexA)
+        // A csere után a napokhoz MÁS hozzávalók tartoznak. Az egész tervre szóló lista
+        // ettől ugyanaz marad, a heti viszont nem — enélkül a felhasználó a kedd
+        // átcserélése után a régi hozzávalókkal indult vásárolni.
+        rebuildShoppingLists(planId)
         return true
     }
 
@@ -377,6 +382,26 @@ class PlanRepository(
                 meal.withTime(toDate, parseTime(meal.timeText)).copy(dayIndex = toDayIndex)
             )
         }
+    }
+
+    /**
+     * A terv MINDEN mentett bevásárlólistájának újraépítése.
+     *
+     * Egy tervhez több lista tartozhat: a „hét" és az „egész terv" nézet külön
+     * tartományt tárol. A napot átíró és a napokat cserélő művelet eddig egyetlen
+     * tartományt épített újra (a teljes tervét), a másik pedig némán a RÉGI
+     * hozzávalókat mutatta tovább — és a bevásárlólistát a felhasználó pont akkor
+     * nézi meg, amikor már a boltban áll.
+     *
+     * A teljes terv tartománya akkor is bekerül, ha még nincs hozzá mentett sor: a
+     * hívók eddig is számítottak rá, hogy az elkészül.
+     */
+    suspend fun rebuildShoppingLists(planId: Long) {
+        val plan = planDao.byId(planId) ?: return
+        val full = ShoppingListRange(plan.startEpochDay, plan.endEpochDay)
+        val ranges = shoppingDao.rangesFor(planId).toMutableList()
+        if (full !in ranges) ranges += full
+        ranges.forEach { rebuildShoppingList(planId, it.fromEpochDay, it.toEpochDay) }
     }
 
     /** Egy tartomány listáját csak akkor gyártjuk le, ha még nem létezik — a pipák így megmaradnak. */

@@ -238,6 +238,22 @@ interface ShoppingDao {
     )
     suspend fun checkedNames(planId: Long, from: Long, to: Long): List<String>
 
+    /**
+     * Egy tartomány tételei EGYSZERI olvasással.
+     *
+     * A képernyő az [observeRange] folyamát figyeli; a teszteknek viszont pont az
+     * kell, hogy egy művelet UTÁN mi van a táblában — egy végtelen folyam első
+     * kibocsátására várni erre törékeny lenne.
+     */
+    @Query(
+        """
+        SELECT * FROM shopping_items
+        WHERE planId = :planId AND fromEpochDay = :from AND toEpochDay = :to
+        ORDER BY name
+        """
+    )
+    suspend fun itemsInRange(planId: Long, from: Long, to: Long): List<ShoppingItemEntity>
+
     @Query(
         """
         SELECT COUNT(*) FROM shopping_items
@@ -245,6 +261,16 @@ interface ShoppingDao {
         """
     )
     suspend fun countInRange(planId: Long, from: Long, to: Long): Int
+
+    /**
+     * Milyen tartományokra van MENTETT listája ennek a tervnek.
+     *
+     * A „hét" és az „egész terv" nézet külön sorokat tárol. Ha a terv megváltozik,
+     * mindegyiket újra kell építeni — egyet frissíteni annyit jelent, hogy a másik
+     * nézet csendben a régi hozzávalókat mutatja.
+     */
+    @Query("SELECT DISTINCT fromEpochDay, toEpochDay FROM shopping_items WHERE planId = :planId")
+    suspend fun rangesFor(planId: Long): List<ShoppingListRange>
 
     @Query("UPDATE shopping_items SET checked = :checked WHERE id = :id")
     suspend fun setChecked(id: Long, checked: Boolean)
