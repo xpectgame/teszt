@@ -88,8 +88,14 @@ abstract class StreamingMealAi(
         onChars: (Int) -> Unit = {},
     ): String
 
-    /** A nyers kivételből a felületen megjeleníthető, magyar üzenetű hiba. */
-    protected abstract fun translate(error: Throwable): Throwable
+    /**
+     * A nyers kivételből a felületen megjeleníthető, a felhasználó nyelvén szóló hiba.
+     *
+     * `internal`, nem `protected`: ez az a pont, ahol egy gépi szöveg a képernyőre
+     * kerülhet, tehát a modul tesztjeinek látniuk kell. Egy tesztben újraírt másolat
+     * nem érne semmit — pont az a kérdés, mit csinál a VALÓDI megvalósítás.
+     */
+    internal abstract fun translate(error: Throwable): Throwable
 
     final override suspend fun generatePlan(
         request: PlanRequest,

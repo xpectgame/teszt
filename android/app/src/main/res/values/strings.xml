@@ -303,7 +303,7 @@
     <string name="error_unknown_reason">unknown reason</string>
     <string name="error_no_network_ai">Couldn\'t reach the AI service. Check your internet connection.</string>
     <string name="error_no_network_service">Couldn\'t reach the service. Check your internet connection.</string>
-    <string name="error_unknown_planning">Unknown error while building the plan.</string>
+    <string name="error_unknown_planning">Something went wrong while building the plan. Try again — if it keeps happening, please report it.</string>
     <string name="error_empty_service_response">The service returned an empty response.</string>
     <string name="error_empty_service_retry">The service sent an empty response. Try again.</string>
     <string name="error_planner_service">The planning service returned an error.</string>

@@ -302,7 +302,7 @@
     <string name="error_unknown_reason">ismeretlen ok</string>
     <string name="error_no_network_ai">Nem sikerült elérni az AI szolgáltatást. Ellenőrizd az internetkapcsolatot.</string>
     <string name="error_no_network_service">Nem sikerült elérni a szolgáltatást. Ellenőrizd az internetkapcsolatot.</string>
-    <string name="error_unknown_planning">Ismeretlen hiba a terv készítése közben.</string>
+    <string name="error_unknown_planning">A terv készítése közben valami félrement. Próbáld újra — ha többször is előfordul, jelentsd be.</string>
     <string name="error_empty_service_response">A szolgáltatás üres választ adott.</string>
     <string name="error_empty_service_retry">A szolgáltatás üres választ küldött. Próbáld újra.</string>
     <string name="error_planner_service">A tervező szolgáltatás hibát adott.</string>
