@@ -102,6 +102,13 @@ jobs:
       - name: Minden szöveg megvan mindkét nyelven
         run: python3 tools/check-translations.py
 
+      # A Gradle `test` feladata akkor is ZÖLD, ha egyetlen tesztet sem talál. Ez nem
+      # elméleti veszély itt: az :app tesztjei sokáig nem futottak a CI-ban, és addig
+      # a zöld pipa csak annyit bizonyított, hogy a kód lefordul. Ez a lépés a MEGÍRT
+      # tesztek számát veti össze a ténylegesen lefuttatottal.
+      - name: Minden megírt teszt lefutott
+        run: python3 tools/check-tests-ran.py
+
       # A `LegalLinks.VERSION` dönti el, hogy a felhasználónak újra el kell-e fogadnia
       # a feltételeket. Ha a szöveg megváltozik, de a verzió marad, a Beállítások egy
       # olyan szövegre írja ki, hogy „elfogadva", amit a felhasználó soha nem látott —
