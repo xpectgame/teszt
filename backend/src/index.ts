@@ -1,6 +1,6 @@
 import { Hono } from 'hono'
 import { cors } from 'hono/cors'
-import { AnthropicError, costMicros, emptyUsage, streamMessage } from './anthropic.js'
+import { AnthropicError, costMicros, emptyUsage, failureLabel, streamMessage } from './anthropic.js'
 import { AuthError, resolveCaller, type Caller } from './auth.js'
 import { addUsage, logRequest, readSubscription, readUsage, sha256Hex, writeSubscription } from './db.js'
 import type { Env } from './env.js'
@@ -344,7 +344,10 @@ app.post('/v1/generate', async (c) => {
           usage: { input_tokens: tokens.inputTokens, output_tokens: tokens.outputTokens },
         })
       } catch (error) {
-        failure = error instanceof Error ? error.message : 'Ismeretlen hiba.'
+        // CSAK osztályozott címke kerül a naplóba, sosem a szolgáltatás nyers
+        // hibaszövege: az szabad szöveg, és visszaidézheti a kérés egy darabját.
+        // Lásd `failureLabel` — az adatkezelési tájékoztató 3. pontja ezt ígéri.
+        failure = failureLabel(error)
         const status = error instanceof AnthropicError ? error.status : 500
         send({
           type: 'error',

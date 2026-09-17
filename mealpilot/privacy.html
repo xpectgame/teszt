@@ -61,8 +61,12 @@ tárolja, kizárólag a visszaélés megelőzése és a számlázás ellenőrzé
   <li>a telepítés véletlen azonosítójának egyirányú lenyomata (nem azonosít téged, és az
     adatok törlésekor vagy az app eltávolításakor újat kap);</li>
   <li>a Google Play vásárlási tokenjének egyirányú lenyomata és az előfizetés állapota;</li>
-  <li>hívásonként az időpont, a feladat típusa és a felhasznált tokenek száma;</li>
-  <li>havi összesítés a felhasznált keretről;</li>
+  <li>hívásonként az időpont, a feladat típusa, a felhasznált tokenek száma, és ha a
+    hívás elbukott, a hiba TÍPUSA (pl. „anthropic:429:rate_limit_error") — a hibaüzenet
+    szövege nem;</li>
+  <li>összesítés a felhasznált keretről (az ingyenes sávban a próbaidőszak egészére, az
+    előfizetőknél havonta);</li>
+  <li>az alkalmazás verziószáma, hogy egy hibás kiadás azonosítható legyen;</li>
   <li>hibajelentések és napi összesített használati számlálók (lásd 3/a. pont).</li>
 </ul>
 <p><strong>A kérés szövegét — tehát az étrendedet, az adataidat és az üzeneteidet — a
@@ -73,8 +77,12 @@ nézni, mi ment félre.</p>
 <h2>3/a. Hibajelentés és névtelen statisztika</h2>
 <p>Ha az alkalmazás összeomlik, a hiba leírása (a kivétel típusa, a hívási lánc, az
 alkalmazás verziója, az Android verziója és a készülék típusa) a következő indításkor
-elküldésre kerül a kiszolgálónkra. Emellett napi bontásban megszámoljuk, hogy hány terv,
-naplóbejegyzés, üzenet és bejelentés készült.</p>
+elküldésre kerül a kiszolgálónkra. Emellett napi bontásban megszámoljuk, hányszor
+történtek meg az alkalmazás alapműveletei: alkalmazásindítás, a bevezető befejezése,
+tervkérés és -elkészülés, a tervezés sikertelensége vagy a beépített tervezőre váltás, nap
+átírása, étkezés- és testsúlynaplózás, beszélgetésüzenet és jóváhagyott művelet,
+bevásárlólista megnyitása, az előfizetési ajánlat megjelenése, a vásárlás megkezdése és
+létrejötte, keretkifogyás, valamint bejelentés küldése.</p>
 <p>Ez <strong>összesített darabszám</strong>, nem eseménynapló: nem tároljuk, mikor mi
 történt, csak azt, hogy aznap hányszor. Étrend, étkezési napló, testsúly, allergia és a
 beszélgetés tartalma <strong>nem</strong> kerül bele. Az adatokat nem osztjuk meg

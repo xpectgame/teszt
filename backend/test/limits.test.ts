@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { DEFAULT_LIMITS, EMPTY_USAGE, GLOBAL_SUBJECT, TRIAL_PERIOD, checkQuota, dayKey, globalCeilingReached, periodFor, periodKey, usageDelta } from '../src/limits.js'
 import { isEntitled } from '../src/play.js'
-import { costMicros } from '../src/anthropic.js'
+import { AnthropicError, costMicros, failureLabel } from '../src/anthropic.js'
 import {
   PROMPT_HASHES,
   PLAN_SYSTEM_PROMPT,
@@ -268,5 +268,50 @@ describe('próbaidőszak az ingyenes sávban', () => {
 
   it('a próbakeret tokenben is szűkebb, mint a fizetős', () => {
     expect(DEFAULT_LIMITS.FREE.outputTokenCap).toBeLessThan(DEFAULT_LIMITS.PREMIUM.outputTokenCap)
+  })
+})
+
+describe('a naplóba írt hibacímke', () => {
+  // Az adatkezelési tájékoztató 3. pontja azt ígéri, hogy a szerver nem írja le a
+  // kérés szövegét. A szolgáltatás hibaválaszának NYERS törzse — amit korábban
+  // mentettünk — szabad szöveg, és visszaidézheti a kérés egy darabját.
+
+  it('a szolgáltatás nyers hibaszövege nem kerül a címkébe', () => {
+    const leaky = new AnthropicError(
+      '{"type":"error","error":{"type":"invalid_request_error",' +
+        '"message":"messages.0.content: \'Kovács Máté, 96 kg, 2 éves cukorbeteg…\' is too long"}}',
+      400,
+      'invalid_request_error',
+    )
+
+    const label = failureLabel(leaky)
+
+    expect(label).toBe('anthropic:400:invalid_request_error')
+    expect(label).not.toContain('Kovács')
+    expect(label).not.toContain('kg')
+  })
+
+  it('típus nélkül is csak az állapot megy be', () => {
+    expect(failureLabel(new AnthropicError('Bad Gateway, valami hosszú szöveg', 502))).toBe(
+      'anthropic:502',
+    )
+  })
+
+  it('a hibatípus csak zárt szótárból jöhet', () => {
+    // Mondat a `type` mezőben: a szűrő nem engedi át, marad a puszta állapot.
+    expect(
+      failureLabel(new AnthropicError('x', 400, null)),
+    ).toBe('anthropic:400')
+  })
+
+  it('más hibánál az osztálynév megy be, nem az üzenet', () => {
+    const aborted = new Error('a kérés megszakadt a 3. napnál: „Túrós tál"')
+    aborted.name = 'AbortError'
+
+    expect(failureLabel(aborted)).toBe('AbortError')
+  })
+
+  it('ismeretlen dobásból sem lesz szöveg', () => {
+    expect(failureLabel('Kovács Máté, 96 kg')).toBe('unknown')
   })
 })

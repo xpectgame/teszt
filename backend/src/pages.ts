@@ -470,8 +470,12 @@ following, solely to prevent abuse and to verify billing:</p>
     you, and it is replaced when you delete your data or uninstall the app);</li>
   <li>a one-way fingerprint of the Google Play purchase token and the subscription
     state;</li>
-  <li>per call: the time, the task type and the number of tokens used;</li>
-  <li>a monthly total of the allowance used;</li>
+  <li>per call: the time, the task type, the number of tokens used, and, if the call
+    failed, the TYPE of the error (e.g. "anthropic:429:rate_limit_error") — never the
+    text of the error message;</li>
+  <li>a total of the allowance used (for the free tier, across the whole trial; for
+    subscribers, per month);</li>
+  <li>the app's version number, so that a faulty release can be identified;</li>
   <li>crash reports and daily aggregated usage counters (see section 3a).</li>
 </ul>
 <p><strong>The server does not write down the text of your request — that is, your meal
@@ -482,8 +486,11 @@ saved as well, so that we can see what went wrong.</p>
 <h2>3a. Crash reports and anonymous statistics</h2>
 <p>If the app crashes, a description of the error (the exception type, the call stack, the
 app version, the Android version and the device model) is sent to our server on the next
-launch. We also count, per day, how many plans, log entries, messages and reports were
-made.</p>
+launch. We also count, per day, how many times the app's basic operations happened: app
+launches, onboarding completed, plans requested and finished, planning failures or
+switches to the built-in planner, day rewrites, meal and weight log entries, chat messages
+and confirmed chat actions, shopping list opens, the subscription offer being shown,
+purchases started and completed, running out of the allowance, and reports sent.</p>
 <p>These are <strong>aggregated counts</strong>, not an event log: we do not store when
 anything happened, only how many times it happened that day. Your meal plan, food log,
 weight, allergies and the contents of your chat are <strong>not</strong> included. We do
@@ -920,8 +927,12 @@ tárolja, kizárólag a visszaélés megelőzése és a számlázás ellenőrzé
   <li>a telepítés véletlen azonosítójának egyirányú lenyomata (nem azonosít téged, és az
     adatok törlésekor vagy az app eltávolításakor újat kap);</li>
   <li>a Google Play vásárlási tokenjének egyirányú lenyomata és az előfizetés állapota;</li>
-  <li>hívásonként az időpont, a feladat típusa és a felhasznált tokenek száma;</li>
-  <li>havi összesítés a felhasznált keretről;</li>
+  <li>hívásonként az időpont, a feladat típusa, a felhasznált tokenek száma, és ha a
+    hívás elbukott, a hiba TÍPUSA (pl. „anthropic:429:rate_limit_error") — a hibaüzenet
+    szövege nem;</li>
+  <li>összesítés a felhasznált keretről (az ingyenes sávban a próbaidőszak egészére, az
+    előfizetőknél havonta);</li>
+  <li>az alkalmazás verziószáma, hogy egy hibás kiadás azonosítható legyen;</li>
   <li>hibajelentések és napi összesített használati számlálók (lásd 3/a. pont).</li>
 </ul>
 <p><strong>A kérés szövegét — tehát az étrendedet, az adataidat és az üzeneteidet — a
@@ -932,8 +943,12 @@ nézni, mi ment félre.</p>
 <h2>3/a. Hibajelentés és névtelen statisztika</h2>
 <p>Ha az alkalmazás összeomlik, a hiba leírása (a kivétel típusa, a hívási lánc, az
 alkalmazás verziója, az Android verziója és a készülék típusa) a következő indításkor
-elküldésre kerül a kiszolgálónkra. Emellett napi bontásban megszámoljuk, hogy hány terv,
-naplóbejegyzés, üzenet és bejelentés készült.</p>
+elküldésre kerül a kiszolgálónkra. Emellett napi bontásban megszámoljuk, hányszor
+történtek meg az alkalmazás alapműveletei: alkalmazásindítás, a bevezető befejezése,
+tervkérés és -elkészülés, a tervezés sikertelensége vagy a beépített tervezőre váltás, nap
+átírása, étkezés- és testsúlynaplózás, beszélgetésüzenet és jóváhagyott művelet,
+bevásárlólista megnyitása, az előfizetési ajánlat megjelenése, a vásárlás megkezdése és
+létrejötte, keretkifogyás, valamint bejelentés küldése.</p>
 <p>Ez <strong>összesített darabszám</strong>, nem eseménynapló: nem tároljuk, mikor mi
 történt, csak azt, hogy aznap hányszor. Étrend, étkezési napló, testsúly, allergia és a
 beszélgetés tartalma <strong>nem</strong> kerül bele. Az adatokat nem osztjuk meg

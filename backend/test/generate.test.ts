@@ -100,6 +100,18 @@ function fakeAnthropic(options: {
   }
 }
 
+/** Az Anthropic HIBÁVAL válaszol, és a hibatörzs visszaidézi a kérés egy darabját. */
+function fakeAnthropicFailure(bodyText: string, status = 400) {
+  const original = globalThis.fetch
+  globalThis.fetch = (async (input: any, init: any) => {
+    if (!String(input?.url ?? input).includes('anthropic.com')) return original(input, init)
+    return new Response(bodyText, { status })
+  }) as typeof fetch
+  return () => {
+    globalThis.fetch = original
+  }
+}
+
 function generate(env: any) {
   return app.fetch(
     new Request('https://example.workers.dev/v1/generate', {
@@ -180,5 +192,43 @@ describe('a /v1/generate könyvelése', () => {
     )
     expect(Number(own!.args[2]), 'félbeszakadt terv nem fogyaszt tervkvótát').toBe(0)
     expect(Number(own!.args[5]), 'a tokent viszont elhasználta').toBeGreaterThan(0)
+  })
+})
+
+describe('a kérésnapló hibamezője', () => {
+  /**
+   * Az adatkezelési tájékoztató 3. pontja azt ígéri, hogy a szerver NEM írja le a
+   * kérés szövegét — az étrendet, a testadatot és az üzeneteket —, egyetlen
+   * kivétellel (amit a felhasználó maga jelent be). A szolgáltatás hibaválaszának
+   * nyers törzsét mentettük a `requests.error` oszlopba: az szabad szöveg, és
+   * visszaidézheti a kérés egy darabját.
+   */
+  it('a szolgáltatás nyers hibaszövege nem kerül az adatbázisba', async () => {
+    const leaky = JSON.stringify({
+      type: 'error',
+      error: {
+        type: 'invalid_request_error',
+        message: "messages.0.content: 'Kovács Máté, 96 kg, 41 éves' is too long",
+      },
+    })
+    const writes: Recorded[] = []
+    const restore = fakeAnthropicFailure(leaky)
+    try {
+      const r = await generate(envRecording(writes))
+      await r.text()
+      await new Promise((res) => setTimeout(res, 50))
+    } finally {
+      restore()
+    }
+
+    const request = writes.find((w) => w.sql.includes('INSERT INTO requests'))
+    expect(request, 'a kérésnaplóba kell sor a hibás hívásról is').toBeTruthy()
+    const stored = String(request!.args[10])
+
+    expect(stored).toBe('anthropic:400:invalid_request_error')
+    expect(stored).not.toContain('Kovács')
+    expect(stored).not.toContain('96 kg')
+    // ok = 0: a hívás elbukott, és ez nyomot hagy.
+    expect(request!.args[9]).toBe(0)
   })
 })

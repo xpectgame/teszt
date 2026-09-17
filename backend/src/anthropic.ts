@@ -66,9 +66,53 @@ export class AnthropicError extends Error {
   constructor(
     message: string,
     readonly status: number,
+    /**
+     * A szolgáltatás hibatípusa (`rate_limit_error`, `invalid_request_error`, …).
+     *
+     * Külön mező, mert a `message` a válasz NYERS törzse: az szabad szöveg, és
+     * visszaidézheti a kérés egy darabját. A típus zárt szótár, tehát ez az, amit
+     * le szabad írni. Lásd [failureLabel].
+     */
+    readonly type: string | null = null,
   ) {
     super(message)
   }
+}
+
+/** A hibatípus csak akkor használható, ha tényleg kódnak néz ki, nem mondatnak. */
+const TYPE_PATTERN = /^[a-z][a-z0-9_]{0,39}$/
+
+function upstreamType(body: string): string | null {
+  try {
+    const parsed = JSON.parse(body) as { error?: { type?: unknown } }
+    const type = parsed.error?.type
+    return typeof type === 'string' && TYPE_PATTERN.test(type) ? type : null
+  } catch {
+    return null
+  }
+}
+
+/**
+ * Amit egy elbukott hívásról LE SZABAD ÍRNI.
+ *
+ * Az adatkezelési tájékoztató azt ígéri, hogy a szerver nem írja le a kérés szövegét —
+ * az étrendet, a testadatot és az üzeneteket —, egyetlen kivétellel (amit a felhasználó
+ * maga jelent be). A hibaüzenet ezt a vállalást csendben megtörhetné: a szolgáltatás
+ * válaszának nyers törzsét mentettük a naplótáblába, az pedig szabad szöveg, ami
+ * visszaidézheti a kérés egy darabját.
+ *
+ * Ugyanez a gondolatmenet a `CrashReporter`-ben már le van írva az app oldalán. Itt
+ * hiányzott. Ezért a naplóba csak zárt szótárból kerül érték: a HTTP állapot és a
+ * szolgáltatás saját hibatípusa, illetve más hibánál a kivétel osztályneve.
+ *
+ * A diagnózishoz ez elég: a 429 és a 400 közötti különbséget nem a mondat hordozza.
+ */
+export function failureLabel(error: unknown): string {
+  if (error instanceof AnthropicError) {
+    return error.type ? `anthropic:${error.status}:${error.type}` : `anthropic:${error.status}`
+  }
+  if (error instanceof Error) return error.name || 'Error'
+  return 'unknown'
 }
 
 /**
@@ -123,7 +167,11 @@ export async function streamMessage(
 
   if (!response.ok || !response.body) {
     const detail = await response.text().catch(() => '')
-    throw new AnthropicError(detail.slice(0, 500) || `HTTP ${response.status}`, response.status)
+    throw new AnthropicError(
+      detail.slice(0, 500) || `HTTP ${response.status}`,
+      response.status,
+      upstreamType(detail),
+    )
   }
 
   const usage: Usage = sink ?? emptyUsage()
@@ -176,7 +224,13 @@ export async function streamMessage(
             break
           }
           case 'error': {
-            throw new AnthropicError(event.error?.message ?? 'Ismeretlen hiba az AI szolgáltatásnál.', 502)
+            throw new AnthropicError(
+              event.error?.message ?? 'Ismeretlen hiba az AI szolgáltatásnál.',
+              502,
+              typeof event.error?.type === 'string' && TYPE_PATTERN.test(event.error.type)
+                ? event.error.type
+                : null,
+            )
           }
         }
       }

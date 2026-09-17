@@ -62,8 +62,12 @@ following, solely to prevent abuse and to verify billing:</p>
     you, and it is replaced when you delete your data or uninstall the app);</li>
   <li>a one-way fingerprint of the Google Play purchase token and the subscription
     state;</li>
-  <li>per call: the time, the task type and the number of tokens used;</li>
-  <li>a monthly total of the allowance used;</li>
+  <li>per call: the time, the task type, the number of tokens used, and, if the call
+    failed, the TYPE of the error (e.g. "anthropic:429:rate_limit_error") — never the
+    text of the error message;</li>
+  <li>a total of the allowance used (for the free tier, across the whole trial; for
+    subscribers, per month);</li>
+  <li>the app's version number, so that a faulty release can be identified;</li>
   <li>crash reports and daily aggregated usage counters (see section 3a).</li>
 </ul>
 <p><strong>The server does not write down the text of your request — that is, your meal
@@ -74,8 +78,11 @@ saved as well, so that we can see what went wrong.</p>
 <h2>3a. Crash reports and anonymous statistics</h2>
 <p>If the app crashes, a description of the error (the exception type, the call stack, the
 app version, the Android version and the device model) is sent to our server on the next
-launch. We also count, per day, how many plans, log entries, messages and reports were
-made.</p>
+launch. We also count, per day, how many times the app's basic operations happened: app
+launches, onboarding completed, plans requested and finished, planning failures or
+switches to the built-in planner, day rewrites, meal and weight log entries, chat messages
+and confirmed chat actions, shopping list opens, the subscription offer being shown,
+purchases started and completed, running out of the allowance, and reports sent.</p>
 <p>These are <strong>aggregated counts</strong>, not an event log: we do not store when
 anything happened, only how many times it happened that day. Your meal plan, food log,
 weight, allergies and the contents of your chat are <strong>not</strong> included. We do
