@@ -192,7 +192,11 @@ class ChatViewModel(private val container: AppContainer) : ViewModel() {
     }
 
     private fun runConfirmed(message: ChatMessageEntity, action: AiChatAction) {
-        container.generation.runAction(message.actionLabel.ifBlank { "Dolgozom rajta" }) { progress ->
+        // A modell adja a gomb feliratát; ha üres, ugyanaz a szöveg, amit a felső sáv
+        // is használ. Beégetve „Dolgozom rajta" állt itt — ékezet nélkül, ezért az
+        // eddigi ellenőrzés sem vette észre.
+        val headline = message.actionLabel.ifBlank { container.strings[R.string.app_working] }
+        container.generation.runAction(headline) { progress ->
             val outcome = runCatching { execute(action, progress) }
             container.chatRepository.dismissAction(message.id)
             // Az eredmény a BESZÉLGETÉSBE is bekerül, nem csak egy villanó snackbarba.
@@ -257,7 +261,24 @@ class ChatViewModel(private val container: AppContainer) : ViewModel() {
                 val indexes = action.dayIndexes.filter { it in 0 until plan.dayCount }.distinct()
                 if (indexes.isEmpty()) return text(R.string.chat_which_day)
                 var done = 0
-                indexes.forEach { index ->
+                // MINDEN nap külön modellhívás. Egy tizennégy napos átírás tizennégy
+                // hívás, egymás után, percekig — és eddig a folyamatjelző végig azt
+                // írta ki, hogy „Gondolkodom…". A felhasználó nem tudta, hogy hány
+                // lépésből áll, amit egyetlen koppintással elindított.
+                indexes.forEachIndexed { position, index ->
+                    onProgress(
+                        GenerationProgress(
+                            stage = GenerationProgress.Stage.STREAMING,
+                            currentChunk = position,
+                            totalChunks = indexes.size,
+                            message = container.strings[
+                                R.string.progress_rewriting_day,
+                                index + 1,
+                                position + 1,
+                                indexes.size,
+                            ],
+                        )
+                    )
                     container.planRepository.refineDay(
                         ai = container.mealAi(),
                         profile = profile,

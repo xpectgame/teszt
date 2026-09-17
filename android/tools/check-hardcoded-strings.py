@@ -8,8 +8,16 @@ visszaadott hibaüzenetek — viszont könnyen elkerülik ezt, mert ott nincs
 tökéletesen működik. A tervezés teljes folyamatnarrációja („Összeállítom az
 étrended", „Utolsó simítások…") így maradt magyar az angol appban is.
 
-Amit keres: magyar ékezetes karaktert tartalmazó szöveg-literál. Ez nem tökéletes
-szűrő, de pont azt fogja meg, ami számít: az angolul nem értelmes mondatokat.
+Amit keres:
+
+1. magyar ékezetes karaktert tartalmazó szöveg-literál;
+2. ékezet NÉLKÜLI magyar mondat, egy szűk gyakorisági szólista alapján.
+
+A második azért kell, mert az első átengedte a „Dolgozom rajta" feliratot — a
+tervezés folyamatjelzőjének fejlécét a beszélgetésből indított műveleteknél. Egyetlen
+ékezet sincs benne, tehát a karakteralapú szűrő vak volt rá, és angol appban is
+magyarul jelent meg. A szólista szándékosan rövid és egyértelmű: olyan szavak, amik
+angol felületi szövegben gyakorlatilag nem fordulnak elő.
 
 Amit NEM jelez:
   - megjegyzések és naplóüzenetek (`Log.d/i/w/e`) — ezek fejlesztőnek szólnak;
@@ -20,6 +28,24 @@ import re
 import sys
 
 HUNGARIAN = set("áéíóöőúüűÁÉÍÓÖŐÚÜŰ")
+
+# Ékezet nélküli magyar szavak, amik angol szövegben nem fordulnak elő. Kettő együtt
+# már mondatot jelez. Szándékosan NINCS benne az „a", „is", „meg", „van", „de", „ha":
+# ezek angolul (vagy más nyelven) is szavak, és téves riasztást adnának.
+HUNGARIAN_WORDS = {
+    'dolgozom', 'rajta', 'nincs', 'hogy', 'kesz', 'kell', 'lehet', 'majd', 'most',
+    'volt', 'lesz', 'vagy', 'igen', 'nem', 'az', 'egy', 'mit', 'ezt', 'azt', 'mert',
+    'ezek', 'ilyen', 'sem', 'mar', 'nagyon', 'tovabb', 'vissza', 'mentes',
+}
+WORD = re.compile(r"[A-Za-zÁÉÍÓÖŐÚÜŰáéíóöőúüű]+")
+
+
+def looks_hungarian(text: str) -> bool:
+    """Ékezet nélküli magyar mondat: legalább két egyértelmű magyar szó."""
+    if len(text) < 4:
+        return False
+    words = {m.group(0).lower() for m in WORD.finditer(text)}
+    return len(words & HUNGARIAN_WORDS) >= 2
 
 ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "app", "src", "main", "java")
 
@@ -75,7 +101,7 @@ def scan(path: str) -> list:
                 continue
             for match in STRING.finditer(line):
                 text = match.group(1)
-                if any(character in HUNGARIAN for character in text):
+                if any(character in HUNGARIAN for character in text) or looks_hungarian(text):
                     hits.append((number, text[:70]))
     return hits
 

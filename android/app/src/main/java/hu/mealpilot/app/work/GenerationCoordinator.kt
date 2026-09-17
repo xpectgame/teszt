@@ -201,7 +201,7 @@ class GenerationCoordinator(private val container: AppContainer) {
         _status.value = current.copy(
             daysReady = maxOf(current.daysReady, progress.daysReady),
             totalDays = if (totalDays > 0) totalDays else current.totalDays,
-            detail = reassure(progress, current),
+            detail = detailFor(progress, current),
             fraction = when {
                 current.totalDays > 0 && progress.daysReady > 0 ->
                     (progress.daysReady.toFloat() / current.totalDays).coerceIn(0f, 1f)
@@ -212,7 +212,31 @@ class GenerationCoordinator(private val container: AppContainer) {
     }
 
     /**
-     * Megnyugtató, de őszinte állapotszöveg.
+     * Amit a folyamatjelző sávban kiírunk.
+     *
+     * A tervezők SAJÁT üzenetet is adnak minden lépéshez („A 2. hét készül",
+     * „Ellenőrzöm a tápértékeket", „Átváltás a beépített tervezőre…") — nyolc külön
+     * erőforrásból, mindkét nyelven. Ezt eddig EGYIK sem érte el a képernyőt: itt
+     * mindig a [reassure] számlálókból kitalált szövege ment ki, a `message` mezőt
+     * senki nem olvasta. Egy teljes, lefordított folyamatszótár volt halott kód, és
+     * mellette egy második, ami ugyanazt próbálta kitalálni.
+     *
+     * A sorrend: a „hány nap használható már" sor nyer, mert az mondja a legtöbbet és
+     * ahhoz tartozik a „Megnézem" gomb; utána a tervező saját üzenete; és csak ha az
+     * sincs, akkor a találgatás.
+     */
+    private fun detailFor(progress: GenerationProgress, current: Status): String {
+        val total = current.totalDays
+        val ready = maxOf(current.daysReady, progress.daysReady)
+        if (ready in 1 until total) {
+            return container.strings[R.string.gen_detail_partial, ready, total - ready]
+        }
+        if (progress.message.isNotBlank()) return progress.message
+        return reassure(progress, current)
+    }
+
+    /**
+     * Megnyugtató, de őszinte állapotszöveg, ha a tervező nem mondott semmit.
      *
      * Egy hosszú műveletnél a legrosszabb, ha a felhasználó nem tudja, halad-e egyáltalán.
      * Ezért mindig azt mondjuk, ami éppen történik, és ha van már használható nap, azt is,
@@ -228,8 +252,6 @@ class GenerationCoordinator(private val container: AppContainer) {
         val elapsedSec = (System.currentTimeMillis() - current.startedAtMillis) / 1000
 
         return when {
-            ready in 1 until total ->
-                container.strings[R.string.gen_detail_partial, ready, total - ready]
             ready >= total && total > 0 -> container.strings[R.string.gen_detail_finishing]
             progress.stage == GenerationProgress.Stage.VALIDATING ->
                 container.strings[R.string.gen_detail_validating]

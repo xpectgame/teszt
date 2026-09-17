@@ -292,6 +292,7 @@
     <string name="progress_recipes">Writing recipes…</string>
     <string name="progress_tuning">Fine-tuning the calorie budget…</string>
     <string name="progress_validating">Checking…</string>
+    <string name="progress_rewriting_day">Rewriting day %1$d — %2$d of %3$d</string>
     <string name="error_unparsable_json">The response was not valid JSON.</string>
     <string name="error_plan_quality">The plan failed the checks twice.</string>
     <string name="error_plan_quality_details">Last problems:</string>

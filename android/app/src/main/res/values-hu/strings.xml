@@ -291,6 +291,7 @@
     <string name="progress_recipes">Receptek írása…</string>
     <string name="progress_tuning">A kalóriakeret finomhangolása…</string>
     <string name="progress_validating">Ellenőrzés…</string>
+    <string name="progress_rewriting_day">A %1$d. nap átírása — %2$d/%3$d</string>
     <string name="error_unparsable_json">A válasz nem volt értelmezhető JSON.</string>
     <string name="error_plan_quality">A terv kétszer sem felelt meg a céloknak.</string>
     <string name="error_plan_quality_details">Az utolsó hibák:</string>
