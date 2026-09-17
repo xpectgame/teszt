@@ -426,7 +426,7 @@ More on the <a href="support.html">support page</a>.</p>
 </nav>
 
 <h1>Privacy notice</h1>
-<p class="meta">MealPilot mobile app · In force: 11 September 2026</p>
+<p class="meta">MealPilot mobile app · In force: 17 September 2026</p>
 
 <div class="draft">
   <strong>Draft.</strong> This text was written from how the app actually works, but it
@@ -680,7 +680,7 @@ Switched off, the app does not even collect them.</p>
 </nav>
 
 <h1>Terms of use</h1>
-<p class="meta">MealPilot mobile app · In force: 11 September 2026</p>
+<p class="meta">MealPilot mobile app · In force: 17 September 2026</p>
 
 <div class="draft">
   <strong>Draft.</strong> Needs a legal review before publication.
@@ -884,7 +884,7 @@ Részletek a <a href="support.html">támogatási oldalon</a>.</p>
 </nav>
 
 <h1>Adatkezelési tájékoztató</h1>
-<p class="meta">MealPilot mobilalkalmazás · Hatályos: 2026. szeptember 11.</p>
+<p class="meta">MealPilot mobilalkalmazás · Hatályos: 2026. szeptember 17.</p>
 
 <div class="draft">
   <strong>Tervezet.</strong> Ez a szöveg a valós működés alapján készült, de közzététel előtt
@@ -1138,7 +1138,7 @@ kapcsoló. Kikapcsolva az alkalmazás nem is gyűjti ezeket.</p>
 </nav>
 
 <h1>Felhasználási feltételek</h1>
-<p class="meta">MealPilot mobilalkalmazás · Hatályos: 2026. szeptember 11.</p>
+<p class="meta">MealPilot mobilalkalmazás · Hatályos: 2026. szeptember 17.</p>
 
 <div class="draft">
   <strong>Tervezet.</strong> Közzététel előtt jogi felülvizsgálatot igényel.

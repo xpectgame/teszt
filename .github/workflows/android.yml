@@ -95,6 +95,13 @@ jobs:
       - name: Nincs beégetett magyar szöveg
         run: python3 tools/check-hardcoded-strings.py
 
+      # A `LegalLinks.VERSION` dönti el, hogy a felhasználónak újra el kell-e fogadnia
+      # a feltételeket. Ha a szöveg megváltozik, de a verzió marad, a Beállítások egy
+      # olyan szövegre írja ki, hogy „elfogadva", amit a felhasználó soha nem látott —
+      # és vita esetén pont ez lenne az egyetlen bizonyíték.
+      - name: A jogi szövegek verziója egyezik az oldalakkal
+        run: python3 tools/check-legal-version.py
+
       # A backend címe a gradle.properties-ből jön, tehát a debug APK-ba be KELL kerülnie.
       # Ha valaki elírja vagy törli a beállítást, az app csendben visszaesne a saját
       # kulcsot kérő fejlesztői útra — a telepítőn semmi nem látszana belőle.

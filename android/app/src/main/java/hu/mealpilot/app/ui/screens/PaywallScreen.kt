@@ -96,10 +96,18 @@ object LegalLinks {
     const val SUPPORT_EMAIL = "mate.teke@gmail.com"
 
     /**
-     * A jogi szövegek aktuális verziója. Ha érdemben változik a feltétel vagy az
-     * adatkezelés, ezt emeld — a felhasználótól így újra elfogadást kér az app.
+     * A jogi szövegek aktuális verziója.
+     *
+     * Ha érdemben változik a feltétel vagy az adatkezelés, ezt EMELNI kell: a Beállítások
+     * jogi szakasza ettől kezdve „a feltételek megváltoztak" üzenetet mutat, és újra
+     * elfogadást kér. Vita esetén ez az egyetlen nyoma annak, MELYIK szöveget fogadta el
+     * a felhasználó.
+     *
+     * Az érték a jogi oldalak hatálybalépési dátuma, és pontosan azzal kell egyeznie.
+     * A `tools/check-legal-version.py` ezt ellenőrzi a CI-ban — enélkül a szöveget át
+     * lehetne írni úgy, hogy a verzió a régi marad, és senki nem fogadja el újra.
      */
-    const val VERSION = "2026-09-11"
+    const val VERSION = "2026-09-17"
 
     fun manageSubscription(packageName: String) =
         "https://play.google.com/store/account/subscriptions" +
