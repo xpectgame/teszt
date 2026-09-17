@@ -102,6 +102,13 @@ jobs:
       - name: A jogi szövegek verziója egyezik az oldalakkal
         run: python3 tools/check-legal-version.py
 
+      # A rendszerpromptok a kliensben élnek, a szerver egy GENERÁLT másolatot küld a
+      # modellnek. A `SystemPromptSyncTest` önmagában nem elég őr: az a promptot egy
+      # bemásolt hashhez hasonlítja, tehát az új hash bemásolásával minden zöld lesz
+      # úgy is, hogy a backend a régi szöveget küldi tovább.
+      - name: A rendszerpromptok egyeznek a backenddel
+        run: python3 ../backend/tools/gen-prompts.py --check
+
       # A backend címe a gradle.properties-ből jön, tehát a debug APK-ba be KELL kerülnie.
       # Ha valaki elírja vagy törli a beállítást, az app csendben visszaesne a saját
       # kulcsot kérő fejlesztői útra — a telepítőn semmi nem látszana belőle.

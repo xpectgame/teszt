@@ -8,7 +8,11 @@
  *
  * FIGYELEM: EZT A FÁJLT GÉP ÍRJA. A forrás a kliens core/ai/*Prompts.kt fájljaiban van;
  * ha ott változik valami, futtasd a backend/tools/gen-prompts.py szkriptet, és írd át a
- * SystemPromptSyncTest hasheit is. A Kotlin-teszt elbukik, ha a kettő szétcsúszik.
+ * SystemPromptSyncTest hasheit is — MINDKETTŐT.
+ *
+ * A Kotlin-teszt önmagában NEM elég őr: az a promptot egy bemásolt hashhez hasonlítja,
+ * tehát az új hash bemásolásával zöldre fordul úgy is, hogy ez a fájl a régi szöveget
+ * őrzi. A szétcsúszást a `gen-prompts.py --check` fogja meg, és a CI ezt futtatja.
  *
  * plan:        sha256 = 2b3561f227e3baf35c85138491b338e6e550dcbec5a8dedd544cd101a3fbcb8e
  * chat:        sha256 = 73035df0000a0a46ffcec379be35ff49376dc49559539c3251e3d135c895361d

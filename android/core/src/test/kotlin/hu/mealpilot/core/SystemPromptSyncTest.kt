@@ -11,12 +11,16 @@ import java.security.MessageDigest
  * A rendszerpromptok a backendben is megvannak (`backend/src/prompts.ts`), mert a
  * modell viselkedését a szervernek kell megszabnia, nem a telefonnak.
  *
- * Ez a teszt akkor bukik el, ha itt átírod a promptot, de a backendben nem: a
- * felhasználó ilyenkor mást kapna, mint amit a fejlesztő gondol. A javítás:
+ * Ez a teszt akkor bukik el, ha átírod a promptot, de az alábbi hasht nem. A javítás:
  *
  *     python3 backend/tools/gen-prompts.py      # a repó gyökeréből
  *
  * majd az alábbi hasheket írd át az újakra (a szkript kiírja őket).
+ *
+ * FONTOS, MIT NEM VÉD EZ A TESZT. A prompt egy BEMÁSOLT hashhez van hasonlítva, tehát
+ * ha valaki csak az új hasht másolja ide, a szkript futtatása nélkül, ez a teszt is és
+ * a backend tesztjei is zöldek maradnak — miközben a szerver a RÉGI promptot küldi a
+ * modellnek. Ezt a rést a `gen-prompts.py --check` zárja, és a CI azt futtatja.
  */
 class SystemPromptSyncTest {
 
