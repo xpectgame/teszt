@@ -10,6 +10,7 @@ import hu.mealpilot.core.ai.RestrictionChecker
 import hu.mealpilot.core.energy.EnergyCalculator
 import hu.mealpilot.core.i18n.AppLanguage
 import hu.mealpilot.core.model.DietRestriction
+import hu.mealpilot.core.model.DietStyle
 import hu.mealpilot.core.model.UserProfile
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
@@ -44,8 +45,12 @@ class OfflineMealAiRestrictionTest {
         )
     }
 
-    private fun request(restrictions: Set<DietRestriction>, days: Int = 7): PlanRequest {
-        val profile = UserProfile(restrictions = restrictions)
+    private fun request(
+        restrictions: Set<DietRestriction>,
+        days: Int = 7,
+        style: DietStyle = DietStyle.OMNIVORE,
+    ): PlanRequest {
+        val profile = UserProfile(restrictions = restrictions, dietStyle = style)
         return PlanRequest(
             profile = profile,
             budget = EnergyCalculator.budget(profile, AppLanguage.HU),
@@ -69,6 +74,39 @@ class OfflineMealAiRestrictionTest {
             unsafe.isEmpty(),
         )
         assertTrue("A terv ne legyen üres", plan.days.flatMap { it.meals }.isNotEmpty())
+    }
+
+    @Test
+    fun `a vegan gluten-free user gets a whole week, not an error`() = runTest {
+        // A szűrés önmagában nem elég: ha nem marad kiadható sablon, a tervező HIBÁT
+        // dob, és a felhasználó üres képernyőt kap — pont akkor, amikor a rendes
+        // tervezés már elakadt. A régi bank mindhárom reggelijére tett tejterméket,
+        // tehát egy vegán felhasználó biztosan ide futott.
+        //
+        // A bank lefedettségét a :core `RecipeBankCoverageTest` méri sablononként; ez
+        // itt a teljes utat próbálja ki, a tervezőn keresztül.
+        val profile = UserProfile(
+            dietStyle = DietStyle.VEGAN,
+            restrictions = setOf(DietRestriction.GLUTEN),
+        )
+        val plan = planner().generatePlan(
+            request(setOf(DietRestriction.GLUTEN), style = DietStyle.VEGAN)
+        ).getOrThrow()
+
+        assertEquals(7, plan.days.size)
+        val meals = plan.days.flatMap { it.meals }
+        assertTrue("Minden napra jusson fogás", plan.days.all { it.meals.isNotEmpty() })
+
+        val unsafe = meals.filterNot {
+            RestrictionChecker.isSafe(it, profile.effectiveRestrictions, AppLanguage.HU)
+        }
+        assertTrue("Kizárt hozzávaló: ${unsafe.map { it.name }}", unsafe.isEmpty())
+
+        // És ne ugyanaz a három fogás ismétlődjön egy héten át.
+        assertTrue(
+            "Túl kevés különböző fogás: ${meals.map { it.name }.toSet().size}",
+            meals.map { it.name }.toSet().size >= 6,
+        )
     }
 
     @Test

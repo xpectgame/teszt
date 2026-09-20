@@ -71,6 +71,15 @@ a felhőmentésből kizárva marad.
 
 Ha a tervezőszolgáltatás nem érhető el, a beépített **sablontervező** ugrik be, és a napi
 kerethez méretezett étrendet ad — csak a szabad szöveges kéréseket nem veszi figyelembe.
+A receptbank (`:core`, `RecipeBank.kt`) 22 reggelit, 43 főételt és 18 nassolnivalót hoz
+magyar, olasz, indiai, thai, japán, koreai, mexikói, marokkói, török, perzsa, spanyol,
+vietnami és más konyhákból, mindegyiket recepttel és kétnyelvű hozzávalólistával.
+
+A méret nem hiúság: a sablonokat ugyanaz a kizárásszűrő rostálja, mint a modell válaszát,
+és ha nem marad belőlük semmi, a tervezés HIBÁVAL áll meg. A régi, háromreggelis bank
+mindhárom reggelijére tett tejterméket, vagyis egy vegán felhasználó biztosan ebbe futott
+bele. A `RecipeBankCoverageTest` ezért minden kizárásra és étrendi stílusra megméri,
+mindkét nyelven, hány sablon marad kiadható — a legszűkebb profilnál is kilenc.
 
 **Költség.** Alapértelmezés a `claude-sonnet-5` — ez tartja jól a kalóriakeretet elfogadható
 áron. Egy hét étrend nagyjából egy hívás (~0,14 USD); egy hónapos terv 5 hívásra bomlik.

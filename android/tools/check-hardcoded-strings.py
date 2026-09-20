@@ -51,9 +51,6 @@ ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "app", "sr
 
 # Fájl → miért szabad benne magyar szöveg. Minden tételnek indokkal kell jönnie.
 ALLOWED = {
-    "data/ai/OfflineMealAi.kt":
-        "A receptbank tartalom, nem felirat: minden szövege `Text(magyar, angol)` "
-        "párként áll, tehát a magyar fél mellett mindig ott az angol.",
     "data/repo/ChatRepository.kt":
         "A beszélgetés KONTEXTUSA a modellnek megy, a terv nyelvén — minden ág "
         "mellett ott az angol párja.",
