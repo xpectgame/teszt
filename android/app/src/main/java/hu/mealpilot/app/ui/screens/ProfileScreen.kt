@@ -37,6 +37,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -134,6 +135,7 @@ fun ProfileScreen(
     container: AppContainer,
     snackbarHostState: SnackbarHostState,
     onOpenSettings: () -> Unit,
+    onOpenProgress: () -> Unit,
 ) {
     val viewModel: ProfileViewModel = viewModel(factory = containerFactory(container) { ProfileViewModel(it) })
     val state by viewModel.state.collectAsState()
@@ -296,6 +298,10 @@ fun ProfileScreen(
                 if (state.weights.isNotEmpty()) {
                     Spacer(Modifier.height(8.dp))
                     WeightSparkline(state.weights)
+                }
+                Spacer(Modifier.height(8.dp))
+                TextButton(onClick = onOpenProgress) {
+                    Text(stringResource(R.string.progress_open))
                 }
             }
         }

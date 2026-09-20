@@ -62,6 +62,7 @@ import hu.mealpilot.app.ui.screens.OnboardingScreen
 import hu.mealpilot.app.ui.screens.PaywallScreen
 import hu.mealpilot.app.ui.screens.PlanScreen
 import hu.mealpilot.app.ui.screens.ProfileScreen
+import hu.mealpilot.app.ui.screens.ProgressScreen
 import hu.mealpilot.app.ui.screens.SettingsScreen
 import hu.mealpilot.app.ui.screens.ShoppingScreen
 import hu.mealpilot.app.ui.screens.TodayScreen
@@ -77,6 +78,7 @@ object Routes {
     const val SETTINGS = "settings"
     const val MEAL = "meal/{mealId}"
     const val FAVORITES = "favorites"
+    const val PROGRESS = "progress"
 
     fun meal(id: Long) = "meal/$id"
 }
@@ -209,6 +211,13 @@ fun AppRoot(
                         container = container,
                         snackbarHostState = snackbarHostState,
                         onOpenSettings = { navController.navigate(Routes.SETTINGS) },
+                        onOpenProgress = { navController.navigate(Routes.PROGRESS) },
+                    )
+                }
+                composable(Routes.PROGRESS) {
+                    ProgressScreen(
+                        container = container,
+                        onBack = { navController.popBackStack() },
                     )
                 }
                 composable(Routes.SETTINGS) {

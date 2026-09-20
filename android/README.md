@@ -89,6 +89,21 @@ a `AppDatabase.kt`-ből kiszedett utasításokat, és a kapott oszlopokat, index
 idegen kulcsokat veti össze azzal, amit az `<N>.json` vár — ugyanazokkal a PRAGMA-kkal,
 amiket a Room is használ.
 
+**Haladás.** A profilból nyíló képernyő trendsúlyt mutat, nem nyers súlyt: a testsúly
+naponta 1–2 kg-ot ugrál víztől és ételtől, amiben a heti fél kilós fogyás láthatatlan,
+és aki 0,4 kg-mal többet mér a tegnapinál, azt hiszi, elrontotta. A simítás a Hacker's
+Diet módszere, naptári napokban számolva: kihagyott napokon a trend ÁLL, nem interpolál
+— nincs új információ, tehát nem is állítunk semmit. A célsúly dátuma a MÉRT ütemből
+jön, nem a beállítottból; a kettő eltérése a leghasznosabb szám a képernyőn. Ha az ütem
+hiányzik, rossz irányba mutat vagy két évnél messzebbre vinne, inkább nem mondunk
+dátumot.
+
+A két ábra formája a feladatából következik: a súly idősor (vonal a trendnek, pontok a
+méréseknek), a napi bevitel mért érték egy célhoz képest (oszlopok egy vonatkoztatási
+vonallal). A trendvonalat és a mérési pontokat a FORMÁJUK különbözteti meg, nem a
+színük — a paletta zöldje és a halvány tinta protanópiában ΔE 2,0-ra van egymástól,
+vagyis színnel jelölve egy vörös-zöld színtévesztőnek egyformák lennének.
+
 **Kedvencek.** Egy fogás mellett a szívre koppintva a fogás bekerül a kedvencek közé —
 a Ma képernyő sorában és a fogás saját oldalán is. A kedvenc MÁSOLAT, nem hivatkozás:
 recepttel és hozzávalókkal együtt kerül át, és a terv törlése nem viszi el. (Hivatkozás
