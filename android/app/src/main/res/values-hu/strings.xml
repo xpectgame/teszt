@@ -232,6 +232,10 @@
     <string name="settings_legal">Jogi tudnivalók és adatok</string>
     <string name="settings_terms">Felhasználási feltételek</string>
     <string name="settings_privacy">Adatkezelési tájékoztató</string>
+    <string name="settings_export">Adataim kivitele</string>
+    <string name="settings_export_note">Minden, amit az app rólad tárol, egyetlen JSON fájlban: a profilod, a súly- és étkezésnaplód, a terveid és a kedvenceid. Kulcs és jelszó nincs benne — az nem kerül megosztható fájlba.</string>
+    <string name="settings_export_failed">Az adatok kiírása nem sikerült.</string>
+    <string name="settings_export_share">Adatok megosztása</string>
     <string name="settings_delete_data">Adatok törlése — mi hol tárolódik</string>
     <string name="settings_support">Támogatás és gyakori kérdések</string>
     <string name="settings_contact">Kapcsolat: %1$s</string>

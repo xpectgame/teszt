@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Csak az adatkivitel könyvtára osztható meg. Szándékosan SZŰK: egy tág útvonal
+  (például a teljes `files/` vagy `cache/`) azt jelentené, hogy bármelyik másik app
+  hozzáférhet mindenhez, amit egy megosztási szándékkal átadunk — köztük olyan
+  fájlokhoz is, amiket sosem akartunk kiadni.
+-->
+<paths>
+    <cache-path name="export" path="export/" />
+</paths>

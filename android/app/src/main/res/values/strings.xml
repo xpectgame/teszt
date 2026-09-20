@@ -233,6 +233,10 @@
     <string name="settings_legal">Legal and your data</string>
     <string name="settings_terms">Terms of use</string>
     <string name="settings_privacy">Privacy notice</string>
+    <string name="settings_export">Export my data</string>
+    <string name="settings_export_note">Everything the app stores about you, in one JSON file: your profile, your weight and meal log, your plans and your favourites. No keys or passwords — those never go into a file you can share.</string>
+    <string name="settings_export_failed">Could not write the export.</string>
+    <string name="settings_export_share">Share your data</string>
     <string name="settings_delete_data">Deleting your data — what is where</string>
     <string name="settings_support">Support and FAQ</string>
     <string name="settings_contact">Contact: %1$s</string>

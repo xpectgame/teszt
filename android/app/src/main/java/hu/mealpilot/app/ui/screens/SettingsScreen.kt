@@ -73,6 +73,27 @@ class SettingsViewModel(private val container: AppContainer) : ViewModel() {
     val settings = container.settings.settings
     val profile = container.settings.profile
 
+    /**
+     * Kiírja az adatokat a gyorsítótár `export/` könyvtárába, és visszaadja a
+     * megosztható hivatkozást. Null, ha nem sikerült — a hívó ilyenkor szól.
+     *
+     * Miért a gyorsítótárba: a fájl egyszer használatos, a rendszer takaríthatja, és
+     * csak ez az egy könyvtár van megosztásra engedve (`file_paths.xml`).
+     */
+    fun exportData(onDone: (android.net.Uri?) -> Unit) = viewModelScope.launch {
+        val uri = runCatching {
+            val directory = java.io.File(container.appContext.cacheDir, "export").apply { mkdirs() }
+            val file = java.io.File(directory, container.exportRepository.fileName())
+            file.writeText(container.exportRepository.buildJson())
+            androidx.core.content.FileProvider.getUriForFile(
+                container.appContext,
+                "${container.appContext.packageName}.fileprovider",
+                file,
+            )
+        }.getOrNull()
+        onDone(uri)
+    }
+
     fun maskedKey(): String? = container.secureKeyStore.maskedApiKey()
     fun usingInsecureFallback(): Boolean = container.secureKeyStore.usingFallback
 
@@ -122,6 +143,9 @@ fun SettingsScreen(
     val settings by viewModel.settings.collectAsState(initial = null)
     val storedProfile by viewModel.profile.collectAsState(initial = null)
     val context = LocalContext.current
+    // A visszajelzés szövegei a lambdákon kívül: ott @Composable hívás nem lehet.
+    val exportFailed = stringResource(R.string.settings_export_failed)
+    val exportShare = stringResource(R.string.settings_export_share)
     val scope = rememberCoroutineScope()
     val clipboard = LocalClipboardManager.current
     val language by container.languageStore.language.collectAsState()
@@ -504,6 +528,33 @@ fun SettingsScreen(
             ) {
                 Text(stringResource(R.string.settings_delete_data))
             }
+            // A kivitel a törlés MELLETT van: a kettő ugyanannak a kérdésnek a két
+            // fele — mi van rólam tárolva, és hogyan szabadulok meg tőle.
+            TextButton(onClick = {
+                viewModel.exportData { uri ->
+                    if (uri == null) {
+                        scope.launch { snackbarHostState.showSnackbar(exportFailed) }
+                    } else {
+                        context.startActivity(
+                            Intent.createChooser(
+                                Intent(Intent.ACTION_SEND).apply {
+                                    type = "application/json"
+                                    putExtra(Intent.EXTRA_STREAM, uri)
+                                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                                },
+                                exportShare,
+                            )
+                        )
+                    }
+                }
+            }) {
+                Text(stringResource(R.string.settings_export))
+            }
+            Text(
+                stringResource(R.string.settings_export_note),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
             TextButton(
                 enabled = LegalLinks.isConfigured,
                 onClick = { context.openUrl(LegalLinks.support(language)) },

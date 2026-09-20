@@ -89,6 +89,13 @@ a `AppDatabase.kt`-ből kiszedett utasításokat, és a kapott oszlopokat, index
 idegen kulcsokat veti össze azzal, amit az `<N>.json` vár — ugyanazokkal a PRAGMA-kkal,
 amiket a Room is használ.
 
+**Adatkivitel.** A Beállítások jogi szakaszában, az adattörlés mellett: minden, amit az
+app a felhasználóról tárol, egyetlen JSON-ban — profil, súly- és étkezésnapló, tervek a
+receptekkel és hozzávalókkal, kedvencek, achievementek. Titok nincs benne, és ez nem egy
+elfelejthető szűrés kérdése: az `ExportRepository` nem is fér hozzá a kulcstárolóhoz,
+csak az adatbázis DAO-ihoz és a profilhoz. A fájl a gyorsítótár `export/` könyvtárába
+kerül, és csak ez az egy könyvtár van megosztásra engedve (`file_paths.xml`).
+
 **Hosszú műveletek megszakítása.** A globális haladássávon — az alsó navigáció fölött,
 minden fülön — ott a Mégse. Ez azért ott van, és nem a Terv képernyő párbeszédében,
 mert egy beszélgetésből indított átírás akár harminc egymás utáni modellhívás, és a

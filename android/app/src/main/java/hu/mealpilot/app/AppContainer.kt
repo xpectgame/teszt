@@ -14,6 +14,7 @@ import hu.mealpilot.app.data.local.AppDatabase
 import hu.mealpilot.app.data.prefs.SecureKeyStore
 import hu.mealpilot.app.data.prefs.SettingsRepository
 import hu.mealpilot.app.data.repo.ChatRepository
+import hu.mealpilot.app.data.repo.ExportRepository
 import hu.mealpilot.app.data.repo.FavoriteRepository
 import hu.mealpilot.app.data.remote.BackendClient
 import hu.mealpilot.app.data.repo.PlanRepository
@@ -74,6 +75,23 @@ class AppContainer(context: Context) {
     }
 
     val favoriteRepository: FavoriteRepository by lazy { FavoriteRepository(database.favoriteDao()) }
+
+    /**
+     * Az adatkivitel SZÁNDÉKOSAN nem kapja meg sem a kulcstárolót, sem a beállítások
+     * titkos részét — csak a naplót és a profilt. Így egy titok nem azért marad ki a
+     * megosztható fájlból, mert valaki gondolt rá, hanem mert nincs is kéznél.
+     */
+    val exportRepository: ExportRepository by lazy {
+        ExportRepository(
+            settings = settings,
+            planDao = database.planDao(),
+            mealDao = database.mealDao(),
+            mealLogDao = database.mealLogDao(),
+            weightLogDao = database.weightLogDao(),
+            favoriteDao = database.favoriteDao(),
+            achievementDao = database.achievementDao(),
+        )
+    }
 
     val trackingRepository: TrackingRepository by lazy {
         TrackingRepository(

@@ -29,6 +29,10 @@ interface PlanDao {
     @Query("SELECT COUNT(*) FROM plans")
     suspend fun count(): Int
 
+    /** Pillanatkép minden tervről. Az adatkivitelhez kell, ahol nem folyam kell, hanem lista. */
+    @Query("SELECT * FROM plans ORDER BY createdAtMillis")
+    suspend fun all(): List<PlanEntity>
+
     @Query("SELECT * FROM plans WHERE id = :id")
     suspend fun byId(id: Long): PlanEntity?
 
@@ -313,6 +317,10 @@ interface AchievementDao {
     @Query("SELECT key FROM achievements")
     suspend fun unlockedKeys(): List<String>
 
+    /** Pillanatkép az adatkivitelhez. */
+    @Query("SELECT * FROM achievements ORDER BY unlockedAtMillis")
+    suspend fun all(): List<AchievementEntity>
+
     @Query("UPDATE achievements SET notified = 1 WHERE key = :key")
     suspend fun markNotified(key: String)
 }
@@ -356,6 +364,11 @@ interface FavoriteDao {
     @Transaction
     @Query("SELECT * FROM favorite_meals WHERE id = :id")
     suspend fun byId(id: Long): FavoriteWithIngredients?
+
+    /** Pillanatkép az adatkivitelhez. */
+    @Transaction
+    @Query("SELECT * FROM favorite_meals ORDER BY addedAtMillis")
+    suspend fun all(): List<FavoriteWithIngredients>
 
     @Query("SELECT id FROM favorite_meals WHERE nameKey = :nameKey")
     suspend fun idOf(nameKey: String): Long?
