@@ -129,6 +129,8 @@
     <string name="meal_disclaimer">This dish was written by an automated planner. For information only, not medical advice.</string>
     <string name="meal_report">Report this dish</string>
     <string name="meal_swap_action">Swap this dish</string>
+    <string name="profile_batch_cooking">Cook once, eat twice</string>
+    <string name="profile_batch_cooking_note">Where it makes sense, the planner cooks a double batch and the leftovers become the next day\'s lunch. You buy the same amount — you just cook less often.</string>
     <string name="meal_swapped">Swapped in: %1$s</string>
     <string name="today_swap">Swap it</string>
 

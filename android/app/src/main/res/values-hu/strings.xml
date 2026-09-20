@@ -127,6 +127,8 @@
     <string name="meal_disclaimer">Ezt a fogást gépi tervező írta. Tájékoztató jellegű, nem orvosi tanács.</string>
     <string name="meal_report">Jelentem ezt a fogást</string>
     <string name="meal_swap_action">Cseréld ki ezt a fogást</string>
+    <string name="profile_batch_cooking">Főzz egyszer, egyél kétszer</string>
+    <string name="profile_batch_cooking_note">Ahol értelmes, a tervező duplaadagot főzet, és a maradék lesz a másnapi ebéd. Ugyanannyit vásárolsz — csak ritkábban főzöl.</string>
     <string name="meal_swapped">Kicseréltem: %1$s</string>
     <string name="today_swap">Cseréld ki</string>
 

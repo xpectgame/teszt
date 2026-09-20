@@ -115,6 +115,15 @@ data class UserProfile(
     val restrictions: Set<DietRestriction> = emptySet(),
     /** Szabad szöveges testreszabás: utált ételek, konyha, időkeret, büdzsé. */
     val preferences: String = "",
+    /**
+     * Kétszer főzés: a vacsorából maradjon a másnapi ebédre.
+     *
+     * Az étrendtervek legnagyobb gyakorlati súrlódása, hogy minden nap új főzés.
+     * Bekapcsolva a tervező duplaadagot kér, és a maradék napra újramelegítést ír —
+     * a hozzávalók így is összeadódnak a bevásárlólistán, mert a duplaadaghoz
+     * tényleg kétszer annyi kell.
+     */
+    val batchCooking: Boolean = false,
     /** Étkezési idősávok "HH:mm" formában, hossza legfeljebb [mealsPerDay]. */
     val mealTimes: List<String> = listOf("07:30", "12:30", "16:00", "19:30"),
 ) {

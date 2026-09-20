@@ -332,6 +332,25 @@ Every quantity must be a number, not text. "day_index" follows the requested ran
             sb.appendLine(request.freeText.trim())
             sb.appendLine()
         }
+        if (p.batchCooking) {
+            sb.appendLine(s("KÉTSZER FŐZÉS", "COOK ONCE, EAT TWICE"))
+            sb.appendLine(s(
+                "A felhasználó nem akar minden nap főzni. Ahol értelmes, tervezz " +
+                    "duplaadagot: ugyanaz a fogás szerepeljen a KÖVETKEZŐ nap ebédjén is. " +
+                    "A maradék napon a prep_minutes legyen 10 alatt (újramelegítés), és a " +
+                    "description mondja ki, melyik napi adagból marad. A hozzávalókat a " +
+                    "maradék napon is sorold fel ugyanúgy — a bevásárlólista ezekből adódik " +
+                    "össze, és a duplaadaghoz tényleg kétszer annyi kell. Naponta legfeljebb " +
+                    "egy ilyen ismétlés, és két napnál tovább ne hordozd tovább ugyanazt.",
+                "The user does not want to cook every day. Where it makes sense, plan a " +
+                    "double batch: the same dish also appears at lunch the NEXT day. On the " +
+                    "leftover day prep_minutes must be under 10 (reheating), and the " +
+                    "description must say which day's batch it comes from. List the " +
+                    "ingredients again on the leftover day — the shopping list adds them up, " +
+                    "and a double batch really does need twice as much. At most one such " +
+                    "repeat per day, and never carry the same dish for more than two days."))
+            sb.appendLine()
+        }
         if (request.favoriteRecipes.isNotEmpty()) {
             sb.appendLine(s("A FELHASZNÁLÓ KEDVENCEI", "THE USER'S FAVOURITES"))
             sb.appendLine(request.favoriteRecipes.distinct().take(25).joinToString(", "))
@@ -352,6 +371,16 @@ Every quantity must be a number, not text. "day_index" follows the requested ran
             sb.appendLine(s("MÁR SZEREPELT FOGÁSOK (ezeket ne ismételd)",
                 "DISHES ALREADY USED (do not repeat these)"))
             sb.appendLine(avoid.take(60).joinToString(", "))
+            if (p.batchCooking) {
+                // A hosszú terveket hetekre bontjuk, és minden hét megkapja az addigi
+                // fogásokat. A hét UTOLSÓ napjának maradéka így a következő hét első
+                // napjára soha nem jöhetne át — pedig pont az a lényeg.
+                sb.appendLine(s(
+                    "Kivétel: az előző nap maradékát a kétszer főzés szabálya szerint " +
+                        "tovább hozhatod, akkor is, ha a fogás ezen a listán van.",
+                    "Exception: you may carry over the previous day's leftovers under the " +
+                        "cook-once-eat-twice rule, even if that dish is on this list."))
+            }
             sb.appendLine()
         }
 

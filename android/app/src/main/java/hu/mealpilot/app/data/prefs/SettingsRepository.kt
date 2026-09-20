@@ -101,6 +101,7 @@ class SettingsRepository(context: Context) {
             p[K_MEALS_PER_DAY] = profile.mealsPerDay
             p[K_RESTRICTIONS] = profile.restrictions.map { it.name }.toSet()
             p[K_PREFERENCES] = profile.preferences
+            p[K_BATCH_COOKING] = profile.batchCooking
             p[K_MEAL_TIMES] = profile.mealTimes.joinToString(",")
         }
     }
@@ -165,6 +166,7 @@ class SettingsRepository(context: Context) {
             ?.toSet()
             ?: emptySet(),
         preferences = this[K_PREFERENCES] ?: "",
+        batchCooking = this[K_BATCH_COOKING] ?: false,
         mealTimes = this[K_MEAL_TIMES]?.split(",")?.filter { it.isNotBlank() }
             ?: listOf("07:30", "12:30", "16:00", "19:30"),
     )
@@ -198,6 +200,7 @@ class SettingsRepository(context: Context) {
         val K_MEALS_PER_DAY = intPreferencesKey("meals_per_day")
         val K_RESTRICTIONS = stringSetPreferencesKey("restrictions")
         val K_PREFERENCES = stringPreferencesKey("preferences")
+        val K_BATCH_COOKING = booleanPreferencesKey("batch_cooking")
         val K_MEAL_TIMES = stringPreferencesKey("meal_times")
 
         val K_ONBOARDING = booleanPreferencesKey("onboarding_done")
