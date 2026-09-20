@@ -81,6 +81,14 @@ mindhárom reggelijére tett tejterméket, vagyis egy vegán felhasználó bizto
 bele. A `RecipeBankCoverageTest` ezért minden kizárásra és étrendi stílusra megméri,
 mindkét nyelven, hány sablon marad kiadható — a legszűkebb profilnál is kilenc.
 
+**Adatbázis-migrációk.** A migrációk a felhasználó telefonján futnak le először, és a
+Room eltérés esetén kivétellel áll meg — az app el sem indul. A `:app` tesztek ezt nem
+fogják meg: ott a Room üres adatbázisra egyben építi a sémát, a migráció le sem fut.
+A `tools/check-room-migration.py` ezért a verziókezelt `<N-1>.json` sémára futtatja rá
+a `AppDatabase.kt`-ből kiszedett utasításokat, és a kapott oszlopokat, indexeket és
+idegen kulcsokat veti össze azzal, amit az `<N>.json` vár — ugyanazokkal a PRAGMA-kkal,
+amiket a Room is használ.
+
 **Kedvencek.** Egy fogás mellett a szívre koppintva a fogás bekerül a kedvencek közé —
 a Ma képernyő sorában és a fogás saját oldalán is. A kedvenc MÁSOLAT, nem hivatkozás:
 recepttel és hozzávalókkal együtt kerül át, és a terv törlése nem viszi el. (Hivatkozás
