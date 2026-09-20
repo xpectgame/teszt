@@ -128,6 +128,9 @@
     <string name="meal_swap">If you\'d rather not eat this</string>
     <string name="meal_disclaimer">This dish was written by an automated planner. For information only, not medical advice.</string>
     <string name="meal_report">Report this dish</string>
+    <string name="meal_swap_action">Swap this dish</string>
+    <string name="meal_swapped">Swapped in: %1$s</string>
+    <string name="today_swap">Swap it</string>
 
     <!-- Kedvencek -->
     <string name="favorites_title">Favourites</string>

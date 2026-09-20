@@ -33,6 +33,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -94,6 +95,21 @@ class MealDetailViewModel(
     val favoriteKeys: StateFlow<Set<String>> = container.favoriteRepository.observeKeys()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptySet())
 
+    /**
+     * Kicseréli a fogást a beépített bankból. A hibát is visszaadja: a csere
+     * meghiúsulhat (naplózott fogás, vagy nincs a kizárásokba férő alternatíva), és
+     * ilyenkor szólni kell, nem csendben nem csinálni semmit.
+     */
+    fun swap(mealId: Long, onDone: (Result<String>) -> Unit) = viewModelScope.launch {
+        onDone(
+            container.planRepository.swapMeal(
+                mealId = mealId,
+                restrictions = restrictions.value,
+                language = container.language,
+            )
+        )
+    }
+
     /** Megjelöli vagy leveszi a jelölést; az új állapotot adja vissza. */
     fun toggleFavorite(data: MealWithIngredients, onDone: (Boolean) -> Unit) = viewModelScope.launch {
         onDone(container.favoriteRepository.toggle(data, System.currentTimeMillis()))
@@ -128,6 +144,10 @@ fun MealDetailScreen(
     // mehet. Itt olvassuk ki, ahol még szabad.
     val addLabel = stringResource(R.string.favorites_add)
     val removeLabel = stringResource(R.string.favorites_remove)
+    // A csere üzenete a fogás NEVÉT hordozza, ami csak a művelet után derül ki:
+    // ezért nem `stringResource`, hanem a context — a lambdában az előbbi fordítási
+    // hiba lenne.
+    val context = LocalContext.current
     val addedText = stringResource(R.string.favorites_added)
     val removedText = stringResource(R.string.favorites_removed)
 
@@ -292,6 +312,25 @@ fun MealDetailScreen(
         }
 
         Spacer(Modifier.height(20.dp))
+        // A csere a naplózás FÖLÖTT van: előbb dől el, hogy ezt eszed-e meg,
+        // és csak utána, hogy megetted-e.
+        OutlinedButton(
+            onClick = {
+                viewModel.swap(meal.id) { result ->
+                    scope.launch {
+                        snackbarHostState.showSnackbar(
+                            result.fold(
+                                onSuccess = { context.getString(R.string.meal_swapped, it) },
+                                onFailure = { it.message.orEmpty() },
+                            )
+                        )
+                    }
+                }
+            },
+            modifier = Modifier.fillMaxWidth(),
+        ) { Text(stringResource(R.string.meal_swap_action)) }
+
+        Spacer(Modifier.height(8.dp))
         Row(
             Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(8.dp),

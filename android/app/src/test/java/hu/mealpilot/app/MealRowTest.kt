@@ -63,6 +63,7 @@ class MealRowTest {
         violations: List<DietRestriction> = emptyList(),
         isFavorite: Boolean = false,
         onToggleFavorite: () -> Unit = {},
+        onSwap: () -> Unit = {},
     ) {
         compose.setContent {
             CompositionLocalProvider(LocalAppLanguage provides AppLanguage.HU) {
@@ -74,6 +75,7 @@ class MealRowTest {
                         violations = violations,
                         isFavorite = isFavorite,
                         onToggleFavorite = onToggleFavorite,
+                        onSwap = onSwap,
                         onOpen = onOpen,
                         onAte = onAte,
                         onSkip = onSkip,

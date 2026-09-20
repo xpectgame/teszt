@@ -59,6 +59,16 @@ interface MealDao {
     suspend fun deleteDay(planId: Long, dayIndex: Int)
 
     /**
+     * Egy fogás hozzávalóinak törlése, a fogás SORÁNAK megtartásával.
+     *
+     * A fogáscseréhez kell: ha a sort is törölnénk, a rá mutató naplóbejegyzés
+     * elárvulna, és a kaszkád a cserével együtt elvinné azt is, amit a felhasználó
+     * valójában megevett.
+     */
+    @Query("DELETE FROM ingredients WHERE mealId = :mealId")
+    suspend fun deleteIngredients(mealId: Long)
+
+    /**
      * Csak az aktív terv étkezései. A tervszűrés nélkül egy korábbi, már deaktivált terv
      * átfedő napjai is bejönnének, és minden étkezés kétszer jelenne meg.
      */

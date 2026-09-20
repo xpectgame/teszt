@@ -19,6 +19,7 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.ChevronLeft
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Autorenew
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.outlined.FavoriteBorder
@@ -38,10 +39,12 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
@@ -208,6 +211,17 @@ class TodayViewModel(private val container: AppContainer) : ViewModel() {
         container.favoriteRepository.toggle(data, System.currentTimeMillis())
     }
 
+    /** Fogáscsere a beépített bankból; a hibaüzenetet is továbbadja. */
+    fun swap(mealId: Long, onDone: (Result<String>) -> Unit) = viewModelScope.launch {
+        onDone(
+            container.planRepository.swapMeal(
+                mealId = mealId,
+                restrictions = container.settings.currentProfile().effectiveRestrictions,
+                language = container.language,
+            )
+        )
+    }
+
     fun log(mealId: Long, status: LogStatus) = viewModelScope.launch {
         container.telemetry.record(TelemetryEvent.MEAL_LOGGED)
         container.trackingRepository.logPlannedMeal(mealId, status)
@@ -270,6 +284,10 @@ fun TodayScreen(
     val state by viewModel.state.collectAsState()
     val favoriteKeys by viewModel.favoriteKeys.collectAsState()
     val language = LocalAppLanguage.current
+    val scope = rememberCoroutineScope()
+    // A csere üzenete a fogás NEVÉT hordozza, ami csak a művelet után derül ki: a
+    // lambdában `stringResource` fordítási hiba lenne.
+    val context = LocalContext.current
     val consumed = state.consumed
     val consumedKcal = consumed.kcal.roundToInt()
     val remainingKcal = state.targetKcal - consumedKcal
@@ -393,6 +411,18 @@ fun TodayScreen(
                 ),
                 isFavorite = FavoriteRepository.key(mealWithIngredients.meal.name) in favoriteKeys,
                 onToggleFavorite = { viewModel.toggleFavorite(mealWithIngredients) },
+                onSwap = {
+                    viewModel.swap(mealWithIngredients.meal.id) { result ->
+                        scope.launch {
+                            snackbarHostState.showSnackbar(
+                                result.fold(
+                                    onSuccess = { context.getString(R.string.meal_swapped, it) },
+                                    onFailure = { it.message.orEmpty() },
+                                )
+                            )
+                        }
+                    }
+                },
                 onOpen = { onOpenMeal(mealWithIngredients.meal.id) },
                 onAte = { viewModel.log(mealWithIngredients.meal.id, LogStatus.EATEN) },
                 onSkip = { viewModel.log(mealWithIngredients.meal.id, LogStatus.SKIPPED) },
@@ -519,6 +549,7 @@ internal fun MealRow(
      */
     isFavorite: Boolean,
     onToggleFavorite: () -> Unit,
+    onSwap: () -> Unit,
     onOpen: () -> Unit,
     onAte: () -> Unit,
     onSkip: () -> Unit,
@@ -674,6 +705,14 @@ internal fun MealRow(
                             Icon(Icons.Filled.MoreVert, contentDescription = stringResource(R.string.action_more))
                         }
                         DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+                            // Két KÜLÖNBÖZŐ dolog, és könnyű összekeverni őket: a csere
+                            // a TERVET írja át (mást fogsz főzni), a „mást ettem" a
+                            // NAPLÓT (már megetted, csak nem azt).
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.today_swap)) },
+                                onClick = { menuOpen = false; onSwap() },
+                                leadingIcon = { Icon(Icons.Filled.Autorenew, contentDescription = null) },
+                            )
                             DropdownMenuItem(
                                 text = { Text(stringResource(R.string.today_ate_other)) },
                                 onClick = { menuOpen = false; onReplace() },

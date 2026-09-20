@@ -126,6 +126,9 @@
     <string name="meal_swap">Ha nem ezt ennéd</string>
     <string name="meal_disclaimer">Ezt a fogást gépi tervező írta. Tájékoztató jellegű, nem orvosi tanács.</string>
     <string name="meal_report">Jelentem ezt a fogást</string>
+    <string name="meal_swap_action">Cseréld ki ezt a fogást</string>
+    <string name="meal_swapped">Kicseréltem: %1$s</string>
+    <string name="today_swap">Cseréld ki</string>
 
     <!-- Kedvencek -->
     <string name="favorites_title">Kedvencek</string>

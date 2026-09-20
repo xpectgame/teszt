@@ -19,9 +19,12 @@ import hu.mealpilot.core.ai.AiDay
 import hu.mealpilot.core.ai.AiIngredient
 import hu.mealpilot.core.ai.GenerationProgress
 import hu.mealpilot.core.ai.MealAi
+import hu.mealpilot.core.ai.MealSlot
+import hu.mealpilot.core.ai.MealSwap
 import hu.mealpilot.core.ai.PlanParser
 import hu.mealpilot.core.ai.PlanRequest
 import hu.mealpilot.core.energy.EnergyBudget
+import hu.mealpilot.core.model.DietRestriction
 import hu.mealpilot.core.model.UserProfile
 import hu.mealpilot.core.shopping.ShoppingListBuilder
 import kotlinx.coroutines.Dispatchers
@@ -241,6 +244,87 @@ class PlanRepository(
                 if (language == AppLanguage.EN) "I have rewritten the day." else "A napot frissítettem."
             }
         )
+    }
+
+    /**
+     * „Ezt ne kérem, adj mást." — EGY fogás tartalmát cseréli ki a beépített bankból.
+     *
+     * Miért nem modellhívás: a csere azonnal kell, ingyen, és repülőgépes üzemmódban
+     * is. Aki egészen mást akar, annak ott a beszélgetés — ez a gomb arra való, hogy
+     * a ma esti vacsorát egy koppintással le lehessen cserélni.
+     *
+     * A fogás SORA megmarad (csak a tartalma változik), hogy a rá mutató emlékeztető
+     * és naplóbejegyzés ne szakadjon el tőle. A csere a mostani fogás KALÓRIÁJÁRA
+     * méretez, így a nap kerete nem csúszik el.
+     *
+     * Naplózott fogást nem cserél: amit a felhasználó megevett, azt nem írjuk át
+     * utólag. Ilyenkor előbb a naplózást kell visszavonni.
+     */
+    suspend fun swapMeal(
+        mealId: Long,
+        restrictions: Set<DietRestriction>,
+        language: AppLanguage = AppLanguage.DEFAULT,
+    ): Result<String> {
+        val english = language == AppLanguage.EN
+        val meal = mealDao.byId(mealId) ?: return Result.failure(
+            MealAiException(if (english) "That meal is gone." else "Ez az étkezés már nincs meg.")
+        )
+        if (mealLogDao.eatenCountFor(mealId) > 0) {
+            return Result.failure(
+                MealAiException(
+                    if (english) "You have already logged this meal. Undo that first."
+                    else "Ezt az étkezést már naplóztad. Előbb vond vissza."
+                )
+            )
+        }
+
+        val slot = MealSlot.fromRaw(meal.slot)
+        val sameDay = mealDao.mealsInRange(meal.planId, meal.epochDay, meal.epochDay)
+        val avoid = sameDay.filterNot { it.meal.id == mealId }.map { it.meal.name }
+
+        val template = MealSwap.next(slot, meal.name, avoid, restrictions, language)
+            ?: return Result.failure(
+                MealAiException(
+                    if (english) "I have nothing else that fits your exclusions for this meal."
+                    else "Nincs más a bankban, ami a kizárásaidba is belefér erre az étkezésre."
+                )
+            )
+
+        val replacement = template.scaledTo(
+            targetKcal = meal.nutrients.kcal,
+            slot = slot,
+            time = meal.timeText,
+            language = language,
+        )
+
+        mealDao.update(
+            meal.copy(
+                name = replacement.name,
+                description = replacement.description,
+                prepMinutes = replacement.prepMinutes,
+                servings = replacement.servings,
+                nutrients = NutrientsColumns.from(replacement.nutrition.toNutrients()),
+                recipeStepsJson = encodeStrings(replacement.recipeSteps),
+                // A régi cseretipp a régi fogásról szólt.
+                swapHint = "",
+            )
+        )
+        mealDao.deleteIngredients(mealId)
+        mealDao.insertIngredients(
+            replacement.ingredients.map { ing ->
+                IngredientEntity(
+                    mealId = mealId,
+                    name = ing.name,
+                    quantity = ing.quantity,
+                    unit = ing.unit,
+                    aisle = ing.aisle,
+                    note = ing.note,
+                    pantryStaple = ing.pantryStaple,
+                )
+            }
+        )
+        rebuildShoppingLists(meal.planId)
+        return Result.success(replacement.name)
     }
 
     private suspend fun insertDay(planId: Long, startDate: LocalDate, day: AiDay) {
