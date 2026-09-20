@@ -67,10 +67,9 @@ class EnergyCalculatorTest {
 
     @Test
     fun `a sedentary user on the default rate is not told their goal is aggressive`() {
-        // Ülő életmódnál a napi felhasználás az alapanyagcsere 1,2-szerese, tehát a
-        // kettő közé fér a TELJES mozgástér — az app alapértelmezett üteme (0,5 kg/hét)
-        // ennél nagyobb deficitet kérne. Vagyis MINDEN ülő életmódú felhasználó
-        // megkapja ezt az üzenetet, már az első képernyőn, a saját alapértelmezésünkre.
+        // Ülő életmódnál szűk a mozgástér, így az app SAJÁT alapértelmezett üteme
+        // (0,5 kg/hét) is a 25%-os korlátba ütközik — vagyis minden ülő életmódú
+        // felhasználó megkapja ezt az üzenetet, már az első képernyőn.
         //
         // A régi szöveg ezt úgy fogalmazta, hogy „a kért ütem túl agresszív" — ami a
         // felhasználót hibáztatja azért, amit nem ő állított be, és nem is igaz: heti
@@ -84,25 +83,52 @@ class EnergyCalculatorTest {
         assertTrue("Az alapértelmezett ütem 0,5 kg/hét", sedentary.targetRateKgPerWeek == 0.5)
         assertTrue("Ülő életmódnál korlátozni kell", budget.wasCapped)
 
-        val warning = budget.warnings.single { it.contains("kg/hét") }
+        val warning = budget.warnings.single { it.contains("kg/hét fér bele") }
         assertTrue("Ne hibáztassa a felhasználót: $warning", !warning.contains("agresszív"))
-        assertTrue("Nevezze meg az okot: $warning", warning.contains("alapanyagcser"))
-        assertTrue("Mondja meg, mi fér bele: $warning", warning.contains("kg/hét fér bele"))
+        assertTrue("Nevezze meg az okot: $warning", warning.contains("biztonságos felső határ"))
         assertTrue("Mondja meg, mit tehet: $warning", warning.contains("mozgás"))
     }
 
     @Test
-    fun `target never drops below the calorie floor`() {
+    fun `the basal metabolic rate no longer caps the chosen pace`() {
+        // Ez a szabály („az alapanyagcsere alá soha nem tervezünk") KORLÁT volt: egy
+        // 120 kg-os, ülő életmódú felhasználónak heti 0,38 kg-ra vágta a beállított heti
+        // 0,5 kg-ot, pedig bőven volt még hely a 25%-os biztonsági korlátig. Az ütemről
+        // a felhasználó dönt; a mi dolgunk elmondani, mivel jár.
+        val big = UserProfile(
+            sex = Sex.MALE, ageYears = 40, heightCm = 180.0, weightKg = 120.0,
+            activityLevel = ActivityLevel.SEDENTARY, targetRateKgPerWeek = 0.5,
+        )
+        val budget = EnergyCalculator.budget(big, AppLanguage.HU)
+
+        // TDEE = 2130 * 1,2 = 2556; a 25%-os korlát 639 kcal, a kért 550 belefér.
+        assertEquals("A kért ütem menjen át változtatás nélkül", 550, budget.appliedDeficit)
+        assertTrue("Nincs mit korlátozni", !budget.wasCapped)
+        assertTrue(
+            "A cél (${budget.target.kcal}) az alapanyagcsere (${budget.bmr}) alá kerülhet",
+            budget.target.kcal < budget.bmr,
+        )
+
+        val warning = budget.warnings.single { it.contains("alapanyagcser") }
+        assertTrue("Mondja meg, mivel jár: $warning", warning.contains("izomveszt"))
+        assertTrue("Mondja meg, mit tegyen: $warning", warning.contains("fehérj"))
+        assertTrue("Ne az ütemet panaszolja: $warning", !warning.contains("fér bele"))
+    }
+
+    @Test
+    fun `target never drops below the clinical minimum`() {
+        // A klinikai minimum (nőknél 1200, férfiaknál 1500 kcal) MEGMARADT kemény
+        // korlátnak — csak az alapanyagcsere került ki mellőle.
         val small = UserProfile(
             sex = Sex.FEMALE, ageYears = 45, heightCm = 158.0, weightKg = 55.0,
             activityLevel = ActivityLevel.SEDENTARY, targetRateKgPerWeek = 1.0,
         )
         val budget = EnergyCalculator.budget(small)
+        assertEquals(1200.0, EnergyCalculator.floorKcal(small), 0.01)
         assertTrue(
-            "A cél (${budget.target.kcal}) nem mehet az alapanyagcsere (${budget.bmr}) alá",
-            budget.target.kcal >= budget.bmr,
+            "A cél (${budget.target.kcal}) nem mehet a klinikai minimum alá",
+            budget.target.kcal >= 1200,
         )
-        assertTrue(budget.target.kcal >= 1200)
     }
 
     @Test
@@ -121,7 +147,47 @@ class EnergyCalculatorTest {
             "A makrók ($fromMacros kcal) essenek a cél (${t.kcal}) közelébe",
             abs(fromMacros - t.kcal) <= 12,
         )
-        assertTrue("A fehérje ne legyen kevesebb 2 g/ttkg-nál", t.proteinG >= 170)
+        // A referenciasúly a BMI-25 súly (180 cm → 81 kg), nem a mai 90 kg.
+        assertTrue("A fehérje 2,2 g/ttkg a referenciasúlyra", t.proteinG >= 170)
+    }
+
+    @Test
+    fun `the macro reference weight is capped at a healthy body weight`() {
+        // 160 cm, 120 kg: a MAI súlyból 2,2 g/ttkg fehérje 264 g lett volna, a zsírral
+        // együtt 1920 kcal — több, mint az egész napi keret. A 90%-os visszaskálázás
+        // ilyenkor nem jelzett hibát, csak csendben szétverte az arányokat: a
+        // szénhidrátra alig 40 g maradt. A felesleges kilók nem kérnek fehérjét.
+        val heavy = UserProfile(
+            sex = Sex.FEMALE, ageYears = 45, heightCm = 160.0, weightKg = 120.0,
+            activityLevel = ActivityLevel.SEDENTARY,
+        )
+        assertEquals(64.0, EnergyCalculator.bmi25WeightKg(heavy), 0.01)
+
+        val t = EnergyCalculator.budget(heavy).target
+        assertEquals("2,2 g/ttkg a 64 kg-os referenciasúlyra", 141, t.proteinG)
+        assertTrue(
+            "A fehérje + zsír (${t.proteinG * 4 + t.fatG * 9} kcal) ne egye meg a keretet (${t.kcal})",
+            t.proteinG * 4 + t.fatG * 9 < t.kcal * 0.75,
+        )
+        assertTrue("Maradjon értelmes szénhidrát: ${t.carbsG} g", t.carbsG >= 120)
+    }
+
+    @Test
+    fun `a measured body fat or a target weight still wins over the cap`() {
+        // A BMI-25 korlát BECSLÉS — csak akkor szólhat bele, ha nincs jobb adatunk.
+        val heavy = UserProfile(
+            sex = Sex.FEMALE, ageYears = 45, heightCm = 160.0, weightKg = 120.0,
+            activityLevel = ActivityLevel.SEDENTARY,
+        )
+
+        // 40% testzsír → zsírmentes tömeg 72 kg, referencia 79,2 kg. Ez a BMI-25 súly
+        // (64 kg) FÖLÖTT van, és ez így helyes: a mért testösszetétel többet ér.
+        val measured = EnergyCalculator.macroTarget(heavy.copy(bodyFatPercent = 40.0), 1800)
+        assertEquals("2,2 * 72 * 1,1", 174, measured.proteinG)
+
+        // Célsúly 75 kg → oda tartunk, arra számolunk.
+        val goal = EnergyCalculator.macroTarget(heavy.copy(targetWeightKg = 75.0), 1800)
+        assertEquals("2,2 * 75", 165, goal.proteinG)
     }
 
     @Test

@@ -132,11 +132,22 @@ Függőséginjektálás kézzel (`AppContainer`) — ekkora appnál ez kevesebb 
 
 ## Miért így — a lényeges döntések
 
-**A deficit nem lehet akármekkora.** A kért fogyási ütemet két korlát vágja vissza:
-a napi deficit nem több a TDEE 25%-ánál, és a napi cél nem megy az alapanyagcsere
-(illetve férfiaknál 1500, nőknél 1200 kcal) alá. Ha a beállítás ezekbe ütközik, az app
-megmondja, mennyit mérsékelt és miért. Deficitben a fehérje fix testsúlyarányos küszöb,
-a szénhidrát a maradék — így az izomvesztés esélye kisebb.
+**A deficit nem lehet akármekkora — de az ütemről a felhasználó dönt.** Két korlát
+vágja vissza a kért ütemet: a napi deficit nem több a TDEE 25%-ánál, és a napi cél nem
+megy a klinikai minimum (férfiaknál 1500, nőknél 1200 kcal) alá. Ha ezekbe ütközik, az
+app megmondja, mennyit mérsékelt és miért.
+
+Az alapanyagcsere szándékosan NINCS a korlátok között. Ülő életmódnál a napi felhasználás
+annak csak 1,2-szerese, így az „alapanyagcsere alá soha nem tervezünk" szabály a
+felhasználók nagy részét heti 0,3–0,4 kg-ra fogta vissza akkor is, ha ő fél kilót
+állított be — a saját testadatai miatt, a saját döntése ellenében. Ha a cél az
+alapanyagcsere alá kerül, az app elmondja, mivel jár (izomvesztés, lassuló anyagcsere,
+tartsd magasan a fehérjét, hosszabb távon orvos). Korlátozás helyett tájékoztatás.
+
+Deficitben a fehérje fix testsúlyarányos küszöb, a szénhidrát a maradék — így az
+izomvesztés esélye kisebb. A fehérje referenciasúlya a zsírmentes tömeg, annak híján a
+célsúly, annak híján a mai súly — de legfeljebb a BMI 25-höz tartozó súly: a felesleges
+zsír nem kér fehérjét, és e nélkül a szénhidrátra alig maradt hely.
 
 **A mozgás egyetlen kérdés, nem egy napló.** Volt edzésnaplózás MET-táblával és
 pulzusalapú becsléssel; kikerült. Nem azért, mert rossz volt, hanem mert egy étrendtervező
@@ -194,5 +205,6 @@ megnyitása nélkül. Ha a naplózás nem egy koppintás, senki nem csinálja k�
 ## Jogi / egészségügyi megjegyzés
 
 Az app tájékoztató jellegű, **nem orvosi tanács**. Betegség, terhesség, szoptatás vagy
-rendszeres gyógyszerszedés esetén a diétát orvossal kell egyeztetni. Az app nem enged
-az alapanyagcsere alá menő kalóriabevitelt javasolni.
+rendszeres gyógyszerszedés esetén a diétát orvossal kell egyeztetni. Az app nem javasol
+a klinikai minimum (férfiaknál 1500, nőknél 1200 kcal) alatti kalóriabevitelt, és szól,
+ha a cél az alapanyagcsere alá kerül.

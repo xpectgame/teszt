@@ -33,8 +33,8 @@ egy étrendet, ami tényleg megfőzhető — valódi, boltban kapható alapanyag
 MIT CSINÁL
 
 • Kiszámolja a napi kereted. A testsúlyodból, magasságodból, korodból és
-  mozgásszintedből, és megmondja, milyen ütemben fogysz vele. Nem enged
-  az alapanyagcseréd alá.
+  mozgásszintedből, és megmondja, milyen ütemben fogysz vele. Az ütemet te
+  választod; ha a cél az alapanyagcseréd alá esne, szól róla.
 • Összeállít egy 3, 7, 14 vagy 30 napos étrendet, részletes tápértékkel.
 • Bevásárlólistát ír hozzá, polcok szerint csoportosítva, a mennyiségeket
   összevonva. Nem kell külön listát írnod.
@@ -85,7 +85,7 @@ megelőzésére, diagnosztizálására vagy kezelésére. Betegség, terhesség,
 evészavar vagy rendszeres gyógyszerszedés esetén a diétát előbb beszéld át
 orvossal. 18 éven felülieknek készült.
 ```
-*2 464 karakter — a limit 4 000*
+*2 503 karakter — a limit 4 000*
 
 ---
 
@@ -117,8 +117,8 @@ in an ordinary shop.
 WHAT IT DOES
 
 • Works out your daily budget from your weight, height, age and activity level,
-  and tells you how fast you'll lose weight at that rate. It never takes you below
-  your basal metabolic rate.
+  and tells you how fast you'll lose weight at that rate. You choose the pace; if
+  the target would fall below your basal metabolic rate, it says so.
 • Builds a 3, 7, 14 or 30-day meal plan with full nutrition figures.
 • Writes the shopping list for you, grouped by aisle, with quantities added up.
 • Reminds you when to eat what — and logs what you actually ate.
@@ -168,7 +168,7 @@ preventing, diagnosing or treating any illness. With an illness, in pregnancy, w
 breastfeeding, with an eating disorder or on regular medication, talk your diet
 through with a doctor first. Made for people aged 18 and over.
 ```
-*2 558 karakter — a limit 4 000*
+*2 597 karakter — a limit 4 000*
 
 ---
 

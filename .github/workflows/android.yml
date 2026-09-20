@@ -116,6 +116,12 @@ jobs:
       - name: A jogi szövegek verziója egyezik az oldalakkal
         run: python3 tools/check-legal-version.py
 
+      # Az áruházi szövegek alá kézzel írt karakterszám áll. A Play a hosszakat a
+      # FELTÖLTÉSNÉL veti el, nem a szerkesztésnél: egy elrontott szám ott derül ki,
+      # amikor a kiadás már indulna. Egyetlen mondat átírása elcsúsztatja.
+      - name: Az áruházi szövegek hossza egyezik a kiírt karakterszámmal
+        run: python3 tools/check-store-listing.py
+
       # A rendszerpromptok a kliensben élnek, a szerver egy GENERÁLT másolatot küld a
       # modellnek. A `SystemPromptSyncTest` önmagában nem elég őr: az a promptot egy
       # bemásolt hashhez hasonlítja, tehát az új hash bemásolásával minden zöld lesz

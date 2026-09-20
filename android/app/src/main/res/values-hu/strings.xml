@@ -96,7 +96,7 @@
     <string name="profile_range_hint">%1$s és %2$s között.</string>
     <string name="profile_activity_note">Az edzést is számold bele. Ebből jön a napi kalóriakereted, úgyhogy inkább becsüld alá, mint túl.</string>
     <string name="profile_rate">Fogyás üteme: %1$s kg/hét</string>
-    <string name="profile_rate_note">0,25–0,75 kg/hét a fenntartható sáv. Az app nem enged az alapanyagcsere alá menni.</string>
+    <string name="profile_rate_note">0,25–0,75 kg/hét a fenntartható sáv. Az ütemet te döntöd el; ha a napi cél az alapanyagcseréd alá esne, szólok róla.</string>
     <string name="profile_diet_style">Étrendi stílus</string>
     <string name="profile_macro_preset">Makró beállítás</string>
     <string name="profile_meals_per_day">Étkezések száma naponta: %1$d</string>

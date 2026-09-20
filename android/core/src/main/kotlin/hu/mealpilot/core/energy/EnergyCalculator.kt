@@ -58,13 +58,19 @@ object EnergyCalculator {
     fun tdee(profile: UserProfile): Double = bmr(profile) * profile.activityLevel.factor
 
     /**
-     * Abszolút alsó kalóriahatár. Két szabály közül a szigorúbb (magasabb) győz:
-     * nemenkénti klinikai minimum, illetve az alapanyagcsere.
+     * Abszolút alsó kalóriahatár: a nemenkénti klinikai minimum.
+     *
+     * Az alapanyagcsere SZÁNDÉKOSAN nincs benne ebben a határban. Ülő életmódnál a napi
+     * felhasználás az alapanyagcsere 1,2-szerese, tehát az „alapanyagcsere alá soha nem
+     * tervezünk" szabály a felhasználók nagy részének heti 0,3–0,4 kg-ra vágta volna az
+     * ütemét akkor is, ha ő heti fél kilót állított be. Az ütemről a felhasználó dönt.
+     *
+     * Ami helyette marad: ez a klinikai minimum, a napi felhasználás [MAX_DEFICIT_RATIO]
+     * arányú felső korlátja, és — ha a cél az alapanyagcsere alá kerül — egy
+     * figyelmeztetés a [budget] kimenetében. Korlátozás helyett tájékoztatás.
      */
-    fun floorKcal(profile: UserProfile): Double {
-        val sexFloor = if (profile.sex == Sex.MALE) 1500.0 else 1200.0
-        return max(sexFloor, bmr(profile))
-    }
+    fun floorKcal(profile: UserProfile): Double =
+        if (profile.sex == Sex.MALE) 1500.0 else 1200.0
 
     fun budget(
         profile: UserProfile,
@@ -92,28 +98,20 @@ object EnergyCalculator {
 
         val appliedDeficit = min(requestedDeficit.toDouble(), allowedDeficit).coerceAtLeast(0.0)
         if (appliedDeficit < requestedDeficit - 1) {
-            // MELYIK korlát fogott? A kettő nagyon mást jelent a felhasználónak.
-            //
-            // Az alapanyagcsere-korlát ülő életmódnál MINDIG fog: a napi felhasználás
-            // ilyenkor az alapanyagcsere 1,2-szerese, tehát a kettő közé fér a teljes
-            // mozgástér. Az app alapértelmezett üteme (0,5 kg/hét) ennél nagyobb
-            // deficitet kérne, vagyis minden ülő életmódú felhasználó megkapta ezt a
-            // figyelmeztetést — az első képernyőn, a SAJÁT alapértelmezésünkre.
-            //
-            // A régi szöveg ezt úgy fogalmazta, hogy „a kért ütem túl agresszív", ami a
-            // felhasználót hibáztatja azért, amit nem ő állított be. Nem is igaz: heti
-            // fél kiló nem agresszív cél. Ami szűkös, az a mozgás és az alapanyagcsere
-            // közötti sáv.
+            // MELYIK korlát fogott? A kettő mást jelent a felhasználónak, és mást lehet
+            // tenni ellene — de egyik sem a felhasználó hibája. A régi szöveg úgy
+            // fogalmazott, hogy „a kért ütem túl agresszív", ami azért hibáztatja, amit
+            // sokszor nem is ő állított be: heti fél kiló az app alapértelmezése.
             val achievable = appliedDeficit * 7.0 / KCAL_PER_KG_FAT
             val rateText = "%.2f".format(achievable)
             warnings += if (maxByFloor <= maxByRatio) {
                 s(
-                    "Ezen a mozgásszinten a napi felhasználásod (${tdeeValue.roundToInt()} kcal) közel van " +
-                        "az alapanyagcserédhez (${bmrValue.roundToInt()} kcal), és az alá nem tervezünk. " +
+                    "A napi felhasználásod (${tdeeValue.roundToInt()} kcal) közel van a biztonságos " +
+                        "alsó kalóriahatárhoz (${floor.roundToInt()} kcal), és az alá nem tervezünk. " +
                         "Ezért $rateText kg/hét fér bele heti ${"%.2f".format(rate)} kg helyett. " +
                         "Több mozgással gyorsulhat.",
-                    "At this activity level your daily burn (${tdeeValue.roundToInt()} kcal) is close to " +
-                        "your BMR (${bmrValue.roundToInt()} kcal), and we never plan below that. " +
+                    "Your daily burn (${tdeeValue.roundToInt()} kcal) is close to the safe minimum " +
+                        "intake (${floor.roundToInt()} kcal), and we never plan below that. " +
                         "So $rateText kg/week fits instead of ${"%.2f".format(rate)} kg. " +
                         "More activity would speed it up.",
                 )
@@ -121,9 +119,10 @@ object EnergyCalculator {
                 s(
                     "A biztonságos felső határ a napi felhasználásod " +
                         "${(MAX_DEFICIT_RATIO * 100).roundToInt()}%-a, ezért $rateText kg/hét fér bele " +
-                        "heti ${"%.2f".format(rate)} kg helyett.",
+                        "heti ${"%.2f".format(rate)} kg helyett. Több mozgással gyorsulhat.",
                     "The safe maximum is ${(MAX_DEFICIT_RATIO * 100).roundToInt()}% of your daily burn, " +
-                        "so $rateText kg/week fits instead of ${"%.2f".format(rate)} kg.",
+                        "so $rateText kg/week fits instead of ${"%.2f".format(rate)} kg. " +
+                        "More activity would speed it up.",
                 )
             }
         }
@@ -145,6 +144,26 @@ object EnergyCalculator {
                     "will not plan a deficit at this level. If that looks wrong, check your body data.",
             )
         }
+
+        // A cél az alapanyagcsere ALÁ kerülhet — és ez rendben van: az ütemet a
+        // felhasználó választja, nem mi. Régen ezt a kód kemény korlátként kezelte, ami
+        // ülő életmódnál majdnem mindenkit heti 0,3–0,4 kg-ra fogott vissza. Korlátozás
+        // helyett most megmondjuk, mivel jár, és rábízzuk a döntést.
+        if (targetKcal < bmrValue - 1) {
+            warnings += s(
+                "A napi célod ($targetKcal kcal) az alapanyagcseréd " +
+                    "(${bmrValue.roundToInt()} kcal) alatt van — ennyi kell a választott ütemhez. " +
+                    "Hetekig tartva izomvesztéssel és lassuló anyagcserével járhat: tartsd magasan " +
+                    "a fehérjét, erősíts, és ha sokáig így maradsz, beszélj orvossal. Lassabb " +
+                    "ütemmel vagy több mozgással elkerülhető.",
+                "Your daily target ($targetKcal kcal) is below your basal metabolic rate " +
+                    "(${bmrValue.roundToInt()} kcal) — that is what the pace you chose needs. " +
+                    "Kept up for weeks it can cost muscle and slow your metabolism: keep protein " +
+                    "high, do strength training, and see a doctor if it lasts. A slower pace or " +
+                    "more activity avoids it.",
+            )
+        }
+
         val target = macroTarget(profile, targetKcal)
 
         if (profile.bmi < 20.0) {
@@ -172,11 +191,23 @@ object EnergyCalculator {
      */
     fun macroTarget(profile: UserProfile, targetKcal: Int): DailyTarget {
         val preset = profile.macroPreset
-        // A referenciasúly a zsírmentes tömeg + 10%, illetve túlsúly esetén a célsúly:
-        // így nem számolunk irreálisan sok fehérjét nagy testzsírszázaléknál.
+        // A referenciasúly nem a mai testsúly: a felesleges zsír nem kér fehérjét.
+        // Három forrás, csökkenő pontossági sorrendben:
+        //
+        //   1. Ismert testzsír → zsírmentes tömeg + 10%. Ez a legpontosabb, és a
+        //      BMI-becslés nem is szólhat bele.
+        //   2. Ismert célsúly → a célsúly, mert oda tartunk.
+        //   3. Egyik sem → a mai súly, de legfeljebb a normál BMI-sáv felső végéhez
+        //      (BMI 25) tartozó súly.
+        //
+        // A harmadik pont javítás: e nélkül egy 160 cm-es, 120 kg-os felhasználó a mai
+        // súlyára kapott 2,2 g/ttkg fehérjét (264 g) és 0,8 g/ttkg zsírt (96 g). A kettő
+        // együtt 1920 kcal — több, mint a napi kerete. Az alábbi 90%-os visszaskálázás
+        // ilyenkor nem hibát jelzett, hanem csendben szétverte az arányokat: a
+        // szénhidrátra alig 40-50 g maradt, épp abból, amiből az étrend összeáll.
         val referenceKg = profile.leanBodyMassKg?.times(1.1)
             ?: profile.targetWeightKg?.takeIf { it in 35.0..250.0 }
-            ?: profile.weightKg
+            ?: min(profile.weightKg, bmi25WeightKg(profile))
 
         var proteinG = (preset.proteinPerKg * referenceKg).roundToInt()
         var fatG = (preset.fatPerKg * referenceKg).roundToInt()
@@ -194,6 +225,15 @@ object EnergyCalculator {
         val fiberG = max(25, (targetKcal / 1000.0 * 14).roundToInt())
 
         return DailyTarget(kcal = targetKcal, proteinG = proteinG, carbsG = carbsG, fatG = fatG, fiberG = fiberG)
+    }
+
+    /**
+     * A normál BMI-sáv felső végéhez (BMI 25) tartozó testsúly az adott magassághoz.
+     * A makrók referenciasúlyának felső korlátja, ha se testzsír, se célsúly nem ismert.
+     */
+    fun bmi25WeightKg(profile: UserProfile): Double {
+        val heightM = profile.heightCm / 100.0
+        return 25.0 * heightM * heightM
     }
 
     /** Hány nap alatt érhető el a célsúly a jelenlegi deficittel. Null, ha nincs cél vagy nincs deficit. */

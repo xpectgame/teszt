@@ -98,7 +98,7 @@
     <string name="profile_range_hint">Between %1$s and %2$s.</string>
     <string name="profile_activity_note">Count your training in too. Your daily calorie budget comes from this, so rather under-estimate than over.</string>
     <string name="profile_rate">Rate of loss: %1$s kg/week</string>
-    <string name="profile_rate_note">0.25–0.75 kg/week is the sustainable range. The app never lets you go below your basal metabolic rate.</string>
+    <string name="profile_rate_note">0.25–0.75 kg/week is the sustainable range. You set the pace; if the daily target would fall below your basal metabolic rate, I will say so.</string>
     <string name="profile_diet_style">Diet style</string>
     <string name="profile_macro_preset">Macro split</string>
     <string name="profile_meals_per_day">Meals per day: %1$d</string>
