@@ -199,9 +199,24 @@ jobs:
           git diff --stat -- app/schemas
           echo
           echo "Ha az adatbázis szándékosan változott: emeld a verziót, írj migrációt,"
-          echo "és tedd be az új sémafájlt. Az alábbi blokk a friss séma, base64-ben:"
+          echo "és tedd be az új sémafájlt. Az alábbi blokk az ÉRINTETT sémafájlokat"
+          echo "tartalmazza gzip+base64 alakban."
+          echo
+          # EGYETLEN sorban, és a sor sha256-ja is kiírva. Aki a naplóból másolja ki
+          # (mert az artefaktum letöltése például hálózati szabályba ütközik), annak
+          # a törés nélküli sor és az ellenőrzőösszeg együtt azt jelenti, hogy a
+          # másolás hibája HELYBEN kiderül — nem egy „invalid compressed data"
+          # üzenetben, ami nem mondja meg, hol romlott el.
           sha256sum app/schemas/*/*.json
-          tar czf - app/schemas | base64 -w 100
+          changed=$(git status --porcelain -uall -- app/schemas | awk '{print $2}')
+          echo "Érintett fájlok: $changed"
+          tar cf - -C "$(git rev-parse --show-toplevel)" $changed | gzip -n | base64 -w 0 > /tmp/schema.b64
+          echo "base64-sha256: $(sha256sum /tmp/schema.b64 | cut -d' ' -f1)"
+          echo "base64-bájt:   $(wc -c < /tmp/schema.b64)"
+          echo "--- SEMA-BASE64-KEZDET ---"
+          cat /tmp/schema.b64
+          echo
+          echo "--- SEMA-BASE64-VEGE ---"
           exit 1
 
       # Letölthetően is, hogy egy külső eszközzel (például sémaösszehasonlítóval)
