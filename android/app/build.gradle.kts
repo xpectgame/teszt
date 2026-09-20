@@ -164,6 +164,16 @@ android {
         buildConfig = true
     }
 
+    // A verziókezelt Room-sémák a unit tesztek osztályútjára kerülnek. A migrációs
+    // füstteszt ezekből építi fel a RÉGI adatbázist, ahelyett hogy a DDL-t bemásolná
+    // magába: egy bemásolt séma a következő verziónál csendben elavulna, és a teszt
+    // attól kezdve egy nem létező múltat ellenőrizne.
+    sourceSets {
+        getByName("test") {
+            resources.srcDir("schemas")
+        }
+    }
+
     testOptions {
         unitTests {
             // A képernyőtesztekhez kellenek a valódi erőforrások: a Robolectric ezekből

@@ -141,19 +141,26 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        const val NAME = "mealpilot.db"
+
         @Volatile
         private var instance: AppDatabase? = null
 
-        fun get(context: Context): AppDatabase = instance ?: synchronized(this) {
-            instance ?: Room.databaseBuilder(
-                context.applicationContext,
-                AppDatabase::class.java,
-                "mealpilot.db",
-            )
+        /**
+         * A VALÓDI adatbázis-építő, a valódi migrációlistával.
+         *
+         * Azért van külön a [get]-től, hogy a migrációs füstteszt ugyanezt az utat
+         * járhassa be — csak más fájlnévvel és a folyamatszintű példány megkerülésével.
+         * A migrációlista így nem másolódik a tesztbe: ha valaki elfelejt bekötni egy
+         * új migrációt, a teszt is ugyanúgy elhasal, mint az éles app.
+         */
+        internal fun builder(context: Context, name: String = NAME) =
+            Room.databaseBuilder(context.applicationContext, AppDatabase::class.java, name)
                 .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
                 .setJournalMode(RoomDatabase.JournalMode.WRITE_AHEAD_LOGGING)
-                .build()
-                .also { instance = it }
+
+        fun get(context: Context): AppDatabase = instance ?: synchronized(this) {
+            instance ?: builder(context).build().also { instance = it }
         }
     }
 }
