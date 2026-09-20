@@ -10,6 +10,7 @@ import hu.mealpilot.app.notify.ReminderRefreshWorker
 import hu.mealpilot.core.ai.GenerationProgress
 import hu.mealpilot.core.billing.PaidFeature
 import hu.mealpilot.core.energy.EnergyCalculator
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -159,6 +160,12 @@ class GenerationCoordinator(private val container: AppContainer) {
                 begin(totalDays = 0, headline = headline)
                 val message = block { progress -> publish(progress, _status.value.totalDays) }
                 _actionResult.value = message
+            } catch (cancelled: CancellationException) {
+                // A `catch (Throwable)` ezt is elkapná, és a felhasználó a saját
+                // Mégse gombjára azt a választ kapná, hogy „StandaloneCoroutine was
+                // cancelled". A megszakítás nem hiba: a felhasználó kérte.
+                _actionResult.value = container.strings[R.string.gen_action_cancelled]
+                throw cancelled
             } catch (error: Throwable) {
                 Log.e(TAG, "A művelet megszakadt.", error)
                 offerUpgradeIfQuota(error)

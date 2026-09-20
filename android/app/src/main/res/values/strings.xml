@@ -129,6 +129,7 @@
     <string name="meal_disclaimer">This dish was written by an automated planner. For information only, not medical advice.</string>
     <string name="meal_report">Report this dish</string>
     <string name="meal_swap_action">Swap this dish</string>
+    <string name="gen_action_cancelled">Stopped. What was already done stays.</string>
     <string name="progress_open">Progress</string>
     <string name="progress_title">Progress</string>
     <string name="progress_trend_title">Trend weight</string>

@@ -88,6 +88,8 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.LocalTime
@@ -266,6 +268,11 @@ class ChatViewModel(private val container: AppContainer) : ViewModel() {
                 // írta ki, hogy „Gondolkodom…". A felhasználó nem tudta, hogy hány
                 // lépésből áll, amit egyetlen koppintással elindított.
                 indexes.forEachIndexed { position, index ->
+                    // A megszakítás kooperatív. A `refineDay` a hibát Result-ba
+                    // csomagolja, tehát egy megszakított hívás után a ciklus
+                    // NYUGODTAN továbbmenne a következő napra — végigdarálná mind a
+                    // harmincat, csak épp mindet hibára. Itt állítjuk meg tényleg.
+                    currentCoroutineContext().ensureActive()
                     onProgress(
                         GenerationProgress(
                             stage = GenerationProgress.Stage.STREAMING,

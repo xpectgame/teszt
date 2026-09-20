@@ -89,6 +89,14 @@ a `AppDatabase.kt`-ből kiszedett utasításokat, és a kapott oszlopokat, index
 idegen kulcsokat veti össze azzal, amit az `<N>.json` vár — ugyanazokkal a PRAGMA-kkal,
 amiket a Room is használ.
 
+**Hosszú műveletek megszakítása.** A globális haladássávon — az alsó navigáció fölött,
+minden fülön — ott a Mégse. Ez azért ott van, és nem a Terv képernyő párbeszédében,
+mert egy beszélgetésből indított átírás akár harminc egymás utáni modellhívás, és a
+felhasználó közben bárhol lehet az appban; korábban csak várni lehetett. A napokat
+átíró ciklus `ensureActive()`-ot hív: a `refineDay` a hibát `Result`-ba csomagolja,
+tehát megszakítás után a ciklus különben nyugodtan végigdarálta volna mind a harminc
+napot, csak épp mindet hibára.
+
 **Kapuk a dokumentáció és a felület körül.** A README kézzel írt számait
 (`check-doc-numbers.py`) és az ikonvezérlők nevét (`check-accessibility.py`) a CI
 ellenőrzi. Az előbbi azonnal talált két elavult állítást: „75 unit teszt" 237 helyett,

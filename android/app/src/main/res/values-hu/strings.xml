@@ -127,6 +127,7 @@
     <string name="meal_disclaimer">Ezt a fogást gépi tervező írta. Tájékoztató jellegű, nem orvosi tanács.</string>
     <string name="meal_report">Jelentem ezt a fogást</string>
     <string name="meal_swap_action">Cseréld ki ezt a fogást</string>
+    <string name="gen_action_cancelled">Megszakítva. Ami elkészült, az megmarad.</string>
     <string name="progress_open">Haladás</string>
     <string name="progress_title">Haladás</string>
     <string name="progress_trend_title">Trendsúly</string>
