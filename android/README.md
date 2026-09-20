@@ -24,7 +24,7 @@ alkalmazza, és egy már kész napot is át tudsz íratni egy mondattal.
 | Esti összefoglaló értesítés | ✅ kész |
 | Bevásárlólista (összevont mennyiségek, bolti polcok szerint) | ✅ kész, unit-tesztelt |
 | Étkezés- és súlynapló, haladáskövetés | ✅ kész |
-| 22 achievement, értesítéssel | ✅ kész, unit-tesztelt |
+| 17 achievement, értesítéssel | ✅ kész, unit-tesztelt |
 | Offline sablontervező (AI kulcs nélkül is működik) | ✅ kész |
 
 ---
@@ -32,7 +32,7 @@ alkalmazza, és egy már kész napot is át tudsz íratni egy mondattal.
 ## Amit tudni kell a build előtt
 
 A `:core` modul (minden számítás, AI-séma, promptok, bevásárlólista, achievementek)
-tiszta Kotlin, és **75 unit teszt fut rá zölden**. Az app modul fordítását és az APK
+tiszta Kotlin, és **237 unit teszt fut rá zölden**. Az app modul fordítását és az APK
 építését a GitHub Actions végzi (`.github/workflows/android.yml`).
 
 **A legegyszerűbb telepítés: nem kell hozzá Android Studio.**
@@ -88,6 +88,14 @@ A `tools/check-room-migration.py` ezért a verziókezelt `<N-1>.json` sémára f
 a `AppDatabase.kt`-ből kiszedett utasításokat, és a kapott oszlopokat, indexeket és
 idegen kulcsokat veti össze azzal, amit az `<N>.json` vár — ugyanazokkal a PRAGMA-kkal,
 amiket a Room is használ.
+
+**Kapuk a dokumentáció és a felület körül.** A README kézzel írt számait
+(`check-doc-numbers.py`) és az ikonvezérlők nevét (`check-accessibility.py`) a CI
+ellenőrzi. Az előbbi azonnal talált két elavult állítást: „75 unit teszt" 237 helyett,
+és „22 achievement" 17 helyett. Az utóbbi szándékosan NEM tiltja a
+`contentDescription = null`-t: egy szöveg mellett álló ikonnál az a helyes érték, és az
+appban mind a tizenkilenc ilyen hely indokolt. Az a hiba, ha egy vezérlőnek csak ikonja
+van, és az sem mondja meg, mit csinál.
 
 **Haladás.** A profilból nyíló képernyő trendsúlyt mutat, nem nyers súlyt: a testsúly
 naponta 1–2 kg-ot ugrál víztől és ételtől, amiben a heti fél kilós fogyás láthatatlan,

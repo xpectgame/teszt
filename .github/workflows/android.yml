@@ -122,6 +122,20 @@ jobs:
       - name: Az áruházi szövegek hossza egyezik a kiírt karakterszámmal
         run: python3 tools/check-store-listing.py
 
+      # A README tele van kézzel írt számokkal a kódról (hány teszt, hány recept,
+      # hány achievement). A szám nem romlik el látványosan: a dokumentum attól
+      # kezdve magabiztosan hazudik. Kétszer meg is történt — „75 unit teszt" 237
+      # helyett, és „22 achievement" 17 helyett.
+      - name: A dokumentáció számai egyeznek a kóddal
+        run: python3 tools/check-doc-numbers.py
+
+      # Egy szöveg MELLETT álló ikon dekoratív, ott a null a helyes érték. Az a
+      # hiba, ha egy vezérlőnek csak ikonja van, és az sem mondja meg, mit csinál:
+      # a képernyőolvasó ilyenkor annyit mond, hogy „gomb". Szemmel nézve minden
+      # rendben van, ezért ezt csak gép veszi észre.
+      - name: Minden ikonvezérlőnek van neve
+        run: python3 tools/check-accessibility.py
+
       # A rendszerpromptok a kliensben élnek, a szerver egy GENERÁLT másolatot küld a
       # modellnek. A `SystemPromptSyncTest` önmagában nem elég őr: az a promptot egy
       # bemásolt hashhez hasonlítja, tehát az új hash bemásolásával minden zöld lesz
