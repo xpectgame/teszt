@@ -18,11 +18,13 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.outlined.WarningAmber
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilterChip
@@ -179,6 +181,7 @@ fun PlanScreen(
     container: AppContainer,
     snackbarHostState: SnackbarHostState,
     onOpenMeal: (Long) -> Unit,
+    onOpenFavorites: () -> Unit,
 ) {
     val viewModel: PlanViewModel = viewModel(factory = containerFactory(container) { PlanViewModel(it) })
     val state by viewModel.state.collectAsState()
@@ -242,10 +245,21 @@ fun PlanScreen(
                     stringResource(R.string.plan_title),
                     style = MaterialTheme.typography.headlineLarge,
                 )
-                Button(
-                    onClick = { showGenerator = true },
-                    shape = PlateShape.button,
-                ) { Text(stringResource(R.string.plan_new)) }
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    // A kedvencek a TERV fejlécében vannak: itt dől el, mi kerül a
+                    // következő hétre, és a megjelölt fogások épp ezt befolyásolják.
+                    IconButton(onClick = onOpenFavorites) {
+                        Icon(
+                            Icons.Filled.Favorite,
+                            contentDescription = stringResource(R.string.favorites_open),
+                        )
+                    }
+                    Spacer(Modifier.width(4.dp))
+                    Button(
+                        onClick = { showGenerator = true },
+                        shape = PlateShape.button,
+                    ) { Text(stringResource(R.string.plan_new)) }
+                }
             }
         }
 

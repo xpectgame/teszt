@@ -126,6 +126,23 @@
     <string name="meal_swap">Ha nem ezt ennéd</string>
     <string name="meal_disclaimer">Ezt a fogást gépi tervező írta. Tájékoztató jellegű, nem orvosi tanács.</string>
     <string name="meal_report">Jelentem ezt a fogást</string>
+
+    <!-- Kedvencek -->
+    <string name="favorites_title">Kedvencek</string>
+    <string name="favorites_open">Kedvencek</string>
+    <string name="favorites_add">Kedvencekhez adom</string>
+    <string name="favorites_remove">Kedvencekből törlöm</string>
+    <string name="favorites_added">Bekerült a kedvencek közé.</string>
+    <string name="favorites_removed">Kikerült a kedvencek közül.</string>
+    <string name="favorites_empty_title">Még nincs kedvenced</string>
+    <string name="favorites_empty_message">Koppints a szívre annál a fogásnál, amit szívesen ennél újra. A tervező a következő tervekbe beleszövi a kedvenceidet.</string>
+    <string name="favorites_planner_note">A tervező ezeket beleszövi a következő tervekbe ott, ahol beleférnek a napi célodba és a kizárásaidba.</string>
+    <string name="favorites_added_on">Megjelölve: %1$s</string>
+    <string name="favorites_delete">Törlés</string>
+    <plurals name="favorites_ingredients_count">
+        <item quantity="one">%1$d hozzávaló</item>
+        <item quantity="other">%1$d hozzávaló</item>
+    </plurals>
     <string name="action_save">Mentés</string>
     <string name="tab_today">Ma</string>
     <string name="tab_plan">Terv</string>

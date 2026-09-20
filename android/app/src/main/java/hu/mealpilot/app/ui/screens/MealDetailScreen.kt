@@ -8,10 +8,16 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material3.Button
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -39,6 +45,7 @@ import hu.mealpilot.app.i18n.LocalAppLanguage
 import hu.mealpilot.app.data.telemetry.TelemetryEvent
 import hu.mealpilot.app.data.local.LogStatus
 import hu.mealpilot.app.data.local.MealWithIngredients
+import hu.mealpilot.app.data.repo.FavoriteRepository
 import hu.mealpilot.app.data.repo.PlanRepository
 import hu.mealpilot.app.data.repo.ReportKind
 import hu.mealpilot.app.ui.components.BackButton
@@ -79,6 +86,19 @@ class MealDetailViewModel(
         .map { it.effectiveRestrictions }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptySet())
 
+    /**
+     * A megjelölt fogások kulcsai. Névre megy, nem azonosítóra: ugyanaz az étel a hét
+     * két napján két külön `meals` sor, a felhasználónak viszont egy étel — ha az
+     * azonosító döntene, a szív a másik napon üres lenne.
+     */
+    val favoriteKeys: StateFlow<Set<String>> = container.favoriteRepository.observeKeys()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptySet())
+
+    /** Megjelöli vagy leveszi a jelölést; az új állapotot adja vissza. */
+    fun toggleFavorite(data: MealWithIngredients, onDone: (Boolean) -> Unit) = viewModelScope.launch {
+        onDone(container.favoriteRepository.toggle(data, System.currentTimeMillis()))
+    }
+
     fun log(mealId: Long, status: LogStatus) = viewModelScope.launch {
         container.telemetry.record(TelemetryEvent.MEAL_LOGGED)
         container.trackingRepository.logPlannedMeal(mealId, status)
@@ -100,9 +120,16 @@ fun MealDetailScreen(
     )
     val mealWithIngredients by viewModel.meal.collectAsState()
     val restrictions by viewModel.restrictions.collectAsState()
+    val favoriteKeys by viewModel.favoriteKeys.collectAsState()
     val scope = rememberCoroutineScope()
     var reporting by remember { mutableStateOf(false) }
     val language = LocalAppLanguage.current
+    // A visszajelzés szövege a lambdában kellene, oda viszont @Composable hívás nem
+    // mehet. Itt olvassuk ki, ahol még szabad.
+    val addLabel = stringResource(R.string.favorites_add)
+    val removeLabel = stringResource(R.string.favorites_remove)
+    val addedText = stringResource(R.string.favorites_added)
+    val removedText = stringResource(R.string.favorites_removed)
 
     Column(
         Modifier
@@ -136,6 +163,29 @@ fun MealDetailScreen(
                 )
                 Spacer(Modifier.height(5.dp))
                 Text(meal.name, style = MaterialTheme.typography.headlineSmall)
+            }
+            // A szív ITT van, a név mellett: ez az a képernyő, ahol a felhasználó a
+            // receptet elolvasva eldönti, hogy újra kéri-e. A gomb lezárt étkezésnél
+            // is megmarad — a „megettem és jó volt" a leggyakoribb pillanat, amikor
+            // valaki megjelöl valamit.
+            val isFavorite = FavoriteRepository.key(meal.name) in favoriteKeys
+            IconButton(
+                onClick = {
+                    viewModel.toggleFavorite(data) { added ->
+                        scope.launch {
+                            snackbarHostState.showSnackbar(
+                                if (added) addedText else removedText
+                            )
+                        }
+                    }
+                },
+                modifier = Modifier.size(48.dp),
+            ) {
+                Icon(
+                    if (isFavorite) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
+                    contentDescription = if (isFavorite) removeLabel else addLabel,
+                    tint = if (isFavorite) accent else MaterialTheme.colorScheme.onSurfaceVariant,
+                )
             }
         }
         // Ez az a képernyő, ahol a felhasználó a recept elolvasása előtt eldönti, hogy

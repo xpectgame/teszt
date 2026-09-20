@@ -128,6 +128,23 @@
     <string name="meal_swap">If you\'d rather not eat this</string>
     <string name="meal_disclaimer">This dish was written by an automated planner. For information only, not medical advice.</string>
     <string name="meal_report">Report this dish</string>
+
+    <!-- Kedvencek -->
+    <string name="favorites_title">Favourites</string>
+    <string name="favorites_open">Favourites</string>
+    <string name="favorites_add">Add to favourites</string>
+    <string name="favorites_remove">Remove from favourites</string>
+    <string name="favorites_added">Added to your favourites.</string>
+    <string name="favorites_removed">Removed from your favourites.</string>
+    <string name="favorites_empty_title">No favourites yet</string>
+    <string name="favorites_empty_message">Tap the heart on a dish you would happily eat again. The planner will work your favourites into the next plans.</string>
+    <string name="favorites_planner_note">The planner works these into your next plans where they fit your daily targets and exclusions.</string>
+    <string name="favorites_added_on">Saved %1$s</string>
+    <string name="favorites_delete">Delete</string>
+    <plurals name="favorites_ingredients_count">
+        <item quantity="one">%1$d ingredient</item>
+        <item quantity="other">%1$d ingredients</item>
+    </plurals>
     <string name="action_save">Save</string>
     <string name="tab_today">Today</string>
     <string name="tab_plan">Plan</string>

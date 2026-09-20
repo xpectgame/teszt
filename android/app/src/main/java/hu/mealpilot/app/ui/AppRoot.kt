@@ -57,6 +57,7 @@ import hu.mealpilot.app.ui.screens.ChatScreen
 import hu.mealpilot.app.ui.screens.MealDetailScreen
 import hu.mealpilot.app.i18n.LocalAppLanguage
 import hu.mealpilot.app.ui.screens.LanguageScreen
+import hu.mealpilot.app.ui.screens.FavoritesScreen
 import hu.mealpilot.app.ui.screens.OnboardingScreen
 import hu.mealpilot.app.ui.screens.PaywallScreen
 import hu.mealpilot.app.ui.screens.PlanScreen
@@ -75,6 +76,7 @@ object Routes {
     const val PROFILE = "profile"
     const val SETTINGS = "settings"
     const val MEAL = "meal/{mealId}"
+    const val FAVORITES = "favorites"
 
     fun meal(id: Long) = "meal/$id"
 }
@@ -189,6 +191,14 @@ fun AppRoot(
                         container = container,
                         snackbarHostState = snackbarHostState,
                         onOpenMeal = { navController.navigate(Routes.meal(it)) },
+                        onOpenFavorites = { navController.navigate(Routes.FAVORITES) },
+                    )
+                }
+                composable(Routes.FAVORITES) {
+                    FavoritesScreen(
+                        container = container,
+                        snackbarHostState = snackbarHostState,
+                        onBack = { navController.popBackStack() },
                     )
                 }
                 composable(Routes.SHOPPING) {

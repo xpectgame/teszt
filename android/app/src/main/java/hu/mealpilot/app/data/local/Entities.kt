@@ -207,3 +207,64 @@ data class ChatMessageEntity(
     /** Igaz, amíg a művelet megerősítésre vár; végrehajtás vagy elvetés után false. */
     val pendingAction: Boolean = false,
 )
+
+/**
+ * Egy KEDVENCNEK jelölt fogás — teljes másolattal, nem a `meals` sorára mutató hivatkozással.
+ *
+ * Miért másolat: a tervek törölhetők, és a `meals` sorai a tervvel EGYÜTT törlődnek
+ * (`ForeignKey.CASCADE`). Egy kedvenc, ami a terv törlésekor eltűnik, nem kedvenc. A
+ * felhasználó azért jelöl meg egy fogást, hogy később is megtalálja — akkor is, ha az a
+ * terv, amiben először szerepelt, már rég nincs meg.
+ *
+ * A [nameKey] a kisbetűs, levágott név: ezen van az egyediség. E nélkül ugyanaz a fogás
+ * több napról, több tervből is bekerülne, és a kedvencek listája hamar önmaga
+ * ismétlésévé válna.
+ */
+@Entity(
+    tableName = "favorite_meals",
+    indices = [Index(value = ["nameKey"], unique = true), Index("addedAtMillis")],
+)
+data class FavoriteMealEntity(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val name: String,
+    /** A név kisbetűsen, levágva — az egyediség ezen áll. */
+    val nameKey: String,
+    val description: String = "",
+    /** Melyik étkezésre szólt, amikor megjelölték. Csak besorolás, nem korlát. */
+    val slot: String,
+    val prepMinutes: Int = 0,
+    val servings: Double = 1.0,
+    @Embedded(prefix = "n_") val nutrients: NutrientsColumns = NutrientsColumns(),
+    /** JSON tömb az elkészítés lépéseivel. */
+    val recipeStepsJson: String = "[]",
+    val addedAtMillis: Long,
+)
+
+@Entity(
+    tableName = "favorite_ingredients",
+    foreignKeys = [
+        ForeignKey(
+            entity = FavoriteMealEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["favoriteId"],
+            onDelete = ForeignKey.CASCADE,
+        )
+    ],
+    indices = [Index("favoriteId")],
+)
+data class FavoriteIngredientEntity(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val favoriteId: Long,
+    val name: String,
+    val quantity: Double,
+    val unit: String,
+    val aisle: String,
+    val note: String = "",
+    val pantryStaple: Boolean = false,
+)
+
+data class FavoriteWithIngredients(
+    @Embedded val favorite: FavoriteMealEntity,
+    @Relation(parentColumn = "id", entityColumn = "favoriteId")
+    val ingredients: List<FavoriteIngredientEntity>,
+)

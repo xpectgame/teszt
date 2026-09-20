@@ -5,6 +5,7 @@ import hu.mealpilot.app.data.ai.MealAiException
 import hu.mealpilot.app.data.local.IngredientEntity
 import hu.mealpilot.app.data.local.MealDao
 import hu.mealpilot.app.data.local.MealEntity
+import hu.mealpilot.app.data.local.FavoriteDao
 import hu.mealpilot.app.data.local.MealLogDao
 import hu.mealpilot.app.data.local.MealWithIngredients
 import hu.mealpilot.app.data.local.NutrientsColumns
@@ -60,6 +61,13 @@ class PlanRepository(
      * láthatatlan marad, miközben a kalóriákat tovább számolja.
      */
     private val mealLogDao: MealLogDao,
+    /**
+     * A kedvencek azért kerülnek IDE, és nem a hívók paraméterébe, mert így egyik
+     * tervezési út sem tudja elfelejteni őket — sem a Terv képernyő, sem a chat.
+     * Egy kedvenc, ami csak az egyik úton számít, rosszabb, mint ha sehol nem
+     * számítana: a felhasználó nem tudná, mikor működik.
+     */
+    private val favoriteDao: FavoriteDao,
 ) {
 
     fun observeActivePlan(): Flow<PlanEntity?> = planDao.observeActive()
@@ -98,6 +106,7 @@ class PlanRepository(
             totalDays = days,
             freeText = freeText,
             avoidRecipes = previousNames.takeLast(40),
+            favoriteRecipes = favoriteDao.recentNames(FavoriteRepository.PLANNING_LIMIT),
             startWeekday = startDate.weekdayName(language),
         )
 

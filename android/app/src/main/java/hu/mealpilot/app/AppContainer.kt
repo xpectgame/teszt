@@ -14,6 +14,7 @@ import hu.mealpilot.app.data.local.AppDatabase
 import hu.mealpilot.app.data.prefs.SecureKeyStore
 import hu.mealpilot.app.data.prefs.SettingsRepository
 import hu.mealpilot.app.data.repo.ChatRepository
+import hu.mealpilot.app.data.repo.FavoriteRepository
 import hu.mealpilot.app.data.remote.BackendClient
 import hu.mealpilot.app.data.repo.PlanRepository
 import hu.mealpilot.app.data.repo.ReportRepository
@@ -66,8 +67,13 @@ class AppContainer(context: Context) {
     val language: hu.mealpilot.core.i18n.AppLanguage get() = languageStore.current()
 
     val planRepository: PlanRepository by lazy {
-        PlanRepository(database.planDao(), database.mealDao(), database.shoppingDao(), database.mealLogDao())
+        PlanRepository(
+            database.planDao(), database.mealDao(), database.shoppingDao(),
+            database.mealLogDao(), database.favoriteDao(),
+        )
     }
+
+    val favoriteRepository: FavoriteRepository by lazy { FavoriteRepository(database.favoriteDao()) }
 
     val trackingRepository: TrackingRepository by lazy {
         TrackingRepository(

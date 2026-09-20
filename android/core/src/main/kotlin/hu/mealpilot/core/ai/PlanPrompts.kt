@@ -21,6 +21,14 @@ data class PlanRequest(
     val freeText: String = "",
     /** Már felhasznált fogásnevek — ezeket ne ismételje. */
     val avoidRecipes: List<String> = emptyList(),
+    /**
+     * A felhasználó kedvencei — ezekből tegyen be párat.
+     *
+     * Szándékosan külön az [avoidRecipes]-től, és erősebb nála: egy kedvenc attól
+     * kedvenc, hogy a felhasználó ÚJRA akarja enni. Az ismétlést tiltó lista ezt
+     * különben csendben kioltaná, és a szív ikon nem érne semmit.
+     */
+    val favoriteRecipes: List<String> = emptyList(),
     /** A kezdőnap neve a TERV nyelvén, hogy a hétvégére hosszabb főzés kerülhessen. */
     val startWeekday: String = "hétfő",
 )
@@ -324,10 +332,26 @@ Every quantity must be a number, not text. "day_index" follows the requested ran
             sb.appendLine(request.freeText.trim())
             sb.appendLine()
         }
-        if (request.avoidRecipes.isNotEmpty()) {
+        if (request.favoriteRecipes.isNotEmpty()) {
+            sb.appendLine(s("A FELHASZNÁLÓ KEDVENCEI", "THE USER'S FAVOURITES"))
+            sb.appendLine(request.favoriteRecipes.distinct().take(25).joinToString(", "))
+            sb.appendLine(s(
+                "Ezek közül tegyél be néhányat, ha beleférnek a napi célba és a " +
+                    "kizárásokba. Nem kötelező mindet, és a többi fogás legyen továbbra " +
+                    "is változatos.",
+                "Work a few of these in where they fit the daily targets and the " +
+                    "exclusions. Not all of them, and keep the rest of the dishes varied."))
+            sb.appendLine()
+        }
+        // A kedvenc ERŐSEBB az ismétlést tiltó listánál: attól kedvenc, hogy a
+        // felhasználó újra akarja enni. E nélkül a két lista kioltaná egymást, és a
+        // hosszú tervek második hetéből minden kedvenc kiesne.
+        val avoid = request.avoidRecipes.distinct()
+            .filterNot { name -> request.favoriteRecipes.any { it.equals(name, ignoreCase = true) } }
+        if (avoid.isNotEmpty()) {
             sb.appendLine(s("MÁR SZEREPELT FOGÁSOK (ezeket ne ismételd)",
                 "DISHES ALREADY USED (do not repeat these)"))
-            sb.appendLine(request.avoidRecipes.distinct().take(60).joinToString(", "))
+            sb.appendLine(avoid.take(60).joinToString(", "))
             sb.appendLine()
         }
 

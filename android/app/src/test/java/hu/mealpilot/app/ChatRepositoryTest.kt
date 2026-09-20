@@ -54,7 +54,7 @@ class ChatRepositoryTest {
         repository = ChatRepository(
             strings = AppStrings(context) { AppLanguage.HU },
             chatDao = db.chatDao(),
-            planRepository = PlanRepository(db.planDao(), db.mealDao(), db.shoppingDao(), db.mealLogDao()),
+            planRepository = PlanRepository(db.planDao(), db.mealDao(), db.shoppingDao(), db.mealLogDao(), db.favoriteDao()),
             tracking = TrackingRepository(db.mealDao(), db.mealLogDao(), db.weightLogDao()),
             settings = SettingsRepository(context),
         )

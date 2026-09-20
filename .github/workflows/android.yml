@@ -183,14 +183,19 @@ jobs:
       # Ezért nem elég feltölteni — egyeznie is kell. Ha valaki hozzányúl egy
       # @Entity-hez és elfelejti emelni az adatbázis verzióját, az itt bukik el,
       # nem a felhasználó telefonján egy migrációs hibával.
+      # `git diff` helyett `git status`: a diff a KÖVETETT fájlokat nézi, az új
+      # sémaverzió viszont követetlenül keletkezik. Egy verzióemelés után tehát a
+      # régi ellenőrzés zölden átengedte, hogy az új `N.json` sosem kerül be a
+      # repóba — pont az a fájl, ami nélkül a következő migrációt nem lehet megírni.
       - name: Az adatbázis-séma egyezzen a verziókezelttel
         if: success()
         run: |
-          if git diff --quiet -- app/schemas; then
+          if [ -z "$(git status --porcelain -uall -- app/schemas)" ]; then
             echo "Rendben: a lefordított séma megegyezik a repóban lévővel."
             exit 0
           fi
           echo "HIBA: a lefordított séma eltér a verziókezelttől."
+          git status --porcelain -uall -- app/schemas
           git diff --stat -- app/schemas
           echo
           echo "Ha az adatbázis szándékosan változott: emeld a verziót, írj migrációt,"

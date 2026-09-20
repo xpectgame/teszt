@@ -328,3 +328,51 @@ interface ChatDao {
     @Query("DELETE FROM chat_messages")
     suspend fun clear()
 }
+
+@Dao
+interface FavoriteDao {
+
+    @Transaction
+    @Query("SELECT * FROM favorite_meals ORDER BY addedAtMillis DESC")
+    fun observeAll(): Flow<List<FavoriteWithIngredients>>
+
+    /**
+     * Csak a kulcsok. A szív ikonnak ennyi kell, és ez a lekérdezés akkor sem terheli
+     * a felületet, ha a kedvencek között hosszú receptek vannak.
+     */
+    @Query("SELECT nameKey FROM favorite_meals")
+    fun observeKeys(): Flow<List<String>>
+
+    @Transaction
+    @Query("SELECT * FROM favorite_meals WHERE id = :id")
+    suspend fun byId(id: Long): FavoriteWithIngredients?
+
+    @Query("SELECT id FROM favorite_meals WHERE nameKey = :nameKey")
+    suspend fun idOf(nameKey: String): Long?
+
+    @Query("SELECT name FROM favorite_meals ORDER BY addedAtMillis DESC LIMIT :limit")
+    suspend fun recentNames(limit: Int): List<String>
+
+    @Query("SELECT COUNT(*) FROM favorite_meals")
+    suspend fun count(): Int
+
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun insert(favorite: FavoriteMealEntity): Long
+
+    @Insert
+    suspend fun insertIngredients(items: List<FavoriteIngredientEntity>)
+
+    @Query("DELETE FROM favorite_meals WHERE id = :id")
+    suspend fun deleteById(id: Long)
+
+    /**
+     * A hozzávalók darabszáma. Az árva sorokat méri: a kedvenc törlésekor a
+     * hozzávalóknak a kaszkádon keresztül el kell tűnniük, különben gyűlnek, és a
+     * következő megjelölés duplán hozná őket.
+     */
+    @Query("SELECT COUNT(*) FROM favorite_ingredients")
+    suspend fun ingredientCount(): Int
+
+    @Query("DELETE FROM favorite_meals")
+    suspend fun clear()
+}

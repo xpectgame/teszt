@@ -20,6 +20,8 @@ import androidx.compose.material.icons.filled.ChevronLeft
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.Button
 import androidx.compose.material3.DropdownMenu
@@ -57,6 +59,7 @@ import hu.mealpilot.app.data.telemetry.TelemetryEvent
 import hu.mealpilot.app.data.local.LogStatus
 import hu.mealpilot.app.data.local.MealLogEntity
 import hu.mealpilot.app.data.local.MealWithIngredients
+import hu.mealpilot.app.data.repo.FavoriteRepository
 import hu.mealpilot.app.data.local.PlanEntity
 import hu.mealpilot.app.ui.components.BudgetHero
 import hu.mealpilot.app.ui.components.EmptyState
@@ -197,6 +200,14 @@ class TodayViewModel(private val container: AppContainer) : ViewModel() {
         selectedDay.value = nextSelectedDay(selectedDay.value, days, LocalDate.now())
     }
 
+    /** A megjelölt fogások kulcsai — a szív ikon állapota ezen múlik. */
+    val favoriteKeys: StateFlow<Set<String>> = container.favoriteRepository.observeKeys()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptySet())
+
+    fun toggleFavorite(data: MealWithIngredients) = viewModelScope.launch {
+        container.favoriteRepository.toggle(data, System.currentTimeMillis())
+    }
+
     fun log(mealId: Long, status: LogStatus) = viewModelScope.launch {
         container.telemetry.record(TelemetryEvent.MEAL_LOGGED)
         container.trackingRepository.logPlannedMeal(mealId, status)
@@ -257,6 +268,7 @@ fun TodayScreen(
         factory = containerFactory(container) { TodayViewModel(it) }
     )
     val state by viewModel.state.collectAsState()
+    val favoriteKeys by viewModel.favoriteKeys.collectAsState()
     val language = LocalAppLanguage.current
     val consumed = state.consumed
     val consumedKcal = consumed.kcal.roundToInt()
@@ -379,6 +391,8 @@ fun TodayScreen(
                     restrictions = state.restrictions,
                     language = language,
                 ),
+                isFavorite = FavoriteRepository.key(mealWithIngredients.meal.name) in favoriteKeys,
+                onToggleFavorite = { viewModel.toggleFavorite(mealWithIngredients) },
                 onOpen = { onOpenMeal(mealWithIngredients.meal.id) },
                 onAte = { viewModel.log(mealWithIngredients.meal.id, LogStatus.EATEN) },
                 onSkip = { viewModel.log(mealWithIngredients.meal.id, LogStatus.SKIPPED) },
@@ -498,6 +512,13 @@ internal fun MealRow(
      * profilba — ilyenkor a tervben ott marad az allergén, és eddig semmi nem szólt.
      */
     violations: List<DietRestriction> = emptyList(),
+    /**
+     * Meg van-e jelölve kedvencként. Szándékosan NINCS alapértelmezése: egy
+     * alapértelmezés azt jelentené, hogy egy hívó észrevétlenül kihagyhatja a
+     * bekötést, és a szív minden fogásnál üres maradna.
+     */
+    isFavorite: Boolean,
+    onToggleFavorite: () -> Unit,
     onOpen: () -> Unit,
     onAte: () -> Unit,
     onSkip: () -> Unit,
@@ -572,6 +593,18 @@ internal fun MealRow(
                         ),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                // A szív a fejlécben van, nem a túlcsordulás menüben: az csak a még
+                // le nem zárt étkezéseknél jelenik meg, márpedig a „megettem és jó
+                // volt" a leggyakoribb pillanat, amikor valaki megjelöl valamit.
+                IconButton(onClick = onToggleFavorite, modifier = Modifier.size(40.dp)) {
+                    Icon(
+                        if (isFavorite) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
+                        contentDescription = stringResource(
+                            if (isFavorite) R.string.favorites_remove else R.string.favorites_add
+                        ),
+                        tint = if (isFavorite) accent else MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
                 if (settled) {

@@ -81,6 +81,18 @@ mindhárom reggelijére tett tejterméket, vagyis egy vegán felhasználó bizto
 bele. A `RecipeBankCoverageTest` ezért minden kizárásra és étrendi stílusra megméri,
 mindkét nyelven, hány sablon marad kiadható — a legszűkebb profilnál is kilenc.
 
+**Kedvencek.** Egy fogás mellett a szívre koppintva a fogás bekerül a kedvencek közé —
+a Ma képernyő sorában és a fogás saját oldalán is. A kedvenc MÁSOLAT, nem hivatkozás:
+recepttel és hozzávalókkal együtt kerül át, és a terv törlése nem viszi el. (Hivatkozás
+esetén minden új terv csendben kisöpörné az összeset, mert a `meals` sorai a tervvel
+együtt törlődnek.) Az azonosság a néven áll, nem a fogás azonosítóján: ugyanaz az étel a
+hét két napján két külön sor, a felhasználónak viszont egy étel.
+
+A kedvencek nem csak lista: a tervező megkapja a legutóbbi huszonöt nevet, és beleszövi
+őket a következő tervekbe ott, ahol beleférnek a napi célba és a kizárásokba. Ez ütközik
+az „ezeket ne ismételd" listával, amit a hosszú tervek második hete kap — a kedvenc
+ERŐSEBB nála, különben a szív ikon némán nem csinálna semmit.
+
 **Költség.** Alapértelmezés a `claude-sonnet-5` — ez tartja jól a kalóriakeretet elfogadható
 áron. Egy hét étrend nagyjából egy hívás (~0,14 USD); egy hónapos terv 5 hívásra bomlik.
 Saját kulcs mellett a fejlesztői részben átválthatsz Opusra vagy Haikura, illetve

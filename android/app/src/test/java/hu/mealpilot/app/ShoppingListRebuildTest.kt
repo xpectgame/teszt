@@ -43,7 +43,7 @@ class ShoppingListRebuildTest {
         db = Room.inMemoryDatabaseBuilder(context, AppDatabase::class.java)
             .allowMainThreadQueries()
             .build()
-        plans = PlanRepository(db.planDao(), db.mealDao(), db.shoppingDao(), db.mealLogDao())
+        plans = PlanRepository(db.planDao(), db.mealDao(), db.shoppingDao(), db.mealLogDao(), db.favoriteDao())
     }
 
     @After
