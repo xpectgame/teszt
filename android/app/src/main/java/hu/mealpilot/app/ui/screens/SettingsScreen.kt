@@ -81,16 +81,21 @@ class SettingsViewModel(private val container: AppContainer) : ViewModel() {
      * csak ez az egy könyvtár van megosztásra engedve (`file_paths.xml`).
      */
     fun exportData(onDone: (android.net.Uri?) -> Unit) = viewModelScope.launch {
-        val uri = runCatching {
-            val directory = java.io.File(container.appContext.cacheDir, "export").apply { mkdirs() }
-            val file = java.io.File(directory, container.exportRepository.fileName())
-            file.writeText(container.exportRepository.buildJson())
-            androidx.core.content.FileProvider.getUriForFile(
-                container.appContext,
-                "${container.appContext.packageName}.fileprovider",
-                file,
-            )
-        }.getOrNull()
+        // A fájlírás LEMEZMŰVELET: a fő szálon a felület megakadna tőle, és a
+        // StrictMode is kifogásolná. A `buildJson` maga már átvált, de a `writeText`
+        // itt fut.
+        val uri = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+            runCatching {
+                val directory = java.io.File(container.appContext.cacheDir, "export").apply { mkdirs() }
+                val file = java.io.File(directory, container.exportRepository.fileName())
+                file.writeText(container.exportRepository.buildJson())
+                androidx.core.content.FileProvider.getUriForFile(
+                    container.appContext,
+                    "${container.appContext.packageName}.fileprovider",
+                    file,
+                )
+            }.getOrNull()
+        }
         onDone(uri)
     }
 

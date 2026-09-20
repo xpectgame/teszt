@@ -59,8 +59,22 @@ class ExportRepository(
     }
 
     private suspend fun build(nowMillis: Long): JsonObject {
+        // MINDEN adatbázis-olvasás ITT történik, a JSON építése előtt. A
+        // `buildJsonObject` lambdája nem `suspend`, tehát egy DAO-hívás odabent
+        // fordítási hiba — és ez pont az a hiba, amit csak a fordító vesz észre.
         val profile = settings.currentProfile()
         val plans = planDao.all()
+        val mealsByPlan = plans.associate { plan ->
+            plan.id to mealDao.mealsInRange(
+                plan.id,
+                plan.startEpochDay,
+                plan.startEpochDay + plan.dayCount - 1,
+            )
+        }
+        val weightLogs = weightLogDao.all()
+        val mealLogs = mealLogDao.all()
+        val favorites = favoriteDao.all()
+        val achievements = achievementDao.all()
 
         return buildJsonObject {
             put("format", FORMAT)
@@ -87,7 +101,7 @@ class ExportRepository(
             }
 
             putJsonArray("weight_logs") {
-                weightLogDao.all().forEach { log ->
+                weightLogs.forEach { log ->
                     add(buildJsonObject {
                         put("date", LocalDate.ofEpochDay(log.epochDay).toString())
                         put("weight_kg", log.weightKg)
@@ -98,7 +112,7 @@ class ExportRepository(
             }
 
             putJsonArray("meal_logs") {
-                mealLogDao.all().forEach { log ->
+                mealLogs.forEach { log ->
                     add(buildJsonObject {
                         put("date", LocalDate.ofEpochDay(log.epochDay).toString())
                         put("status", log.status)
@@ -120,11 +134,7 @@ class ExportRepository(
                         put("request_text", plan.requestText)
                         put("target_kcal", plan.targetKcal)
                         putJsonArray("meals") {
-                            mealDao.mealsInRange(
-                                plan.id,
-                                plan.startEpochDay,
-                                plan.startEpochDay + plan.dayCount - 1,
-                            ).forEach { meal ->
+                            mealsByPlan.getValue(plan.id).forEach { meal ->
                                 add(buildJsonObject {
                                     put("date", LocalDate.ofEpochDay(meal.meal.epochDay).toString())
                                     put("slot", meal.meal.slot)
@@ -152,7 +162,7 @@ class ExportRepository(
             }
 
             putJsonArray("favorites") {
-                favoriteDao.all().forEach { entry ->
+                favorites.forEach { entry ->
                     add(buildJsonObject {
                         put("name", entry.favorite.name)
                         put("slot", entry.favorite.slot)
@@ -174,7 +184,7 @@ class ExportRepository(
             }
 
             putJsonArray("achievements") {
-                achievementDao.all().forEach { unlocked ->
+                achievements.forEach { unlocked ->
                     add(buildJsonObject {
                         put("key", unlocked.key)
                         put("unlocked_at", Instant.ofEpochMilli(unlocked.unlockedAtMillis).toString())
