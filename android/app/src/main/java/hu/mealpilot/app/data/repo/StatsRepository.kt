@@ -6,11 +6,13 @@ import hu.mealpilot.app.data.local.LogStatus
 import hu.mealpilot.app.data.local.PlanDao
 import hu.mealpilot.app.data.local.ShoppingDao
 import hu.mealpilot.core.achievements.Achievement
+import hu.mealpilot.core.achievements.AchievementCatalog
 import hu.mealpilot.core.achievements.AchievementEngine
 import hu.mealpilot.core.achievements.AchievementState
 import hu.mealpilot.core.achievements.AchievementStats
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
 import java.time.LocalDate
 import kotlin.math.abs
@@ -27,6 +29,23 @@ class StatsRepository(
 ) {
 
     fun observeUnlocked(): Flow<List<AchievementEntity>> = achievementDao.observeAll()
+
+    /**
+     * Amiről még nem szóltunk — BÁRMELYIK úton oldódott is fel.
+     *
+     * Szándékosan a `notified` oszlopból, nem a feloldás pillanatából: a
+     * [refreshAndCollectNew] öt helyről hívódik, és közülük négy eldobta a
+     * visszaadott listát. Így az appon belül feloldott achievementről a felhasználó
+     * soha nem értesült, és mivel az a második híváskor már a „feloldottak" között
+     * volt, elő sem került többé.
+     *
+     * Ez a folyam egy helyen figyelhető (lásd `AppRoot`), és attól a hívók
+     * helyességétől független: egy hatodik hívási hely sem tudja elfelejteni.
+     */
+    fun observeUnannounced(): Flow<List<Achievement>> =
+        achievementDao.observeUnannounced().map { rows ->
+            rows.mapNotNull { AchievementCatalog.byKey(it.key) }
+        }
 
     /**
      * Az összes napló átnézése — ezért fut háttérszálon.
@@ -90,8 +109,11 @@ class StatsRepository(
         AchievementEngine.evaluate(computeStats(targetKcal, targetProteinG))
 
     /**
-     * Kiértékeli az achievementeket, elmenti az újakat, és visszaadja azokat,
-     * amikről még nem szólt az app.
+     * Kiértékeli az achievementeket és elmenti az újakat.
+     *
+     * A visszaadott lista a MOST feloldottaké. Aki értesíteni akar, ne erre
+     * támaszkodjon: ha az értesítés bármiért elmarad, ez a lista soha többé nem hozza
+     * elő ugyanazt. Az [observeUnannounced] a megbízható út.
      */
     suspend fun refreshAndCollectNew(targetKcal: Int, targetProteinG: Int): List<Achievement> {
         val stats = computeStats(targetKcal, targetProteinG)

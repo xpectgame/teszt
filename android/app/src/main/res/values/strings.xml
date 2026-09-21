@@ -407,6 +407,7 @@
     <string name="error_token_cap">Unusually many requests came from this install in this period. Write to us if that looks wrong.</string>
     <string name="profile_activity">How much do you move?</string>
     <string name="achievement_unlocked">Unlocked</string>
+    <string name="achievement_snackbar">%1$s %2$s unlocked</string>
     <!-- „Ma" képernyő — a Tányér dizájn hős doboza és étkezéslapkái -->
     <string name="today_greeting">Hi, %1$s!</string>
     <string name="today_greeting_anon">Hi there!</string>

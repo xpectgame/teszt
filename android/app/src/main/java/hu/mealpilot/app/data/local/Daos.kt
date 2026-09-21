@@ -317,6 +317,17 @@ interface AchievementDao {
     @Query("SELECT key FROM achievements")
     suspend fun unlockedKeys(): List<String>
 
+    /**
+     * Amiről még nem szóltunk a felhasználónak.
+     *
+     * A `notified` oszlop régóta megvan, de SENKI nem olvasta: a feloldott
+     * achievementről csak akkor kapott hírt a felhasználó, ha épp az értesítésből
+     * naplózott. Az appon belüli naplózás és a bevásárlólista kipipálása némán oldott
+     * fel — és mivel utána már a „feloldottak" között volt, soha többé nem került elő.
+     */
+    @Query("SELECT * FROM achievements WHERE notified = 0 ORDER BY unlockedAtMillis")
+    fun observeUnannounced(): Flow<List<AchievementEntity>>
+
     /** Pillanatkép az adatkivitelhez. */
     @Query("SELECT * FROM achievements ORDER BY unlockedAtMillis")
     suspend fun all(): List<AchievementEntity>

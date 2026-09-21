@@ -406,6 +406,7 @@
     <string name="error_token_cap">Ebben az időszakban szokatlanul sok kérés futott le erről a telepítésről. Írj nekünk, ha ez tévedés.</string>
     <string name="profile_activity">Mennyit mozogsz?</string>
     <string name="achievement_unlocked">Megvan</string>
+    <string name="achievement_snackbar">%1$s Feloldva: %2$s</string>
     <!-- „Ma" képernyő — a Tányér dizájn hős doboza és étkezéslapkái -->
     <string name="today_greeting">Szia, %1$s!</string>
     <string name="today_greeting_anon">Szia!</string>

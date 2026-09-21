@@ -123,6 +123,34 @@ fun AppRoot(
         }
     }
 
+    // Az achievement-értesítés EGYETLEN megbízható helye az appon belül.
+    //
+    // A feloldás öt helyről indulhat (naplózás a mai nézetből, a fogás lapjáról, az
+    // értesítésből, és a bevásárlólista kipipálásából), és közülük négy eldobta a
+    // frissen feloldottak listáját: az achievement némán oldódott fel, és mert utána
+    // már a „feloldottak" között volt, soha többé nem került elő. Ezért NEM a hívási
+    // helyeken szólunk, hanem itt, abból, amit az adatbázis még ki nem hirdetettként
+    // tart nyilván — egy hatodik hívási hely sem tudja elfelejteni.
+    LaunchedEffect(Unit) {
+        // A `showSnackbar` a buborék végéig FELFÜGGESZT, és közben a jelölés miatt a
+        // folyam újra kiad — a már megmutatott achievement különben másodszor is
+        // felbukkanna. Ez a halmaz zárja azt a rést, a `notified` oszlop mellett.
+        val shown = mutableSetOf<String>()
+        container.statsRepository.observeUnannounced().collect { pending ->
+            pending.forEach { achievement ->
+                if (!shown.add(achievement.key)) return@forEach
+                snackbarHostState.showSnackbar(
+                    container.strings[
+                        R.string.achievement_snackbar,
+                        achievement.emoji,
+                        achievement.title(container.language),
+                    ]
+                )
+                container.statsRepository.markNotified(achievement.key)
+            }
+        }
+    }
+
     // Az értesítésből érkező étkezés megnyitása.
     LaunchedEffect(openMealId) {
         if (openMealId != null) {

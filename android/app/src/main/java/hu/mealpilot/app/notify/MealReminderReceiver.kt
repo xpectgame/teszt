@@ -124,8 +124,13 @@ class MealReminderReceiver : BroadcastReceiver() {
                 .setAutoCancel(true)
                 .setContentIntent(openAppIntent(context))
                 .build()
-            notify(context, Notifications.ID_ACHIEVEMENT_BASE + index, notification)
-            container.statsRepository.markNotified(achievement.key)
+            // CSAK akkor jelöljük kihirdetettnek, ha tényleg kiment. Enélkül a
+            // kikapcsolt értesítés úgy fogyasztotta el az achievementet, hogy a
+            // felhasználó sosem látta; így viszont az app legközelebbi megnyitásakor
+            // az `AppRoot` figyelője még elkapja.
+            if (notify(context, Notifications.ID_ACHIEVEMENT_BASE + index, notification)) {
+                container.statsRepository.markNotified(achievement.key)
+            }
         }
     }
 
@@ -182,14 +187,17 @@ class MealReminderReceiver : BroadcastReceiver() {
         ReminderCoordinator.refreshAll(context)
     }
 
-    private fun notify(context: Context, id: Int, notification: android.app.Notification) {
+    /** @return igaz, ha az értesítés tényleg kiment. Hamisnál nem szóltunk a felhasználónak. */
+    private fun notify(context: Context, id: Int, notification: android.app.Notification): Boolean {
         val manager = NotificationManagerCompat.from(context)
-        if (!manager.areNotificationsEnabled()) return
-        try {
+        if (!manager.areNotificationsEnabled()) return false
+        return try {
             manager.notify(id, notification)
+            true
         } catch (security: SecurityException) {
             // Az értesítési engedély futás közben is visszavonható.
             Log.w(TAG, "Nincs értesítési engedély.", security)
+            false
         }
     }
 
