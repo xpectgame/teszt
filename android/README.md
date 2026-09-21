@@ -32,7 +32,7 @@ alkalmazza, és egy már kész napot is át tudsz íratni egy mondattal.
 ## Amit tudni kell a build előtt
 
 A `:core` modul (minden számítás, AI-séma, promptok, bevásárlólista, achievementek)
-tiszta Kotlin, és **237 unit teszt fut rá zölden**. Az app modul fordítását és az APK
+tiszta Kotlin, és **241 unit teszt fut rá zölden**. Az app modul fordítását és az APK
 építését a GitHub Actions végzi (`.github/workflows/android.yml`).
 
 **A legegyszerűbb telepítés: nem kell hozzá Android Studio.**
@@ -126,6 +126,12 @@ méréseknek), a napi bevitel mért érték egy célhoz képest (oszlopok egy vo
 vonallal). A trendvonalat és a mérési pontokat a FORMÁJUK különbözteti meg, nem a
 színük — a paletta zöldje és a halvány tinta protanópiában ΔE 2,0-ra van egymástól,
 vagyis színnel jelölve egy vörös-zöld színtévesztőnek egyformák lennének.
+
+A **fogáscsere** a kalóriát tartja, és a FEHÉRJÉT is: a választás azok közül
+válogat, amelyek a cserélt fogás fehérjéjének legalább 85%-át megtartják. Ez nem
+önkényes szám — a `PlanValidator` a napi fehérjét pontosan eddig fogadja el a modell
+tervein. A csere egyenesen az adatbázisba ír, tehát oda semmilyen minőségellenőrzés
+nem fut: ha a választás nem figyel, senki nem figyel.
 
 **Kedvencek.** Egy fogás mellett a szívre koppintva a fogás bekerül a kedvencek közé —
 a Ma képernyő sorában és a fogás saját oldalán is. A kedvenc MÁSOLAT, nem hivatkozás:

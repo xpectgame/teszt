@@ -1595,9 +1595,21 @@ data class RecipeTemplate(
     val ingredients: List<RecipeIngredient>,
     val nutrition: AiNutrition,
 ) {
+    /**
+     * A szorzó, amivel ez a sablon a kívánt kalóriaszintre méretezhető.
+     *
+     * A korlát azért van, mert egy fogást nem lehet akárhányszorosára nyújtani: egy
+     * két és félszeres adag már más étel. Inkább vállaljuk a kalóriaeltérést.
+     *
+     * Külön függvény, mert a fogáscsere is EZT nézi — így a választás és a méretezés
+     * nem csúszhat el egymástól.
+     */
+    fun scaleFactorFor(targetKcal: Double): Double =
+        if (nutrition.kcal <= 0) 1.0 else (targetKcal / nutrition.kcal).coerceIn(0.4, 2.5)
+
     /** Az egész fogást egy szorzóval a kívánt kalóriaszintre méretezi. */
     fun scaledTo(targetKcal: Double, slot: MealSlot, time: String, language: AppLanguage): AiMeal {
-        val factor = if (nutrition.kcal <= 0) 1.0 else (targetKcal / nutrition.kcal).coerceIn(0.4, 2.5)
+        val factor = scaleFactorFor(targetKcal)
         return AiMeal(
             slot = slot.name,
             time = time,

@@ -57,6 +57,15 @@ import kotlin.math.roundToInt
 /** Egy naplózott nap összes bevitele. */
 data class LoggedDay(val epochDay: Long, val kcal: Int)
 
+/**
+ * Ennyi napot rajzolunk a súlygrafikonra.
+ *
+ * Nem az adat korlátja, csak a rajzé: telefonszélességben ennél több pont már
+ * egybefolyik, és a mérési pontok sávvá olvadnának. A trend és a heti ütem
+ * továbbra is a TELJES előzményből számol.
+ */
+private const val CHART_DAYS = 90
+
 data class ProgressState(
     val trend: List<TrendPoint> = emptyList(),
     val weeklyChangeKg: Double? = null,
@@ -160,16 +169,22 @@ fun ProgressScreen(container: AppContainer, onBack: () -> Unit) {
                 Text(rateText(state.weeklyChangeKg), style = MaterialTheme.typography.bodyMedium)
 
                 Spacer(Modifier.height(14.dp))
+                // A TREND a teljes előzményből számol (a simításnak kell a felfutás),
+                // a RAJZ viszont csak az utolsó néhány hónapot mutatja. Enélkül egy
+                // két éve mérő felhasználónál hétszáz pont kerülne a telefon
+                // szélességébe: a mérési pontok egybefüggő sávvá olvadnának, és a
+                // rajzoló minden képkockán hétszáz kört húzna meg.
+                val shown = state.trend.takeLast(CHART_DAYS)
                 WeightTrendChart(
-                    points = state.trend,
+                    points = shown,
                     lineColor = MaterialTheme.colorScheme.primary,
                     dotColor = MaterialTheme.colorScheme.onSurfaceVariant,
                     surfaceColor = MaterialTheme.colorScheme.surface,
                     description = context.getString(
                         R.string.progress_chart_weight_description,
-                        "%.1f".format(state.trend.first().trendKg),
+                        "%.1f".format(shown.first().trendKg),
                         "%.1f".format(current.trendKg),
-                        state.trend.size,
+                        shown.size,
                     ),
                 )
                 Spacer(Modifier.height(10.dp))

@@ -108,4 +108,83 @@ class MealSwapTest {
         val snacks = RecipeBank.forSlot(MealSlot.AFTERNOON_SNACK).map { it.name.get(AppLanguage.HU) }
         assertNull(MealSwap.next(MealSlot.AFTERNOON_SNACK, snacks.first(), snacks, emptySet(), AppLanguage.HU))
     }
+
+    // -------------------------------------------------------------------------
+    // Fehérje: a csere a kalóriát tartja, de a nap fehérjecélját is tartania kell
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `the swap does not quietly halve the protein`() {
+        // Egy 600 kcal-s, 50 g fehérjés főétel helyére nem jöhet olyan, ami
+        // ugyanazon a kalórián a fehérje felét hozza. A napi összeg így esne ki
+        // abból a sávból, amit a modell tervein a PlanValidator számon kér.
+        val template = MealSwap.next(
+            slot = MealSlot.LUNCH,
+            currentName = "Valami egészen más fogás",
+            currentKcal = 600.0,
+            currentProteinG = 50.0,
+            language = AppLanguage.HU,
+        )
+        assertNotNull(template)
+        val scaled = template!!.nutrition.proteinG * template.scaleFactorFor(600.0)
+        assertTrue(
+            "Csak ${scaled.toInt()} g fehérje maradt 50 g helyett (${template.name.get(AppLanguage.HU)})",
+            scaled >= 50.0 * MealSwap.MIN_PROTEIN_RATIO,
+        )
+    }
+
+    @Test
+    fun `the protein floor holds for every dish in the bank`() {
+        // Nem egy szerencsés esetet mérünk: MINDEN főétel cseréjének tartania kell.
+        for (language in AppLanguage.entries) {
+            for (current in RecipeBank.forSlot(MealSlot.LUNCH)) {
+                val kcal = current.nutrition.kcal
+                val protein = current.nutrition.proteinG
+                val replacement = MealSwap.next(
+                    slot = MealSlot.LUNCH,
+                    currentName = current.name.get(language),
+                    currentKcal = kcal,
+                    currentProteinG = protein,
+                    language = language,
+                )
+                assertNotNull(replacement)
+                val scaled = replacement!!.nutrition.proteinG * replacement.scaleFactorFor(kcal)
+                assertTrue(
+                    "${current.name.get(language)} → ${replacement.name.get(language)} " +
+                        "($language): ${scaled.toInt()} g fehérje ${protein.toInt()} g helyett",
+                    scaled >= protein * MealSwap.MIN_PROTEIN_RATIO,
+                )
+            }
+        }
+    }
+
+    @Test
+    fun `a weak swap beats a button that does nothing`() {
+        // Ha a kizárások miatt EGY sablon sem tartja a fehérjekorlátot, akkor sem
+        // hibázunk le: a legtöbb fehérjét hozó biztonságos sablon jön. Egy kicsit
+        // gyengébb csere még mindig jobb, mint egy gomb, ami nem csinál semmit.
+        val absurd = MealSwap.next(
+            slot = MealSlot.AFTERNOON_SNACK,
+            currentName = "Nem létező fogás",
+            currentKcal = 200.0,
+            currentProteinG = 900.0,
+            language = AppLanguage.HU,
+        )
+        assertNotNull("Inkább gyengébb csere, mint semmi", absurd)
+    }
+
+    @Test
+    fun `without a protein reference the rotation is unchanged`() {
+        // A régi viselkedés megmarad ott, ahol nincs mihez mérni: a soron következő
+        // biztonságos sablon jön, nem a legfehérjésebb.
+        val mains = RecipeBank.forSlot(MealSlot.LUNCH)
+        val current = mains[0].name.get(AppLanguage.HU)
+        val next = MealSwap.next(MealSlot.LUNCH, current, language = AppLanguage.HU)
+        assertNotNull(next)
+        assertTrue(
+            "A rotáció szerint a következő elem jöjjön: ${next!!.name.get(AppLanguage.HU)}",
+            next.name.get(AppLanguage.HU) == mains[1].name.get(AppLanguage.HU),
+        )
+    }
+
 }

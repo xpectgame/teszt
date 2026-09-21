@@ -282,7 +282,17 @@ class PlanRepository(
         val sameDay = mealDao.mealsInRange(meal.planId, meal.epochDay, meal.epochDay)
         val avoid = sameDay.filterNot { it.meal.id == mealId }.map { it.meal.name }
 
-        val template = MealSwap.next(slot, meal.name, avoid, restrictions, language)
+        val template = MealSwap.next(
+            slot = slot,
+            currentName = meal.name,
+            avoidNames = avoid,
+            restrictions = restrictions,
+            language = language,
+            // A nap keretét a kalória tartja, a napi fehérjecélt viszont csak akkor,
+            // ha a választás is figyel rá — ide semmilyen minőségellenőrzés nem fut.
+            currentKcal = meal.nutrients.kcal,
+            currentProteinG = meal.nutrients.proteinG,
+        )
             ?: return Result.failure(
                 MealAiException(
                     if (english) "I have nothing else that fits your exclusions for this meal."
