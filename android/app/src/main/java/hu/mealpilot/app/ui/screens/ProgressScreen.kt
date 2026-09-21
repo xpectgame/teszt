@@ -99,7 +99,10 @@ class ProgressViewModel(container: AppContainer) : ViewModel() {
         ) { weights, logs, plan, profile ->
             val trend = WeightTrend.series(weights.map { it.epochDay to it.weightKg })
             val target = profile.targetWeightKg
-            val budget = EnergyCalculator.budget(profile)
+            // A nyelvet a kilenc hívási hely közül egyedül ez hagyta el. A kimenetéből
+            // itt csak számot olvasunk, tehát ma nem látszik — a `warnings` viszont
+            // magyarul állt elő, és aki legközelebb kiírja, annak már nem tűnne fel.
+            val budget = EnergyCalculator.budget(profile, container.language)
 
             ProgressState(
                 trend = trend,
