@@ -37,15 +37,25 @@ HUNGARIAN_WORDS = {
     'volt', 'lesz', 'vagy', 'igen', 'nem', 'az', 'egy', 'mit', 'ezt', 'azt', 'mert',
     'ezek', 'ilyen', 'sem', 'mar', 'nagyon', 'tovabb', 'vissza', 'mentes',
 }
+# Szavak, amiknél EGY is elég. A fenti lista minden tagja megáll angolul is
+# („most", „volt", „vagy", „nem", „az"), ezért kell ott kettő — csakhogy két szó
+# szabálya pont a rövid hibaüzeneteket engedte át. Így ment ki a fizetőfalra a
+# „Nincs internetkapcsolat." angol felületen is: ékezet nincs benne, magyar szó
+# meg csak egy. Ide csak olyan szó kerülhet, ami angolul semmit nem jelent.
+UNAMBIGUOUS_WORDS = {
+    'nincs', 'ismeretlen', 'sikerult', 'ervenytelen', 'elerheto', 'szukseges',
+    'dolgozom', 'kerlek', 'probald', 'hianyzik', 'folyamatban', 'beallitas',
+    'megse', 'megsem', 'toltes', 'betoltes', 'keszul', 'keszen',
+}
 WORD = re.compile(r"[A-Za-zÁÉÍÓÖŐÚÜŰáéíóöőúüű]+")
 
 
 def looks_hungarian(text: str) -> bool:
-    """Ékezet nélküli magyar mondat: legalább két egyértelmű magyar szó."""
+    """Ékezet nélküli magyar mondat: két többjelentésű magyar szó, vagy egy egyértelmű."""
     if len(text) < 4:
         return False
     words = {m.group(0).lower() for m in WORD.finditer(text)}
-    return len(words & HUNGARIAN_WORDS) >= 2
+    return len(words & HUNGARIAN_WORDS) >= 2 or bool(words & UNAMBIGUOUS_WORDS)
 
 ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "app", "src", "main", "java")
 

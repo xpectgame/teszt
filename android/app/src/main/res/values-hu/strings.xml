@@ -368,6 +368,8 @@
     <string name="billing_play_down">A Play szolgáltatás most nem elérhető. Próbáld újra később.</string>
     <string name="billing_not_purchasable">Ez az előfizetés jelenleg nem vásárolható meg.</string>
     <string name="billing_already_owned">Már van aktív előfizetésed.</string>
+    <string name="billing_no_network">Nincs internetkapcsolat.</string>
+    <string name="billing_unknown_error">A Google Play nem tudta befejezni a műveletet. Próbáld újra kicsit később.</string>
     <string name="period_month">hó</string>
     <string name="period_quarter">negyedév</string>
     <string name="period_half_year">félév</string>

@@ -5,4 +5,9 @@
          olvasható), a telepítési azonosítót pedig szándékosan nem visszük át másik
          készülékre — különben egy visszaállításból két eszköz osztozna egy havi kereten. -->
     <exclude domain="sharedpref" path="mealpilot_secure_prefs.xml" />
+    <!-- A TARTALÉK tároló ugyanezt a két dolgot tartja, csak TITKOSÍTATLANUL: ide esik
+         vissza a SecureKeyStore, ha a Keystore nem nyílik meg. A kizárás sokáig csak a
+         titkosított fájlra vonatkozott — vagyis pont abban az esetben maradt ki, amikor
+         a kulcs olvashatóan áll a lemezen, és a mentés felhőbe vitte volna. -->
+    <exclude domain="sharedpref" path="mealpilot_prefs_plain.xml" />
 </full-backup-content>

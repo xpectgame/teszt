@@ -101,7 +101,9 @@ object CrashReporter {
     private fun fingerprint(error: Throwable): String {
         val frame = error.stackTrace.firstOrNull { it.className.startsWith("hu.mealpilot") }
             ?: error.stackTrace.firstOrNull()
-        val where = frame?.let { "${it.className}.${it.methodName}:${it.lineNumber}" } ?: "ismeretlen"
+        // Angolul, mert nem a felhasználónak szól: egy `hu.mealpilot.app.Foo.bar:12`
+        // alakú belső azonosító mellett áll, és ugyanígy nem fordítjuk.
+        val where = frame?.let { "${it.className}.${it.methodName}:${it.lineNumber}" } ?: "unknown"
         return "${error.javaClass.simpleName}@$where".take(64)
     }
 

@@ -10,6 +10,10 @@ import androidx.security.crypto.MasterKey
  * Az Anthropic API kulcs tárolása. A kulcs a felhasználóé (saját fiók, saját számla),
  * ezért az eszközön marad, az Android Keystore-hoz kötött kulccsal titkosítva, és
  * ki van zárva a felhőmentésből (lásd res/xml/backup_rules.xml).
+ *
+ * A kizárás MINDKÉT tárolóra vonatkozik: a titkosítottra és a [FALLBACK_FILE_NAME]
+ * tartalékra is. Utóbbi a fontosabb — az tartja a kulcsot olvashatóan —, és sokáig
+ * pont az maradt ki. A `tools/check-backup-rules.py` azóta összeméri a két listát.
  */
 class SecureKeyStore(context: Context) {
 
@@ -17,10 +21,23 @@ class SecureKeyStore(context: Context) {
 
     private val prefs: SharedPreferences by lazy { openPrefs() }
 
-    /** Igaz, ha a titkosított tároló nem volt elérhető, és sima SharedPreferences-re esett vissza. */
     @Volatile
-    var usingFallback: Boolean = false
-        private set
+    private var fellBack: Boolean = false
+
+    /**
+     * Igaz, ha a titkosított tároló nem volt elérhető, és sima SharedPreferences-re
+     * esett vissza.
+     *
+     * A lekérdezés MEGNYITJA a tárolót, ha még nem volt nyitva. E nélkül a beállítások
+     * képernyője hamis nyugalmat mutathatott: a jelzőt a visszaesés állítja be, az
+     * viszont csak a tároló első használatakor derül ki — aki előbb kérdezte meg,
+     * mindig „rendben"-t kapott.
+     */
+    val usingFallback: Boolean
+        get() {
+            prefs
+            return fellBack
+        }
 
     private fun openPrefs(): SharedPreferences = try {
         createEncrypted()
@@ -33,7 +50,7 @@ class SecureKeyStore(context: Context) {
             createEncrypted()
         } catch (second: Exception) {
             Log.e(TAG, "A titkosított tároló nem elérhető, sima tárolóra váltok.", second)
-            usingFallback = true
+            fellBack = true
             appContext.getSharedPreferences(FALLBACK_FILE_NAME, Context.MODE_PRIVATE)
         }
     }

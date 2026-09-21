@@ -369,6 +369,8 @@
     <string name="billing_play_down">The Play service is unavailable right now. Try again later.</string>
     <string name="billing_not_purchasable">This subscription can\'t be bought at the moment.</string>
     <string name="billing_already_owned">You already have an active subscription.</string>
+    <string name="billing_no_network">No internet connection.</string>
+    <string name="billing_unknown_error">Google Play could not finish this. Try again a little later.</string>
     <string name="period_month">month</string>
     <string name="period_quarter">quarter</string>
     <string name="period_half_year">half year</string>

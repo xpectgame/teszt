@@ -136,6 +136,14 @@ jobs:
       - name: Minden ikonvezérlőnek van neve
         run: python3 tools/check-accessibility.py
 
+      # A SecureKeyStore-nak VAN egy titkosítatlan tartalék tárolója arra az esetre,
+      # ha az Android Keystore nem nyílik meg — és a mentési kizárás sokáig csak a
+      # titkosított fájlra vonatkozott. Vagyis pont abban az esetben ment volna
+      # felhőbe az API kulcs, amikor olvashatóan áll a lemezen. Ezt szemmel nézve
+      # három külön XML szakaszt kellene fejben összevetni a Kotlin konstansokkal.
+      - name: A kulcstároló egyik fájlja sem kerül mentésbe
+        run: python3 tools/check-backup-rules.py
+
       # A rendszerpromptok a kliensben élnek, a szerver egy GENERÁLT másolatot küld a
       # modellnek. A `SystemPromptSyncTest` önmagában nem elég őr: az a promptot egy
       # bemásolt hashhez hasonlítja, tehát az új hash bemásolásával minden zöld lesz

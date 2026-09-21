@@ -242,8 +242,14 @@ class PlayBillingGateway(
         BillingClient.BillingResponseCode.ITEM_ALREADY_OWNED ->
             strings[R.string.billing_already_owned]
         BillingClient.BillingResponseCode.NETWORK_ERROR ->
-            "Nincs internetkapcsolat."
-        else -> result.debugMessage.ifBlank { "Ismeretlen hiba (${result.responseCode})." }
+            strings[R.string.billing_no_network]
+        // A `debugMessage` a Play GÉPI szövege: mindig angol, fejlesztőnek szól, és
+        // egyenesen a fizetőfal buborékjába ment. A hibakód sem mond a felhasználónak
+        // semmit — az a NAPLÓBA való, ahonnan a hibajelentés úgyis kiolvassa.
+        else -> {
+            Log.w(TAG, "Play hiba ${result.responseCode}: ${result.debugMessage}")
+            strings[R.string.billing_unknown_error]
+        }
     }
 
     private companion object {
