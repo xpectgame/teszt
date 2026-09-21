@@ -131,6 +131,9 @@ class ExportRepository(
                         put("start_date", LocalDate.ofEpochDay(plan.startEpochDay).toString())
                         put("day_count", plan.dayCount)
                         put("active", plan.isActive)
+                        // A terv nyelve is a felhasználó adata: e nélkül egy kivitt
+                        // terv nem mondaná meg, milyen nyelven olvasandó.
+                        put("language", plan.language)
                         put("request_text", plan.requestText)
                         put("target_kcal", plan.targetKcal)
                         putJsonArray("meals") {

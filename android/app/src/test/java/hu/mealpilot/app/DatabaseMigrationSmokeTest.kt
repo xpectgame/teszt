@@ -85,6 +85,10 @@ class DatabaseMigrationSmokeTest {
             assertNotNull("A frissítés nem vihette el a tervet", plan)
             assertEquals("Régi terv", plan!!.title)
             assertEquals(2100, plan.targetKcal)
+            // A nyelv mezőt a 4 → 5 migráció adta hozzá. A RÉGI tervről nem tudjuk,
+            // milyen nyelven készült, és kitalálni rosszabb lenne, mint bevallani:
+            // üresen marad, és ott marad a korábbi viselkedés (a felület nyelve).
+            assertEquals("A régi terv nyelve nem található ki", "", plan.language)
 
             val meals = opened.mealDao().mealsInRange(plan.id, DAY, DAY + 2)
             assertEquals(1, meals.size)

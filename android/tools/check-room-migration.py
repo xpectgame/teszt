@@ -120,6 +120,24 @@ def main():
         return 1
     previous, current = versions[-2], versions[-1]
 
+    # A kiírt fájlok önmagukban nem árulják el, hogy LEMARADTAK-e. Ha a kódban már
+    # 5-ös a verzió, de csak 4.json van a repóban, akkor ez az ellenőrzés némán a
+    # RÉGI, 3 → 4 lépést vizsgálná tovább, és zölden átengedné a nem létező 4 → 5-öt:
+    # a felhasználó telefonján ez a frissítéskor összeomlás. Ezért a kódban deklarált
+    # verziónak kell a mérce lennie, nem annak, ami történetesen ott van a lemezen.
+    kotlin_head = DB_KT.read_text(encoding='utf-8')
+    declared = re.search(r'^\s*version\s*=\s*(\d+)\s*,', kotlin_head, re.M)
+    if not declared:
+        print(f'Nem találom a `version = N` sort a {DB_KT.name}-ben.', file=sys.stderr)
+        return 1
+    declared_version = int(declared.group(1))
+    if declared_version != current:
+        print(f'Az AppDatabase.kt {declared_version}-es sémaverziót deklarál, de a '
+              f'legfrissebb kiírt séma a {current}.json. A {declared_version}.json nincs '
+              'commitolva — a CI naplójából kell kimenteni (lásd README, „Room séma").',
+              file=sys.stderr)
+        return 1
+
     old_schema, new_schema = load(previous), load(current)
     kotlin = DB_KT.read_text(encoding='utf-8')
     steps = migration_statements(kotlin, previous, current)

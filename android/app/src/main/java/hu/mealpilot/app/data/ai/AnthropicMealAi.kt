@@ -58,6 +58,7 @@ class AnthropicMealAi(
     override suspend fun call(
         task: AiTask,
         userText: String,
+        language: AppLanguage,
         planDays: Int,
         chunkIndex: Int,
         isRetry: Boolean,
@@ -76,6 +77,10 @@ class AnthropicMealAi(
                         // promptját küldte volna minden új feladattípushoz — a becslésre
                         // egy egész étrendet kaptunk volna vissza. Így a fordító kényszerít
                         // döntésre, valahányszor az AiTask bővül.
+                        // A `language` itt a HÍVÁS paramétere, és szándékosan takarja
+                        // az ősosztály felületnyelv-mezőjét: egy kész terv átírásakor
+                        // a terv nyelve a helyes, nem az, amit a felhasználó azóta
+                        // átállított.
                         .text(
                             when (task) {
                                 AiTask.CHAT -> ChatPrompts.system(language)

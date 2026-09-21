@@ -40,16 +40,24 @@ class RefineDayRestrictionTest {
         var calls = 0
             private set
 
+        /** A legutóbbi hívás nyelve — ezen múlik, milyen nyelven ír a modell. */
+        var lastLanguage: AppLanguage? = null
+            private set
+
         override val isConfigured = true
 
         override suspend fun call(
             task: AiTask,
             userText: String,
+            language: AppLanguage,
             planDays: Int,
             chunkIndex: Int,
             isRetry: Boolean,
             onChars: (Int) -> Unit,
-        ): String = answers[minOf(calls++, answers.lastIndex)]
+        ): String {
+            lastLanguage = language
+            return answers[minOf(calls++, answers.lastIndex)]
+        }
 
         /** A tesztben nincs mit fordítani: a hiba önmagát képviseli. */
         internal override fun translate(error: Throwable): Throwable = error
@@ -117,5 +125,28 @@ class RefineDayRestrictionTest {
 
         assertTrue(result.isSuccess)
         assertEquals("Fölösleges kör nem futhat", 1, ai.calls)
+    }
+
+    @Test
+    fun `the model is asked in the plan's language, not the app's`() = runTest {
+        // A felület MAGYAR (lásd a ScriptedAi nyelvfüggvényét), a terv angol. A kész
+        // terv a saját nyelvén marad, tehát a modellt is angolul kell megkérdezni —
+        // különben a bevásárlólista ugyanazt a hozzávalót két néven hozza.
+        val ai = ScriptedAi(strings(), listOf(dayJson("Chicken salad", "chicken breast")))
+
+        ai.refineDay(request(emptySet()).copy(language = AppLanguage.EN), "{}", "lighter please")
+
+        assertEquals("A hívásnak a terv nyelvén kell mennie", AppLanguage.EN, ai.lastLanguage)
+    }
+
+    @Test
+    fun `a plan with no language recorded falls back to the app's language`() = runTest {
+        // A migráció előtt készült tervekről nem tudjuk, min készültek: ott marad a
+        // korábbi viselkedés.
+        val ai = ScriptedAi(strings(), listOf(dayJson("Csirkés saláta", "csirkemell")))
+
+        ai.refineDay(request(emptySet()), "{}", "könnyebbet")
+
+        assertEquals(AppLanguage.HU, ai.lastLanguage)
     }
 }

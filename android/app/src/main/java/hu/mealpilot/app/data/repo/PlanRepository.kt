@@ -111,6 +111,10 @@ class PlanRepository(
             avoidRecipes = previousNames.takeLast(40),
             favoriteRecipes = favoriteDao.recentNames(FavoriteRepository.PLANNING_LIMIT),
             startWeekday = startDate.weekdayName(language),
+            // Egy hónapos terv percekig készül. Ha a felhasználó közben nyelvet vált,
+            // a maradék szakaszok másik nyelven érkeznének UGYANABBA a tervbe: a
+            // kérésbe zárt nyelv ezt tartja egyben.
+            language = language,
         )
 
         // A helyőrző cím és az alábbi összehasonlítás ugyanabból az értékből jön.
@@ -120,6 +124,9 @@ class PlanRepository(
 
         val planId = planDao.insert(
             PlanEntity(
+                // A terv NYELVE vele együtt születik: a későbbi szerkesztés ebből
+                // tudja meg, milyen nyelven kell beleírnia.
+                language = language.name,
                 title = placeholderTitle,
                 summary = "",
                 startEpochDay = startDate.toEpochDay(),
@@ -222,13 +229,18 @@ class PlanRepository(
             )
         )
 
+        // A modellnek a TERV nyelvén kell írnia: különben egy nyelvváltás után az
+        // átírt nap kilógna a terv többi részéből, és a bevásárlólista ugyanazt a
+        // hozzávalót két sorban hozná.
+        val contentLanguage = contentLanguage(plan, language)
         val request = PlanRequest(
             profile = profile,
             budget = budget,
             days = 1,
             startDayIndex = dayIndex,
             totalDays = plan.dayCount,
-            startWeekday = date.weekdayName(language),
+            startWeekday = date.weekdayName(contentLanguage),
+            language = contentLanguage,
         )
 
         val response = ai.refineDay(request, current.toAiDayJson(dayIndex), instruction)
@@ -245,6 +257,20 @@ class PlanRepository(
             }
         )
     }
+
+    /**
+     * Milyen nyelven kell a TERVBE írni.
+     *
+     * Nem ugyanaz, mint a felületé: az app kimondja, hogy a kész terv a saját nyelvén
+     * marad. A felhasználónak szóló üzenetek viszont a felület nyelvén mennek — a
+     * kettőt itt szándékosan külön kezeljük.
+     *
+     * A migráció előtt készült terveknél üres a mező: ott marad a korábbi viselkedés.
+     */
+    private fun contentLanguage(plan: PlanEntity, uiLanguage: AppLanguage): AppLanguage =
+        plan.language.takeIf { it.isNotBlank() }
+            ?.let { name -> AppLanguage.entries.firstOrNull { it.name == name } }
+            ?: uiLanguage
 
     /**
      * „Ezt ne kérem, adj mást." — EGY fogás tartalmát cseréli ki a beépített bankból.
@@ -282,12 +308,16 @@ class PlanRepository(
         val sameDay = mealDao.mealsInRange(meal.planId, meal.epochDay, meal.epochDay)
         val avoid = sameDay.filterNot { it.meal.id == mealId }.map { it.meal.name }
 
+        // A TERV nyelvén írunk bele, nem a felületén. A kizárásszűrő is ezt kapja: a
+        // kulcsszólistának ahhoz a nyelvhez kell illeszkednie, amelyiken a nevek állnak.
+        val planLanguage = planDao.byId(meal.planId)?.let { contentLanguage(it, language) } ?: language
+
         val template = MealSwap.next(
             slot = slot,
             currentName = meal.name,
             avoidNames = avoid,
             restrictions = restrictions,
-            language = language,
+            language = planLanguage,
             // A nap keretét a kalória tartja, a napi fehérjecélt viszont csak akkor,
             // ha a választás is figyel rá — ide semmilyen minőségellenőrzés nem fut.
             currentKcal = meal.nutrients.kcal,
@@ -304,7 +334,7 @@ class PlanRepository(
             targetKcal = meal.nutrients.kcal,
             slot = slot,
             time = meal.timeText,
-            language = language,
+            language = planLanguage,
         )
 
         mealDao.update(

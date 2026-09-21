@@ -44,6 +44,12 @@ class OfflineMealAi(
         onProgress: (GenerationProgress) -> Unit,
         onChunk: suspend (AiPlanResponse) -> Unit,
     ): Result<AiPlanResponse> = runCatching {
+        // A TERV nyelve, nem a felületé: a kérésbe zárt nyelv akkor is végigviszi a
+        // generálást, ha a felhasználó közben átkapcsol. Lásd [PlanRequest.language].
+        val lang = request.language ?: language
+        // A TERVBE kerülő szövegek a terv nyelvén; a folyamatjelző viszont a
+        // FELHASZNÁLÓNAK szól, az marad a felület nyelvén.
+        val planStrings = strings.forLanguage(lang)
         val slots = MealSlot.forMealsPerDay(request.profile.mealsPerDay)
         val shares = slotShares(slots)
         val target = request.budget.target
@@ -60,8 +66,8 @@ class OfflineMealAi(
             )
             AiDay(
                 dayIndex = dayIndex,
-                title = strings[R.string.offline_day_title, dayIndex + 1],
-                note = strings[R.string.offline_day_note],
+                title = planStrings[R.string.offline_day_title, dayIndex + 1],
+                note = planStrings[R.string.offline_day_note],
                 meals = slots.mapIndexed { slotIndex, slot ->
                     safeMeal(
                         slot = slot,
@@ -69,6 +75,7 @@ class OfflineMealAi(
                         targetKcal = target.kcal * shares[slotIndex],
                         time = request.profile.mealTimes.getOrNull(slotIndex) ?: slot.defaultTime,
                         restrictions = request.profile.effectiveRestrictions,
+                        language = lang,
                     )
                 },
             )
@@ -84,12 +91,12 @@ class OfflineMealAi(
         )
 
         val result = AiPlanResponse(
-            planTitle = strings[R.string.offline_plan_title],
-            summary = strings[R.string.offline_plan_summary],
+            planTitle = planStrings[R.string.offline_plan_title],
+            summary = planStrings[R.string.offline_plan_summary],
             days = days,
             coachNotes = listOf(
-                strings[R.string.offline_tip_water],
-                strings[R.string.offline_tip_protein],
+                planStrings[R.string.offline_tip_water],
+                planStrings[R.string.offline_tip_protein],
             ),
         )
         onChunk(result)
@@ -159,6 +166,7 @@ class OfflineMealAi(
         targetKcal: Double,
         time: String,
         restrictions: Set<DietRestriction>,
+        language: AppLanguage,
     ): AiMeal {
         val bank = RecipeBank.forSlot(slot)
         // Ugyanonnan indulunk, mint eddig — kizárás nélkül a választás változatlan.

@@ -43,6 +43,16 @@ class AppStrings(
         else resources.getQuantityString(resId, count, *args)
     }
 
+    /**
+     * Ugyanezek a szövegek, de RÖGZÍTETT nyelven.
+     *
+     * A felület nyelve követi a felhasználót — egy készülő terv viszont nem: az a
+     * nyelvén marad, amin elindult. Egy hónapos terv percekig készül, és ha közben
+     * nyelvet váltanak, e nélkül a korábbi napok magyar, a későbbiek angol címet
+     * kapnának ugyanabban a tervben.
+     */
+    fun forLanguage(fixed: AppLanguage): AppStrings = AppStrings(appContext) { fixed }
+
     private fun localized(): Context {
         val config = Configuration(appContext.resources.configuration)
         config.setLocale(Locale.forLanguageTag(language().tag))

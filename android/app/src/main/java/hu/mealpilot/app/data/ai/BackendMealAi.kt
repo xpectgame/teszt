@@ -25,6 +25,7 @@ class BackendMealAi(
     override suspend fun call(
         task: AiTask,
         userText: String,
+        language: AppLanguage,
         planDays: Int,
         chunkIndex: Int,
         isRetry: Boolean,
@@ -35,6 +36,8 @@ class BackendMealAi(
         days = planDays,
         chunkIndex = chunkIndex,
         isRetry = isRetry,
+        // A HÍVÁS nyelve megy ki, nem a felületé: a szerver ebből választ
+        // rendszerpromptot, és egy kész terv átírásának a terv nyelvén kell felelnie.
         language = language.tag,
         onChars = onChars,
     )

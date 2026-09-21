@@ -31,6 +31,19 @@ data class PlanEntity(
     /** JSON tömb a coach tippekkel. */
     val coachNotesJson: String = "[]",
     val isActive: Boolean = true,
+    /**
+     * A terv NYELVE — az [hu.mealpilot.core.i18n.AppLanguage] neve.
+     *
+     * Az app kimondja a nyelvválasztónál: „a már elkészült terv nem fordítódik le, az
+     * a nyelvén marad, amin készült". Ehhez tudni kell, melyik az. E nélkül egy
+     * nyelvváltás után a fogáscsere és a chates átírás a MOSTANI nyelven írt bele a
+     * régi tervbe, és a bevásárlólista ugyanazt a hozzávalót két sorban hozta
+     * („Paradicsom 300 g" és „Tomato 150 g"), mert az összevonás névre megy.
+     *
+     * Üres a migráció előtt készült terveknél: ott nincs mit tudni, és marad a
+     * korábbi viselkedés (a mostani nyelv).
+     */
+    val language: String = "",
 )
 
 /**

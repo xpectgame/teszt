@@ -52,6 +52,13 @@ abstract class StreamingMealAi(
 
     protected val language: AppLanguage get() = languageProvider()
 
+    /**
+     * Milyen nyelven kell a TERVBE írni.
+     *
+     * A kérésé, ha tudjuk; különben a felületé. Lásd [PlanRequest.language].
+     */
+    private fun contentLanguage(request: PlanRequest): AppLanguage = request.language ?: language
+
     /** Ahol valódi modell felel, ott a becslés is megy. */
     override val canEstimate: Boolean get() = isConfigured
 
@@ -82,6 +89,15 @@ abstract class StreamingMealAi(
     protected abstract suspend fun call(
         task: AiTask,
         userText: String,
+        /**
+         * Milyen nyelven feleljen a modell — NINCS alapértéke, szándékosan.
+         *
+         * A [language] mező a felületé, és a kettő szétválhat: egy kész terv a saját
+         * nyelvén marad, tehát a nap átírása nem a mostani felületnyelven ír bele.
+         * Alapértékkel ez a különbség csendben elveszne minden új hívásnál; így a
+         * fordító kérdez rá.
+         */
+        language: AppLanguage,
         planDays: Int = 0,
         chunkIndex: Int = 0,
         isRetry: Boolean = false,
@@ -170,7 +186,9 @@ abstract class StreamingMealAi(
 
             Result.success(
                 AiPlanResponse(
-                    planTitle = title.ifBlank { strings[R.string.plan_title] },
+                    // A helyettesítő cím a TERVBE kerül, tehát a terv nyelvén kell
+                    // állnia — nem azon, amire a felhasználó azóta átkapcsolt.
+                    planTitle = title.ifBlank { strings.forLanguage(contentLanguage(request))[R.string.plan_title] },
                     summary = summary,
                     days = allDays.sortedBy { it.dayIndex },
                     coachNotes = coachNotes.distinct().take(6),
@@ -189,7 +207,8 @@ abstract class StreamingMealAi(
         chunk: PlanChunker.Chunk,
         onProgress: (GenerationProgress) -> Unit,
     ): AiPlanResponse {
-        val basePrompt = PlanPrompts.userPrompt(chunkRequest, language)
+        val lang = contentLanguage(chunkRequest)
+        val basePrompt = PlanPrompts.userPrompt(chunkRequest, lang)
         val expectedMeals = MealSlot.forMealsPerDay(chunkRequest.profile.mealsPerDay).size
 
         var prompt = basePrompt
@@ -217,6 +236,7 @@ abstract class StreamingMealAi(
             val raw = call(
                 task = AiTask.PLAN,
                 userText = prompt,
+                language = lang,
                 planDays = chunkRequest.totalDays,
                 chunkIndex = chunk.index,
                 // A javító kör ugyanazt a szakaszt kéri újra — a kvótának nem új terv.
@@ -235,7 +255,7 @@ abstract class StreamingMealAi(
             val parsed = PlanParser.parsePlan(raw)
             val rawPlan = parsed.getOrElse { error ->
                 lastProblems = listOf(error.message ?: strings[R.string.error_unparsable_json])
-                prompt = basePrompt + "\n\n" + PlanPrompts.repairPrompt(lastProblems, language)
+                prompt = basePrompt + "\n\n" + PlanPrompts.repairPrompt(lastProblems, lang)
                 return@repeat
             }
 
@@ -259,13 +279,13 @@ abstract class StreamingMealAi(
                 // ételnevet hibának jelöl, amiből javító kör lesz, ami magyarra íratná
                 // át a helyes tervet. A hibaüzenetek is a terv nyelvén kell szóljanak,
                 // mert ezek a JAVÍTÓ PROMPTBA mennek.
-                language = language,
+                language = lang,
             )
             if (problems.isEmpty()) return plan
 
             Log.i(TAG, "A(z) ${chunk.index + 1}. szakasz nem ment át az ellenőrzésen: $problems")
             lastProblems = problems
-            prompt = basePrompt + "\n\n" + PlanPrompts.repairPrompt(problems, language)
+            prompt = basePrompt + "\n\n" + PlanPrompts.repairPrompt(problems, lang)
         }
 
         throw PlanQualityException(
@@ -293,7 +313,9 @@ abstract class StreamingMealAi(
             // kizárás-ellenőrzés és javító kör; egy nap átírásán nem volt semmi, pedig
             // ugyanúgy a felhasználó tányérjára kerül.
             val restrictions = request.profile.effectiveRestrictions
-            val basePrompt = PlanPrompts.refineDayPrompt(request, currentDayJson, instruction, language)
+            // A TERV nyelvén, nem a felületén: a kész terv a saját nyelvén marad.
+            val lang = contentLanguage(request)
+            val basePrompt = PlanPrompts.refineDayPrompt(request, currentDayJson, instruction, lang)
             var prompt = basePrompt
             var accepted: AiDayResponse? = null
             var violations: List<String> = emptyList()
@@ -302,6 +324,7 @@ abstract class StreamingMealAi(
                 val raw = call(
                     task = AiTask.DAY,
                     userText = prompt,
+                    language = lang,
                     planDays = 1,
                     // A javító kör ugyanazt a napot kéri újra — a kvótának nem új terv.
                     isRetry = attempt > 0,
@@ -312,13 +335,13 @@ abstract class StreamingMealAi(
 
                 // Kizárás nélkül ez azonnal üres listát ad, tehát a hívás egyetlen
                 // körből megvan — a felhasználók többségének semmi nem változik.
-                violations = RestrictionChecker.check(AiPlanResponse(days = listOf(day)), restrictions, language)
+                violations = RestrictionChecker.check(AiPlanResponse(days = listOf(day)), restrictions, lang)
                 if (violations.isEmpty()) {
                     accepted = parsed.copy(day = day)
                     break
                 }
                 Log.i(TAG, "Az átírt nap ütközik a kizárásokkal: $violations")
-                prompt = basePrompt + "\n\n" + PlanPrompts.repairPrompt(violations, language)
+                prompt = basePrompt + "\n\n" + PlanPrompts.repairPrompt(violations, lang)
             }
 
             // Inkább maradjon a régi nap, mint hogy allergén kerüljön a tervbe. A
@@ -346,6 +369,9 @@ abstract class StreamingMealAi(
             val raw = call(
                 task = AiTask.CHAT,
                 userText = ChatPrompts.userPrompt(context, history, message, language),
+                // A beszélgetés a FELHASZNÁLÓNAK szól, nem a tervbe kerül: itt a
+                // felület nyelve a helyes.
+                language = language,
             )
             Result.success(PlanParser.parseChat(raw).getOrThrow())
         } catch (cancelled: CancellationException) {
@@ -361,6 +387,7 @@ abstract class StreamingMealAi(
                 val raw = call(
                     task = AiTask.ESTIMATE,
                     userText = EstimatePrompts.userPrompt(description, language),
+                    language = language,
                 )
                 val parsed = PlanParser.parseEstimate(raw).getOrThrow()
                 // A modell a nem-étel esetet üres névvel és 0 kcal-lal jelzi. Ezt itt

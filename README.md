@@ -16,6 +16,13 @@ Az app **magyarul és angolul** is megy: az első indításkor kérdez, később
 Beállításokban váltható. A nyelv nem csak a felületet állítja át — az étrend, a
 fogásnevek, a hozzávalók és a bevásárlólista is a választott nyelven készül.
 
+A **már elkészült terv nem fordítódik le**: a saját nyelvén marad. Ezért a terv a
+nyelvét magával viszi (`plans.language`), és a későbbi szerkesztés — a fogáscsere és
+a chates átírás — ezen a nyelven ír bele, nem azon, amire a felhasználó azóta
+átkapcsolt. Enélkül a bevásárlólista ugyanazt a hozzávalót két sorban hozta
+(„Paradicsom 300 g" és „Tomato 150 g"), mert az összevonás a névre megy. A migráció
+előtt készült terveknél a mező üres: ott nincs mit tudni, és marad a felület nyelve.
+
 A legfrissebb, telefonra telepíthető APK a
 [Actions](../../actions) legutóbbi zöld futásának *Artifacts* szekciójában van.
 

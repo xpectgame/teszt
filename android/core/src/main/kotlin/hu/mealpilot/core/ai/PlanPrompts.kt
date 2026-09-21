@@ -31,6 +31,23 @@ data class PlanRequest(
     val favoriteRecipes: List<String> = emptyList(),
     /** A kezdőnap neve a TERV nyelvén, hogy a hétvégére hosszabb főzés kerülhessen. */
     val startWeekday: String = "hétfő",
+    /**
+     * Milyen nyelven írjon a modell EBBE a tervbe.
+     *
+     * Külön a felület nyelvétől, és nem ugyanaz: az app kimondja, hogy a kész terv
+     * nem fordítódik le, hanem a saját nyelvén marad. Egy nyelvváltás után tehát a
+     * nap átírásának a TERV nyelvén kell írnia, különben a bevásárlólista ugyanazt a
+     * hozzávalót két sorban hozza („Paradicsom 300 g" és „Tomato 150 g"), mert az
+     * összevonás a névre megy.
+     *
+     * Ugyanez tartja egyben a hosszú generálást is: egy hónapos terv percekig készül,
+     * és ha a felhasználó közben nyelvet vált, a maradék szakaszok másik nyelven
+     * érkeznének ugyanabba a tervbe.
+     *
+     * `null`: nincs mihez igazodni (a migráció előtt készült tervek), marad a felület
+     * nyelve.
+     */
+    val language: AppLanguage? = null,
 )
 
 object PlanPrompts {
