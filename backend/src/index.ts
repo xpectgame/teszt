@@ -152,6 +152,12 @@ app.get('/*', (c) => {
     : [requested, `${requested}.html`, `${requested}/index.html`]
 
   for (const candidate of candidates) {
+    // `Object.hasOwn` és nem egy sima `PAGES[candidate]`: a keresés különben az
+    // Object PROTOTÍPUSÁRA is ráfut. A `/constructor`, a `/toString`, a `/valueOf`,
+    // a `/hasOwnProperty` és a `/__proto__` így mind „megtalált oldalnak" számított,
+    // pedig egyikhez sem tartozik tartalom — a válasz 404 helyett egy `undefined`
+    // törzsű, `undefined` tartalomtípusú 200 lett volna.
+    if (!Object.hasOwn(PAGES, candidate)) continue
     const page = PAGES[candidate]
     if (!page) continue
     return c.body(page.body, 200, {

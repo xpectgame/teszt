@@ -343,3 +343,28 @@ describe('az RTDN-végpont titka', () => {
     expect(r.status).toBe(403)
   })
 })
+
+describe('statikus oldalak keresése', () => {
+  const ctx = { waitUntil() {}, passThroughOnException() {} } as any
+  const pageEnv = { ANDROID_PACKAGE: 'hu.mealpilot.app' } as any
+
+  // Az Object prototípusának nevei nem oldalak. Egy sima `PAGES[candidate]` keresés
+  // viszont megtalálja őket, és a `if (!page) continue` ŐR nem fog rajtuk: a
+  // `constructor` egy függvény, tehát igaz. A válasz így 404 helyett egy üres
+  // törzsű 200 (vagy a fejléc miatt 500) lett volna — öt nyilvános címen.
+  it.each(['constructor', '__proto__', 'toString', 'valueOf', 'hasOwnProperty'])(
+    '/%s nem oldal, hanem 404',
+    async (name) => {
+      const r = await app.fetch(new Request(`https://example.workers.dev/${name}`), pageEnv, ctx)
+      expect(r.status).toBe(404)
+    },
+  )
+
+  it('a valódi oldalak ettől még kiszolgálódnak', async () => {
+    for (const path of ['/privacy', '/privacy.html', '/']) {
+      const r = await app.fetch(new Request(`https://example.workers.dev${path}`), pageEnv, ctx)
+      expect(r.status, path).toBe(200)
+      expect((await r.text()).length, path).toBeGreaterThan(0)
+    }
+  })
+})
