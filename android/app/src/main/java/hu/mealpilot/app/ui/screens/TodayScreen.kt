@@ -74,6 +74,7 @@ import hu.mealpilot.app.ui.components.NumberText
 import hu.mealpilot.app.ui.components.SectionHeading
 import hu.mealpilot.app.ui.components.WarningNote
 import hu.mealpilot.app.ui.containerFactory
+import hu.mealpilot.app.ui.currentDayFlow
 import hu.mealpilot.app.ui.theme.LocalDarkTheme
 import hu.mealpilot.app.ui.theme.MealColors
 import hu.mealpilot.app.ui.theme.MealLabelStyle
@@ -85,7 +86,6 @@ import hu.mealpilot.core.i18n.label
 import hu.mealpilot.core.model.DietRestriction
 import hu.mealpilot.core.model.Nutrients
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -94,11 +94,9 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.time.LocalDate
-import java.time.ZoneId
 import kotlin.math.roundToInt
 
 /** Amit tényleg megevett: a tervezett, a helyette megevett és a terven kívüli is. */
@@ -161,22 +159,8 @@ class TodayViewModel(private val container: AppContainer) : ViewModel() {
      */
     private val selectedDay = MutableStateFlow<LocalDate?>(null)
 
-    /**
-     * A mai nap, éjfélkor frissülve.
-     *
-     * A várakozás után ÚJRA kiolvassuk a dátumot, nem egyszerűen léptetünk egyet: ha a
-     * telefon energiatakarékos módban aludt, az ébresztés késhet, és akár több nap is
-     * eltelhet egy ciklus alatt.
-     */
-    private val today: Flow<LocalDate> = flow {
-        while (true) {
-            val day = LocalDate.now()
-            emit(day)
-            val nextMidnight = day.plusDays(1)
-                .atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
-            delay((nextMidnight - System.currentTimeMillis()).coerceAtLeast(1_000L))
-        }
-    }
+    /** A mai nap, éjfélkor frissülve. Lásd [currentDayFlow]. */
+    private val today: Flow<LocalDate> = currentDayFlow()
 
     @OptIn(ExperimentalCoroutinesApi::class)
     val state: StateFlow<TodayUiState> =

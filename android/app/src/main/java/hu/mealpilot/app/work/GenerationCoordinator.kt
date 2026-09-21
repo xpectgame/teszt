@@ -19,6 +19,15 @@ import kotlinx.coroutines.launch
 import java.time.LocalDate
 
 /**
+ * A felhasználó megszakította a munkát.
+ *
+ * Miért nem magát a [CancellationException]-t tesszük a [Result]-ba: azt a hívó
+ * oldalon a coroutine-gépezet újabb megszakításnak értheti. Ez itt csak egy üzenet,
+ * amit a felület megmutat.
+ */
+class CancelledByUserException(message: String) : Exception(message)
+
+/**
  * A hosszan futó tervezés egyetlen gazdája.
  *
  * Három dolgot old meg, amit korábban semmi nem:
@@ -134,6 +143,19 @@ class GenerationCoordinator(private val container: AppContainer) {
                     offerUpgradeIfQuota(error)
                 }
                 _lastOutcome.value = result
+            } catch (cancelled: CancellationException) {
+                // A `catch (Throwable)` a MEGSZAKÍTÁST is elkapta, és a kivétel
+                // üzenetét tette ki a képernyőre: a felhasználó a saját Mégse
+                // gombjára azt a választ kapta, hogy „StandaloneCoroutine was
+                // cancelled". Ugyanez a hiba a `runAction`-ben már javítva volt —
+                // ez az ág kimaradt belőle.
+                //
+                // Telemetria sem megy: a megszakítás nem tervezési hiba, és ha
+                // annak számolnánk, a hibaarány a felhasználó döntéseitől romlana.
+                _lastOutcome.value = Result.failure(
+                    CancelledByUserException(container.strings[R.string.gen_action_cancelled])
+                )
+                throw cancelled
             } catch (error: Throwable) {
                 Log.e(TAG, "A tervezés megszakadt.", error)
                 container.telemetry.record(TelemetryEvent.PLAN_FAILED)

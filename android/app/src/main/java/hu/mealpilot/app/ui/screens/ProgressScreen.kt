@@ -37,12 +37,15 @@ import hu.mealpilot.app.ui.components.BackButton
 import hu.mealpilot.app.ui.components.EmptyState
 import hu.mealpilot.app.ui.components.SectionCard
 import hu.mealpilot.app.ui.containerFactory
+import hu.mealpilot.app.ui.currentDayFlow
 import hu.mealpilot.core.energy.EnergyCalculator
 import hu.mealpilot.core.progress.TrendPoint
 import hu.mealpilot.core.progress.WeightTrend
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import java.time.LocalDate
@@ -66,33 +69,44 @@ data class ProgressState(
 
 class ProgressViewModel(container: AppContainer) : ViewModel() {
 
-    val state: StateFlow<ProgressState> = combine(
-        container.database.weightLogDao().observeAll(),
-        container.database.mealLogDao().observeRange(
-            LocalDate.now().minusDays(WINDOW_DAYS).toEpochDay(),
-            LocalDate.now().toEpochDay(),
-        ),
-        container.planRepository.observeActivePlan(),
-        container.settings.profile,
-    ) { weights, logs, plan, profile ->
-        val trend = WeightTrend.series(weights.map { it.epochDay to it.weightKg })
-        val target = profile.targetWeightKg
-        val budget = EnergyCalculator.budget(profile)
+    /**
+     * A naplózott napok ablaka a MAI naphoz képest mozog.
+     *
+     * A `LocalDate.now()` egyszeri kiolvasása itt csendes hiba lenne: aki nyitva
+     * hagyja az appot éjfélkor, másnap is a tegnapi ablakot látná, és a mai
+     * étkezései sosem jelennének meg a képernyőn. Ugyanez a Ma képernyőn már
+     * egyszer megvolt — lásd [currentDayFlow].
+     */
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val state: StateFlow<ProgressState> = currentDayFlow().flatMapLatest { today ->
+        combine(
+            container.database.weightLogDao().observeAll(),
+            container.database.mealLogDao().observeRange(
+                today.minusDays(WINDOW_DAYS).toEpochDay(),
+                today.toEpochDay(),
+            ),
+            container.planRepository.observeActivePlan(),
+            container.settings.profile,
+        ) { weights, logs, plan, profile ->
+            val trend = WeightTrend.series(weights.map { it.epochDay to it.weightKg })
+            val target = profile.targetWeightKg
+            val budget = EnergyCalculator.budget(profile)
 
-        ProgressState(
-            trend = trend,
-            weeklyChangeKg = WeightTrend.weeklyChangeKg(trend),
-            targetWeightKg = target,
-            daysToTargetMeasured = target?.let {
-                WeightTrend.daysToTargetAtMeasuredRate(trend, it)
-            },
-            daysToTargetPlanned = EnergyCalculator.daysToTarget(profile, budget),
-            days = logs.groupBy { it.epochDay }
-                .map { (day, entries) -> LoggedDay(day, entries.sumOf { it.nutrients.kcal }.roundToInt()) }
-                .filter { it.kcal > 0 }
-                .sortedBy { it.epochDay },
-            targetKcal = plan?.targetKcal ?: budget.target.kcal,
-        )
+            ProgressState(
+                trend = trend,
+                weeklyChangeKg = WeightTrend.weeklyChangeKg(trend),
+                targetWeightKg = target,
+                daysToTargetMeasured = target?.let {
+                    WeightTrend.daysToTargetAtMeasuredRate(trend, it)
+                },
+                daysToTargetPlanned = EnergyCalculator.daysToTarget(profile, budget),
+                days = logs.groupBy { it.epochDay }
+                    .map { (day, entries) -> LoggedDay(day, entries.sumOf { it.nutrients.kcal }.roundToInt()) }
+                    .filter { it.kcal > 0 }
+                    .sortedBy { it.epochDay },
+                targetKcal = plan?.targetKcal ?: budget.target.kcal,
+            )
+        }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), ProgressState())
 
     private companion object {
