@@ -97,4 +97,38 @@ class WeightTrendTest {
         assertNull(WeightTrend.weeklyChangeKg(emptyList()))
         assertNull(WeightTrend.daysToTargetAtMeasuredRate(emptyList(), 80.0))
     }
+
+    @Test
+    fun `a flat stretch sits in the middle of the chart, not on its bottom edge`() {
+        // Öt deka ingadozás: a grafikon nem nagyíthatja hegyvidékké, de az aljára sem
+        // ragaszthatja. A régi kód csak az OSZTÓT cserélte ki egy kilóra, a nullpont
+        // maradt a legkisebb érték — a vonal így a grafikon alsó 5%-ában futott.
+        val (low, high) = WeightTrend.chartWindow(listOf(80.00, 80.05))
+        assertEquals("Az ablak legalább egy kiló", 1.0, high - low, 1e-9)
+        assertEquals("És az adatok a közepén vannak", 80.025, (low + high) / 2, 1e-9)
+        val middle = (80.025 - low) / (high - low)
+        assertTrue("A vonal a középső harmadban: $middle", middle in 0.33..0.67)
+    }
+
+    @Test
+    fun `a real spread keeps its own window`() {
+        // Ahol van mit mutatni, ott ne nagyítsunk mesterségesen: a szélső értékek
+        // maradnak a grafikon szélein.
+        val (low, high) = WeightTrend.chartWindow(listOf(78.0, 82.0, 80.0))
+        assertEquals(78.0, low, 1e-9)
+        assertEquals(82.0, high, 1e-9)
+    }
+
+    @Test
+    fun `a single value still gets a whole window around it`() {
+        val (low, high) = WeightTrend.chartWindow(listOf(75.0))
+        assertEquals(1.0, high - low, 1e-9)
+        assertEquals(75.0, (low + high) / 2, 1e-9)
+    }
+
+    @Test
+    fun `no values is not a crash`() {
+        val (low, high) = WeightTrend.chartWindow(emptyList())
+        assertTrue("Az ablaknak magasságot kell adnia: $low..$high", high > low)
+    }
 }

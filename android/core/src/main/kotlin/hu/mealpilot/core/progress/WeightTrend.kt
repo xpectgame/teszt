@@ -40,6 +40,35 @@ object WeightTrend {
     const val RATE_WINDOW_DAYS = 28
 
     /**
+     * A grafikon legkisebb függőleges ablaka kilóban.
+     *
+     * Egy-két mérés között gyakran tized kiló a különbség, a SIMÍTOTT trend pedig még
+     * ennél is laposabb — szándékosan. Ha az ablakot pontosan az adatokra szabnánk, egy
+     * 5 dekás ingadozás hegyvidéknek látszana.
+     */
+    const val MIN_CHART_SPAN_KG = 1.0
+
+    /**
+     * A grafikon függőleges ablaka: (alsó él, felső él).
+     *
+     * Nem elég az ablakot felnagyítani, KÖZÉPRE is kell tenni az adatokat. Korábban a
+     * kód csak a „legalább 1 kg" osztót cserélte ki, a nullpont maradt a legkisebb
+     * mért érték — így a lapos szakaszok nem középen futottak, hanem a grafikon ALJÁRA
+     * ragadva. A kezdeti napokban (amikor a trend a legsimább) ez volt a tipikus kép.
+     */
+    fun chartWindow(
+        values: List<Double>,
+        minSpanKg: Double = MIN_CHART_SPAN_KG,
+    ): Pair<Double, Double> {
+        if (values.isEmpty()) return 0.0 to minSpanKg
+        val low = values.min()
+        val high = values.max()
+        if (high - low >= minSpanKg) return low to high
+        val middle = (low + high) / 2.0
+        return middle - minSpanKg / 2.0 to middle + minSpanKg / 2.0
+    }
+
+    /**
      * Napi sorozat az első méréstől az utolsóig.
      *
      * A bemenet (nap, kg) párok, tetszőleges sorrendben; egy napra több mérés esetén

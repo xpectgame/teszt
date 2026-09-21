@@ -293,9 +293,12 @@ private fun WeightTrendChart(
 ) {
     if (points.size < 2) return
     val values = points.map { it.trendKg } + points.mapNotNull { it.measuredKg }
-    val min = values.min()
-    val max = values.max()
-    val span = (max - min).takeIf { it > 0.2 } ?: 1.0
+    // Az ablak KÖZÉPRE teszi az adatokat, ha kevés a szórás. Korábban csak az osztó
+    // nőtt meg, a nullpont maradt a legkisebb érték: egy 5 dekás ingadozás így nem
+    // középen futott, hanem a grafikon aljára ragadva — pont a kezdeti napokon,
+    // amikor a simított trend a leglaposabb.
+    val (min, max) = WeightTrend.chartWindow(values)
+    val span = max - min
 
     Canvas(
         Modifier

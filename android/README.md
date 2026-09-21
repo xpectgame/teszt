@@ -32,7 +32,7 @@ alkalmazza, és egy már kész napot is át tudsz íratni egy mondattal.
 ## Amit tudni kell a build előtt
 
 A `:core` modul (minden számítás, AI-séma, promptok, bevásárlólista, achievementek)
-tiszta Kotlin, és **241 unit teszt fut rá zölden**. Az app modul fordítását és az APK
+tiszta Kotlin, és **245 unit teszt fut rá zölden**. Az app modul fordítását és az APK
 építését a GitHub Actions végzi (`.github/workflows/android.yml`).
 
 **A legegyszerűbb telepítés: nem kell hozzá Android Studio.**
