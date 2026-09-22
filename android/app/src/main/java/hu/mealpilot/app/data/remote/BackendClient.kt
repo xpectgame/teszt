@@ -13,6 +13,10 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.Response
+import okio.BufferedSource
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.job
 import java.io.IOException
 import java.util.concurrent.TimeUnit
 
@@ -58,7 +62,7 @@ class BackendClient(
      * @param onChars minden beérkezett darab után az eddigi karakterszámmal hívódik —
      *   ebből lesz a látható haladás a felületen.
      */
-    fun generate(
+    suspend fun generate(
         task: String,
         prompt: String,
         days: Int,
@@ -84,45 +88,84 @@ class BackendClient(
             ),
         )
 
-        execute(post("v1/generate", body)).use { response ->
-            checkOk(response)
-            val source = response.body?.source() ?: throw MealAiException(strings[R.string.error_empty_service_response])
-            val text = StringBuilder()
-            var sawDone = false
+        val call = client.newCall(post("v1/generate", body))
 
-            while (!source.exhausted()) {
-                val line = source.readUtf8Line() ?: break
-                if (line.isBlank()) continue
-                val event = runCatching { json.decodeFromString(StreamEvent.serializer(), line) }.getOrNull()
-                    ?: continue
-
-                when (event.type) {
-                    "delta" -> event.text?.let {
-                        text.append(it)
-                        onChars(text.length)
-                    }
-
-                    // A KÓDBÓL választunk szöveget, nem a szerver mondatából: a
-                    // szerver üzenetei csak magyarul léteznek.
-                    "error" -> throw MealAiException(
-                        when (event.code) {
-                            "RATE_LIMIT" -> strings[R.string.error_busy]
-                            else -> strings[R.string.error_planner_service]
-                        }
-                    )
-
-                    "done" -> sawDone = true
-                }
-            }
-
-            // Megszakadt kapcsolatnál a fél válasz értelmezhetetlen JSON lenne, és a
-            // felhasználó egy zavaros elemzési hibát látna a valódi ok helyett.
-            if (!sawDone) throw MealAiException(
-                strings[R.string.error_connection_lost]
-            )
-            if (text.isBlank()) throw MealAiException(strings[R.string.error_empty_service_retry])
-            return text.toString()
+        // A megszakítás a KAPCSOLATOT is bontja.
+        //
+        // A „Mégsem" eddig csak a felületet állította meg. Az olvasó ciklus blokkoló
+        // hívás egy nem felfüggeszthető metódusban: a korutin megszakítása nem
+        // szakította félbe, tehát a válasz a végéig befolyt. A szerver ebből nem vette
+        // észre, hogy a kliens elment — pedig a kapcsolat bontása az EGYETLEN pont,
+        // ahol egy megszakított terv költsége tényleg megáll (lásd `backend/src/index.ts`,
+        // az `upstream` megszakító). A felhasználó lemondta, a számla megjött.
+        val cancelHandle = currentCoroutineContext().job.invokeOnCompletion { cause ->
+            if (cause != null) call.cancel()
         }
+
+        try {
+            val response = try {
+                call.execute()
+            } catch (error: IOException) {
+                // Egy megszakítás miatt bontott hívás IOException-nel jön vissza, de az
+                // nem hálózati hiba: ott a megszakítás a helyes kimenet.
+                currentCoroutineContext().ensureActive()
+                throw MealAiException(strings[R.string.error_no_network_service], error)
+            }
+            response.use {
+                checkOk(response)
+                val source = response.body?.source()
+                    ?: throw MealAiException(strings[R.string.error_empty_service_response])
+                return readStream(source, onChars)
+            }
+        } finally {
+            cancelHandle.dispose()
+        }
+    }
+
+    /**
+     * Az NDJSON folyam összeolvasása.
+     *
+     * Külön metódus, hogy a megszakítás viselkedése hálózat nélkül is mérhető legyen:
+     * a lényeg a ciklus elején álló [ensureActive], ami soronként megnézi, akarja-e
+     * még valaki ezt a választ.
+     */
+    internal suspend fun readStream(source: BufferedSource, onChars: (Int) -> Unit): String {
+        val text = StringBuilder()
+        var sawDone = false
+
+        while (!source.exhausted()) {
+            // Soronként megkérdezzük, kell-e még. Enélkül a lemondott terv a végéig
+            // befolyt, és csak utána derült ki, hogy senki nem várja.
+            currentCoroutineContext().ensureActive()
+            val line = source.readUtf8Line() ?: break
+            if (line.isBlank()) continue
+            val event = runCatching { json.decodeFromString(StreamEvent.serializer(), line) }.getOrNull()
+                ?: continue
+
+            when (event.type) {
+                "delta" -> event.text?.let {
+                    text.append(it)
+                    onChars(text.length)
+                }
+
+                // A KÓDBÓL választunk szöveget, nem a szerver mondatából: a
+                // szerver üzenetei csak magyarul léteznek.
+                "error" -> throw MealAiException(
+                    when (event.code) {
+                        "RATE_LIMIT" -> strings[R.string.error_busy]
+                        else -> strings[R.string.error_planner_service]
+                    }
+                )
+
+                "done" -> sawDone = true
+            }
+        }
+
+        // Megszakadt kapcsolatnál a fél válasz értelmezhetetlen JSON lenne, és a
+        // felhasználó egy zavaros elemzési hibát látna a valódi ok helyett.
+        if (!sawDone) throw MealAiException(strings[R.string.error_connection_lost])
+        if (text.isBlank()) throw MealAiException(strings[R.string.error_empty_service_retry])
+        return text.toString()
     }
 
     /** Jogosultság és a hónapból hátralévő keret — a szerver az igazság forrása. */

@@ -109,6 +109,12 @@ class AnthropicMealAi(
             // maradunk a Java 8-as felületen, amit a desugaring biztosan lefed.
             val events = response.stream().iterator()
             while (events.hasNext()) {
+                // Soronként megkérdezzük, kell-e még. Enélkül a „Mégsem" csak a
+                // felületet állította meg: a folyam a végéig befolyt, és a hívás a
+                // felhasználó SAJÁT Anthropic-számláján a teljes tervet kifizette.
+                // A `use` a ciklusból kilépve bontja a kapcsolatot — ettől áll meg
+                // tényleg a generálás.
+                coroutineContext.ensureActive()
                 val delta = events.next().contentBlockDelta().orElse(null) ?: continue
                 val textDelta = delta.delta().text().orElse(null) ?: continue
                 text.append(textDelta.text())

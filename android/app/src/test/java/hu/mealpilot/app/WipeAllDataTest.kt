@@ -23,6 +23,11 @@ import org.robolectric.annotation.Config
  * sorban törlődik. Egy kimaradt sor szemmel nézve semmiben nem látszik: a képernyők
  * üresek lesznek, a hiányzó tároló viszont ott marad.
  *
+ * Ez a teszt a VALÓDI konténeren fut, nem egy külön összerakott másolaton — és rögtön
+ * talált is egy összeomlást: a `clearAllTables` nem felfüggeszthető hívás, a Room
+ * pedig a fő szálon kivételt dob rá. A gomb hívója a `viewModelScope`, ami a fő
+ * szálon folytatódik, tehát a „Minden adat törlése" nem törölt, hanem elszállt.
+ *
  * Így maradt bent a TELEPÍTÉSI AZONOSÍTÓ — az egyetlen dolog, ami ezt a készüléket a
  * szerverhez köti. A helyi kvótaszámlálók nullázódtak, tehát az app három ingyenes
  * tervet mutatott, a szerver viszont a régi azonosítót látta, és minden kérést

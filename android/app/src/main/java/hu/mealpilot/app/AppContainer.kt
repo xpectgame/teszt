@@ -35,6 +35,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 /**
  * Kézi függőséginjektálás. Az app mérete ennyit még bőven elbír, cserébe nincs
@@ -304,7 +305,15 @@ class AppContainer(context: Context) {
      * joga van egy gombbal mindent eltüntetni, és a Play is elvárja, hogy legyen rá mód.
      * Az előfizetést ez nem mondja le: az a Google fiókhoz tartozik.
      */
-    suspend fun wipeAllData() {
+    suspend fun wipeAllData() = withContext(Dispatchers.IO) {
+        // A HÁTTÉRSZÁLON, az egész művelet.
+        //
+        // A hívó a `viewModelScope`, az pedig a FŐ szálon folytatódik. A
+        // `clearAllTables` viszont nem felfüggeszthető: a Room a fő szálon kivételt
+        // dob rá („Cannot access database on the main thread"), tehát a gomb megnyomása
+        // nem törölt, hanem összeomlott. Ugyanezen a szálon futott a fájlművelet és a
+        // titkosított tároló megnyitása is.
+        //
         // Az ébresztők előbb: a táblák kiürítése után az emlékeztető már nem találná
         // az étkezést, a napi összefoglaló viszont továbbra is szólna — egy olyan
         // embernek, aki épp most kérte az adatai törlését.
