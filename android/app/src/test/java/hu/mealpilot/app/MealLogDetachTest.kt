@@ -183,6 +183,42 @@ class MealLogDetachTest {
         assertEquals(900.0, totalKcal(), 0.001)
     }
 
+    @Test
+    fun `an already logged meal counts as logged, whatever the status`() = runTest {
+        // Ezt a számot az emlékeztető kérdezi meg: „szóljak még erről?". Korábban csak
+        // a MEGEVETT számított, tehát aki bejelölte, hogy kihagyja a vacsorát, az fél
+        // órával később megkapta érte az emlékeztetőt — pedig épp azt mondta meg, hogy
+        // ezzel már foglalkozott.
+        val planId = insertPlan("terv")
+        val skipped = insertMeal(planId, 0, "Csirkemell")
+        val replaced = insertMeal(planId, 0, "Lecsó")
+        val untouched = insertMeal(planId, 0, "Rántotta")
+        log(skipped, planId, LogStatus.SKIPPED, "Csirkemell", 0.0)
+        log(replaced, planId, LogStatus.REPLACED, "Gyros", 800.0)
+
+        assertEquals("A kihagyás is naplózás", 1, db.mealLogDao().loggedCountFor(skipped))
+        assertEquals("A helyettesítés is naplózás", 1, db.mealLogDao().loggedCountFor(replaced))
+        assertEquals("Amihez nem nyúltak, arról szólni kell", 0, db.mealLogDao().loggedCountFor(untouched))
+    }
+
+    @Test
+    fun `only eating counts as consumed - skipping does not`() = runTest {
+        // Ezt a számot a fogáscsere kérdezi meg: „hozzányúlhatok még?". A kihagyott
+        // fogás cserélhető, a megevett és a helyettesített nem — utóbbi kettőnél a nap
+        // kalóriái már be vannak számolva.
+        val planId = insertPlan("terv")
+        val eaten = insertMeal(planId, 0, "Rántotta")
+        val skipped = insertMeal(planId, 0, "Csirkemell")
+        val replaced = insertMeal(planId, 0, "Lecsó")
+        log(eaten, planId, LogStatus.EATEN, "Rántotta", 500.0)
+        log(skipped, planId, LogStatus.SKIPPED, "Csirkemell", 0.0)
+        log(replaced, planId, LogStatus.REPLACED, "Gyros", 800.0)
+
+        assertEquals(1, db.mealLogDao().consumedCountFor(eaten))
+        assertEquals(1, db.mealLogDao().consumedCountFor(replaced))
+        assertEquals("A kihagyásból nem lett kalória", 0, db.mealLogDao().consumedCountFor(skipped))
+    }
+
     private companion object {
         const val DAY = 20_000L
     }

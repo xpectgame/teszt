@@ -17,6 +17,7 @@ import hu.mealpilot.core.ai.RestrictionChecker
 import hu.mealpilot.core.i18n.AppLanguage
 import hu.mealpilot.core.model.DietRestriction
 import hu.mealpilot.core.model.DietStyle
+import hu.mealpilot.core.model.Nutrients
 import kotlinx.coroutines.test.runTest
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -173,6 +174,45 @@ class MealSwapRepositoryTest {
         assertTrue(
             "Mondja meg, mit tegyen: ${result.exceptionOrNull()?.message}",
             result.exceptionOrNull()?.message.orEmpty().contains("vond vissza"),
+        )
+    }
+
+    @Test
+    fun `a meal you said you would skip is not left marked skipped after the swap`() = runTest {
+        // „Ezt kihagyom" — aztán mégis inkább mást kérek. A kihagyás a RÉGI fogásról
+        // szólt; a becserélt étel áthúzott névvel és „Kihagyva" felirattal jelent meg,
+        // és a nap készültségébe is beleszámolt. A nap átírása ugyanezt már törölte,
+        // csak a fogáscsere maradt ki belőle.
+        val (_, ids) = seed("Valami egészen más fogás")
+        tracking.logPlannedMeal(ids[0], LogStatus.SKIPPED)
+        assertEquals(1, db.mealLogDao().loggedCountFor(ids[0]))
+
+        plans.swapMeal(ids[0], emptySet(), AppLanguage.HU).getOrThrow()
+
+        assertEquals(
+            "A kihagyás a régi fogásról szólt — nem maradhat a helyén",
+            0,
+            db.mealLogDao().loggedCountFor(ids[0]),
+        )
+    }
+
+    @Test
+    fun `a meal you ate something else instead of is not rewritten either`() = runTest {
+        // A „mást ettem helyette" ugyanúgy elfogyasztás, mint a „megettem": a nap
+        // kalóriái már be vannak számolva. Eddig csak a „megevett" védett, tehát ezt a
+        // fogást a csere kicserélte a napló alól.
+        val (_, ids) = seed("Valami egészen más fogás")
+        tracking.logReplacedMeal(ids[0], "Gyros", Nutrients(kcal = 800.0, proteinG = 40.0))
+        val before = db.mealDao().byId(ids[0])!!.name
+
+        val result = plans.swapMeal(ids[0], emptySet(), AppLanguage.HU)
+
+        assertTrue("A helyettesített fogást sem szabad kicserélni", result.isFailure)
+        assertEquals("És nem is szabad hozzányúlni", before, db.mealDao().byId(ids[0])!!.name)
+        assertEquals(
+            "A naplóbejegyzésnek is a helyén kell maradnia",
+            1,
+            db.mealLogDao().loggedCountFor(ids[0]),
         )
     }
 

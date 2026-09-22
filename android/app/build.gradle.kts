@@ -181,6 +181,19 @@ android {
             // hívás elszállna a teszt alatt.
             isIncludeAndroidResources = true
             isReturnDefaultValues = true
+
+            // A CI naplója az EGYETLEN, amit egy elbukott tesztről látunk: a HTML
+            // riport artefaktumként megy fel, azt viszont a hálózati szabály miatt nem
+            // lehet letölteni. Kivételtípus és sorszám nélkül nincs mit javítani —
+            // ezért kérjük ki a teljes veremkiírást.
+            all {
+                it.testLogging {
+                    events("failed")
+                    exceptionFormat = org.gradle.api.tasks.testing.logging.TestExceptionFormat.FULL
+                    showStackTraces = true
+                    showCauses = true
+                }
+            }
         }
     }
 

@@ -140,8 +140,36 @@ interface MealLogDao {
     @Query("SELECT * FROM meal_logs ORDER BY epochDay")
     suspend fun all(): List<MealLogEntity>
 
-    @Query("SELECT COUNT(*) FROM meal_logs WHERE mealId = :mealId AND status = 'EATEN'")
-    suspend fun eatenCountFor(mealId: Long): Int
+    /**
+     * Van-e MÁR bármilyen naplóbejegyzés erre a fogásra.
+     *
+     * Az emlékeztetőnek ez a kérdés: aki kihagyta a vacsorát, annak ne szóljunk érte,
+     * és aki mást evett helyette, annak sem. Korábban itt csak a „megevett" számított,
+     * pedig a kihagyás pont azt jelenti, hogy a felhasználó ezzel MÁR foglalkozott.
+     */
+    @Query("SELECT COUNT(*) FROM meal_logs WHERE mealId = :mealId")
+    suspend fun loggedCountFor(mealId: Long): Int
+
+    /**
+     * ELFOGYASZTOTT-e: megette, vagy mást evett helyette.
+     *
+     * A kettő ugyanazt jelenti a nap keretére nézve — a kalória be van számolva —,
+     * tehát a fogás tartalmát utólag egyikben sem szabad kicserélni. Eddig csak a
+     * „megevett" védett: aki bejelölte, hogy mást evett, annál a csere lefutott, és a
+     * nap kalóriái egy olyan fogáshoz tartoztak, ami már nincs is a tervben.
+     */
+    @Query("SELECT COUNT(*) FROM meal_logs WHERE mealId = :mealId AND status IN ('EATEN', 'REPLACED')")
+    suspend fun consumedCountFor(mealId: Long): Int
+
+    /**
+     * A NEM elfogyasztott bejegyzés törlése egyetlen fogásról — csere után.
+     *
+     * Ugyanaz az indok, mint a [deleteUneatenForDay]-nél: egy kihagyás arról a
+     * fogásról szólt, ami már nincs. Enélkül a frissen becserélt fogás áthúzott
+     * névvel, „Kihagyva" felirattal jelent meg, és a nap készültségébe is beleszámolt.
+     */
+    @Query("DELETE FROM meal_logs WHERE mealId = :mealId AND status NOT IN ('EATEN', 'REPLACED')")
+    suspend fun deleteUneatenForMeal(mealId: Long)
 
     /**
      * A megevett étkezés naplóbejegyzésének leválasztása a törlésre ítélt fogásról.

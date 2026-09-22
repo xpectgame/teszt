@@ -315,7 +315,9 @@ class PlanRepository(
         val meal = mealDao.byId(mealId) ?: return Result.failure(
             MealAiException(if (english) "That meal is gone." else "Ez az étkezés már nincs meg.")
         )
-        if (mealLogDao.eatenCountFor(mealId) > 0) {
+        // Megevett VAGY „mást ettem helyette": a nap kalóriái mindkettőnél be vannak
+        // számolva, tehát a fogást utólag nem cserélhetjük ki alóluk.
+        if (mealLogDao.consumedCountFor(mealId) > 0) {
             return Result.failure(
                 MealAiException(
                     if (english) "You have already logged this meal. Undo that first."
@@ -383,6 +385,12 @@ class PlanRepository(
                 )
             }
         )
+        // A KIHAGYÁS a régi fogásról szólt, ami már nincs. Enélkül a frissen becserélt
+        // fogás áthúzott névvel, „Kihagyva" felirattal jelent meg, és a nap
+        // készültségébe is beleszámolt — a felhasználónak előbb vissza kellett vonnia
+        // egy olyan döntést, amit nem is erre az ételre hozott. Ugyanezt teszi a nap
+        // átírása is (`detachLogsOfDay`), csak a fogáscsere maradt ki belőle.
+        mealLogDao.deleteUneatenForMeal(mealId)
         rebuildShoppingLists(meal.planId)
         return Result.success(replacement.name)
     }

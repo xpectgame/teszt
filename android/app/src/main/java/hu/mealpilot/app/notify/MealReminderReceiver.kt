@@ -57,8 +57,10 @@ class MealReminderReceiver : BroadcastReceiver() {
         if (!container.settings.currentSettings().remindersEnabled) return
         val meal = container.database.mealDao().byId(mealId) ?: return
 
-        // Ha már naplózva lett (pl. korábban megette), ne emlékeztessünk rá újra.
-        if (container.database.mealLogDao().eatenCountFor(mealId) > 0) return
+        // Ha már naplózva lett, ne emlékeztessünk rá újra — BÁRHOGY naplózta.
+        // Korábban csak a „megevett" számított, tehát aki bejelölte, hogy kihagyja a
+        // vacsorát, az fél órával később megkapta érte az emlékeztetőt.
+        if (container.database.mealLogDao().loggedCountFor(mealId) > 0) return
 
         Notifications.ensureChannels(context)
 
