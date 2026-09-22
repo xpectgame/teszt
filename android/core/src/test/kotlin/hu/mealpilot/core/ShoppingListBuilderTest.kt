@@ -2,6 +2,7 @@ package hu.mealpilot.core
 
 import hu.mealpilot.core.ai.Aisle
 import hu.mealpilot.core.ai.AiIngredient
+import hu.mealpilot.core.i18n.AppLanguage
 import hu.mealpilot.core.shopping.ShoppingListBuilder
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
@@ -56,6 +57,9 @@ class ShoppingListBuilderTest {
         assertEquals(1, list.size)
         assertEquals("Tojás", list[0].name)
         assertEquals("6 db", list[0].displayQuantity())
+        // És ugyanaz a formázás fut a bevásárlólista képernyőjén is — korábban ott egy
+        // külön, tesztelt nélküli másolat állt, ami az egységet nyersen írta ki.
+        assertEquals("6 pcs", list[0].displayQuantity(AppLanguage.EN))
     }
 
     @Test

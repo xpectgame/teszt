@@ -49,9 +49,9 @@ import hu.mealpilot.app.ui.theme.LocalDarkTheme
 import hu.mealpilot.app.ui.theme.MealColors
 import hu.mealpilot.app.ui.theme.PlateShape
 import hu.mealpilot.core.ai.Aisle
-import hu.mealpilot.core.ai.Units
 import hu.mealpilot.core.i18n.AppLanguage
 import hu.mealpilot.core.i18n.label
+import hu.mealpilot.core.shopping.ShoppingFormat
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -316,15 +316,11 @@ fun ShoppingScreen(
     }
 }
 
-/** A tárolt alapegységet (g/ml) olvasható formára hozza, a felület nyelvén. */
-private fun displayQuantity(item: ShoppingItemEntity, language: AppLanguage): String {
-    fun trim(value: Double): String {
-        val rounded = Math.round(value * 100) / 100.0
-        return if (rounded % 1.0 == 0.0) rounded.toInt().toString() else rounded.toString()
-    }
-    return when {
-        item.unit == "g" && item.quantity >= 1000 -> "${trim(item.quantity / 1000)} kg"
-        item.unit == "ml" && item.quantity >= 1000 -> "${trim(item.quantity / 1000)} l"
-        else -> "${trim(item.quantity)} ${Units.label(item.unit, item.quantity, language)}"
-    }
-}
+/**
+ * A tárolt alapegységet (g/ml) olvasható formára hozza, a felület nyelvén.
+ *
+ * A formázás a `:core`-ban él, mert eddig KÉT helyen élt: ott is, itt is, és csak az
+ * egyiket mérte teszt — méghozzá azt, amelyik sehol nem futott.
+ */
+private fun displayQuantity(item: ShoppingItemEntity, language: AppLanguage): String =
+    ShoppingFormat.quantity(item.quantity, item.unit, language)

@@ -2,6 +2,8 @@ package hu.mealpilot.core.shopping
 
 import hu.mealpilot.core.ai.Aisle
 import hu.mealpilot.core.ai.AiIngredient
+import hu.mealpilot.core.ai.Units
+import hu.mealpilot.core.i18n.AppLanguage
 import kotlin.math.roundToInt
 
 /** Egy összevont bevásárlólista-tétel. */
@@ -15,10 +17,26 @@ data class ShoppingItem(
     val notes: List<String> = emptyList(),
 ) {
     /** Emberi olvasásra formázott mennyiség (g → kg, ml → l nagy tételeknél). */
-    fun displayQuantity(): String = when {
+    fun displayQuantity(language: AppLanguage = AppLanguage.DEFAULT): String =
+        ShoppingFormat.quantity(quantity, unit, language)
+}
+
+/**
+ * A tárolt alapegység (g/ml) olvasható alakja, a FELÜLET nyelvén.
+ *
+ * Egy helyen, mert két helyen volt. A `:core` változatát három teszt mérte, a
+ * bevásárlólista képernyője viszont a saját, tesztelt nélküli másolatát használta —
+ * és a kettő nem is egyezett: a `:core` az egységet nyersen írta ki, tehát egy angol
+ * felhasználó „2 db"-ot látott volna „2 pcs" helyett. A tesztek addig egy olyan
+ * függvényt védtek, ami sehol nem futott.
+ */
+object ShoppingFormat {
+
+    fun quantity(quantity: Double, unit: String, language: AppLanguage): String = when {
+        // A kg és az l nemzetközi rövidítés: ezeket nem kell fordítani.
         unit == "g" && quantity >= 1000 -> "${trim(quantity / 1000)} kg"
         unit == "ml" && quantity >= 1000 -> "${trim(quantity / 1000)} l"
-        else -> "${trim(quantity)} $unit"
+        else -> "${trim(quantity)} ${Units.label(unit, quantity, language)}"
     }
 
     private fun trim(value: Double): String {
