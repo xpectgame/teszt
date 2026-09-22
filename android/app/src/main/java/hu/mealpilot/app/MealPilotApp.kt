@@ -6,6 +6,7 @@ import hu.mealpilot.app.data.telemetry.TelemetryEvent
 import hu.mealpilot.app.data.telemetry.TelemetryWorker
 import hu.mealpilot.app.notify.Notifications
 import hu.mealpilot.app.notify.ReminderRefreshWorker
+import kotlinx.coroutines.launch
 
 class MealPilotApp : Application() {
 
@@ -21,6 +22,10 @@ class MealPilotApp : Application() {
         container = AppContainer(this)
         Notifications.ensureChannels(this)
         ReminderRefreshWorker.enqueuePeriodic(this)
+
+        // A keret egyeztetése a szerverrel. Csendben, a háttérben: a felület addig a
+        // helyi számlálókat mutatja, utána a szerver igazságát.
+        container.backgroundScope.launch { container.refreshEntitlement() }
 
         container.telemetry.record(TelemetryEvent.APP_OPEN)
         TelemetryWorker.enqueuePeriodic(this)

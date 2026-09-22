@@ -299,6 +299,34 @@ class AppContainer(context: Context) {
     val hasPlanner: Boolean get() = secureKeyStore.hasApiKey() || backendClient != null
 
     /**
+     * A jogosultság és a keret ÖSSZEHANGOLÁSA a szerverrel.
+     *
+     * A `/v1/session` végpont a kezdetektől megvan — a szerveren is, a kliensben is —,
+     * csak soha senki nem hívta meg. A helyi számlálók így magukban maradtak, pedig a
+     * döntést a szerver hozza, és a kettő szét tud csúszni: egy készülékcsere vagy egy
+     * visszaállítás a DataStore-t átviszi, a telepítési azonosítót viszont nem (az
+     * szándékosan ki van zárva a mentésből). Az új készüléken az app elhasznált keretet
+     * mutatott, a szerver meg egy vadonatúj azonosítót látott teli kerettel: a
+     * felhasználó a saját ingyenes tervei elől kapott fizetőfalat.
+     *
+     * CSENDBEN fut és legjobb szándékkal: hálózat nélkül nincs mit egyeztetni, és ez
+     * nem olyan hiba, amivel a felhasználót zaklatni kell. A szerver döntését a
+     * tényleges hívás úgyis érvényesíti.
+     */
+    suspend fun refreshEntitlement() {
+        val client = backendClient ?: return
+        runCatching { withContext(Dispatchers.IO) { client.session() } }
+            .onSuccess { session ->
+                entitlements.applyServerUsage(
+                    periodKey = session.period,
+                    plans = session.usage.plans,
+                    messages = session.usage.messages,
+                )
+            }
+            .onFailure { Log.i("AppContainer", "A keret egyeztetése most nem ment: ${it.javaClass.simpleName}") }
+    }
+
+    /**
      * Minden helyben tárolt adat törlése.
      *
      * Az app nem vezet fiókot, minden a készüléken van — de a felhasználónak akkor is

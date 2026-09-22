@@ -65,6 +65,27 @@ class EntitlementRepository(
 
     suspend fun isDeveloperPremium(): Boolean = store.data.first()[K_DEV_PREMIUM] ?: false
 
+    /**
+     * A SZERVER számlálóinak átvétele.
+     *
+     * A helyi számlálók a felületért felelnek, a döntést a szerver hozza — de a kettő
+     * szét tud csúszni, és nem csak visszaélésből. Egy készülékcsere vagy egy
+     * visszaállítás a DataStore-t átviszi, a telepítési azonosítót viszont NEM (az
+     * szándékosan ki van zárva a mentésből). Az új készüléken tehát az app elhasznált
+     * keretet mutatott, a szerver meg egy vadonatúj azonosítót látott teli kerettel:
+     * a felhasználó a saját ingyenes tervei elől kapott fizetőfalat, és sosem derült
+     * ki neki, hogy jártak volna.
+     *
+     * A szerver az igazság forrása, tehát felül is írjuk vele a helyi értékeket.
+     */
+    suspend fun applyServerUsage(periodKey: String, plans: Int, messages: Int) {
+        store.edit { prefs ->
+            prefs[K_PERIOD] = periodKey.ifBlank { BillingPeriod.keyFor(prefs.tier()) }
+            prefs[K_PLANS] = plans.coerceAtLeast(0)
+            prefs[K_MESSAGES] = messages.coerceAtLeast(0)
+        }
+    }
+
     suspend fun recordPlanGenerated() = bumpUsage { it.copy(aiPlans = it.aiPlans + 1) }
 
     suspend fun recordChatMessage() = bumpUsage { it.copy(chatMessages = it.chatMessages + 1) }
