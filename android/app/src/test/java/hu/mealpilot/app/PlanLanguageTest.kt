@@ -32,6 +32,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
+import java.time.LocalDate
 
 /**
  * A kész terv a SAJÁT nyelvén marad.
@@ -145,6 +146,56 @@ class PlanLanguageTest {
     }
 
     @Test
+    fun `an English request does not carry the Hungarian plan's dish names`() = runTest {
+        // Az „ezeket ne ismételd" lista az ELŐZŐ, aktív tervből jön. Ha az magyar volt
+        // és most angolt kérünk, a magyar nevek semmit nem tiltanának le — a modell
+        // nem tudja összepárosítani őket azzal, amit írni fog —, viszont magyar
+        // szavakat tennének egy angol promptba.
+        seed(planLanguage = AppLanguage.HU.name)
+        val ai = LanguageSpy()
+        val profile = UserProfile()
+
+        plans.generateAndSave(
+            ai = ai,
+            profile = profile,
+            budget = EnergyCalculator.budget(profile, AppLanguage.EN),
+            startDate = LocalDate.ofEpochDay(DAY),
+            days = 1,
+            freeText = "",
+            language = AppLanguage.EN,
+        )
+
+        assertEquals(
+            "Másik nyelvű terv nevei nem mehetnek bele a kérésbe",
+            emptyList<String>(),
+            ai.lastPlanRequest?.avoidRecipes,
+        )
+    }
+
+    @Test
+    fun `a Hungarian request does carry the Hungarian plan's dish names`() = runTest {
+        // A szűrés nem vehet el a működő esetből: azonos nyelvnél a lista a régi.
+        seed(planLanguage = AppLanguage.HU.name)
+        val ai = LanguageSpy()
+        val profile = UserProfile()
+
+        plans.generateAndSave(
+            ai = ai,
+            profile = profile,
+            budget = EnergyCalculator.budget(profile, AppLanguage.HU),
+            startDate = LocalDate.ofEpochDay(DAY),
+            days = 1,
+            freeText = "",
+            language = AppLanguage.HU,
+        )
+
+        assertEquals(
+            listOf("Valami egészen más fogás"),
+            ai.lastPlanRequest?.avoidRecipes,
+        )
+    }
+
+    @Test
     fun `the day rewrite asks the model in the plan's language`() = runTest {
         val mealId = seed(planLanguage = AppLanguage.HU.name)
         val planId = db.mealDao().byId(mealId)!!.planId
@@ -173,6 +224,8 @@ class PlanLanguageTest {
     private class LanguageSpy : MealAi {
         var lastRequest: PlanRequest? = null
             private set
+        var lastPlanRequest: PlanRequest? = null
+            private set
 
         override val isConfigured = true
         override val canEstimate = true
@@ -181,7 +234,10 @@ class PlanLanguageTest {
             request: PlanRequest,
             onProgress: (GenerationProgress) -> Unit,
             onChunk: suspend (AiPlanResponse) -> Unit,
-        ): Result<AiPlanResponse> = Result.failure(UnsupportedOperationException("nem ez a teszt tárgya"))
+        ): Result<AiPlanResponse> {
+            lastPlanRequest = request
+            return Result.failure(UnsupportedOperationException("a válasz itt nem számít"))
+        }
 
         override suspend fun refineDay(
             request: PlanRequest,

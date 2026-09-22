@@ -102,6 +102,26 @@ class SecureKeyStore(context: Context) {
         return generated
     }
 
+    /**
+     * Mindent töröl: az API kulcsot ÉS a telepítési azonosítót.
+     *
+     * A „Minden adat törlése" eddig csak a kulcsot vette le. A telepítési azonosító
+     * — az EGYETLEN dolog, ami ezt a készüléket a szerverhez köti — ott maradt, pedig
+     * az [installId] leírása azt ígéri, hogy eltűnik és újat kap.
+     *
+     * Nem csak ígéret kérdése. A helyi kvótaszámlálók a törléssel nullázódnak, tehát
+     * az app három ingyenes tervet mutatott — a szerver viszont a RÉGI azonosítót
+     * látta, és minden kérést elutasított. A felhasználó mást látott, mint amit kapott.
+     *
+     * A próbakeret így újraindítható. Ez nem új rés: ugyanez megy az app
+     * eltávolításával vagy az Android „Adatok törlése" gombjával is, és a backend
+     * `limits.ts` ki is mondja, hogy a valódi felső korlát a közös napi mennyezet,
+     * nem a telepítésenkénti számláló.
+     */
+    fun clear() {
+        prefs.edit().clear().apply()
+    }
+
     private companion object {
         const val TAG = "SecureKeyStore"
         const val FILE_NAME = "mealpilot_secure_prefs"

@@ -169,6 +169,9 @@ class ExportRepository(
                     add(buildJsonObject {
                         put("name", entry.favorite.name)
                         put("slot", entry.favorite.slot)
+                        // A név nyelve is a felhasználó adata: e nélkül egy kivitt
+                        // kedvenc nem mondaná meg, milyen nyelven olvasandó.
+                        put("language", entry.favorite.language)
                         put("description", entry.favorite.description)
                         put("prep_minutes", entry.favorite.prepMinutes)
                         put("nutrition", nutrition(entry.favorite.nutrients))

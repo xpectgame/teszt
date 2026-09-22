@@ -108,6 +108,13 @@ class DatabaseMigrationSmokeTest {
             )
             assertEquals(1, opened.favoriteDao().count())
             assertNotNull(opened.favoriteDao().idOf("lecsó"))
+            // A kedvenc nyelve az 5 → 6 migrációval jött. Az újonnan megjelölt kedvenc
+            // üres nyelvvel is megtalálható MINDKÉT nyelvhez — ez a korábbi viselkedés,
+            // és a régi soroknál ez a helyes.
+            assertEquals(
+                listOf("Lecsó"),
+                opened.favoriteDao().recentNames(hu.mealpilot.core.i18n.AppLanguage.EN.name, 10),
+            )
         }
     }
 

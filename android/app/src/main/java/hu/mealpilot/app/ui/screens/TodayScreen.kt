@@ -192,7 +192,9 @@ class TodayViewModel(private val container: AppContainer) : ViewModel() {
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptySet())
 
     fun toggleFavorite(data: MealWithIngredients) = viewModelScope.launch {
-        container.favoriteRepository.toggle(data, System.currentTimeMillis())
+        // A TERV nyelvén mentjük, nem a felületén: a fogás neve onnan másolódik.
+        val language = container.planRepository.contentLanguageOf(data.meal.planId, container.language)
+        container.favoriteRepository.toggle(data, System.currentTimeMillis(), language)
     }
 
     /** Fogáscsere a beépített bankból; a hibaüzenetet is továbbadja. */

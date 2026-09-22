@@ -250,6 +250,18 @@ data class FavoriteMealEntity(
     @Embedded(prefix = "n_") val nutrients: NutrientsColumns = NutrientsColumns(),
     /** JSON tömb az elkészítés lépéseivel. */
     val recipeStepsJson: String = "[]",
+    /**
+     * Milyen NYELVŰ tervből került ide — az [hu.mealpilot.core.i18n.AppLanguage] neve.
+     *
+     * A kedvenc neve bemegy a tervezési promptba („ezek közül tegyél be néhányat").
+     * Nyelv nélkül a magyar kedvencek nevei egy angol terv kérésébe is bekerültek,
+     * magyarul — az angol tervben pedig nincs semmi, ami a magyar maradványt elkapná
+     * (a [hu.mealpilot.core.ai.LanguageChecker] szándékosan csak fordítva néz).
+     *
+     * Üres a migráció előtt megjelölt kedvenceknél: azoknál nincs mit tudni, és marad
+     * a korábbi viselkedés.
+     */
+    val language: String = "",
     val addedAtMillis: Long,
 )
 

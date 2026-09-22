@@ -384,8 +384,17 @@ interface FavoriteDao {
     @Query("SELECT id FROM favorite_meals WHERE nameKey = :nameKey")
     suspend fun idOf(nameKey: String): Long?
 
-    @Query("SELECT name FROM favorite_meals ORDER BY addedAtMillis DESC LIMIT :limit")
-    suspend fun recentNames(limit: Int): List<String>
+    /**
+     * A tervezési prompthoz: csak az ILYEN nyelvű kedvencek nevei.
+     *
+     * Az üres nyelv is átmegy — a migráció előtt megjelölt kedvencekről nem tudjuk,
+     * milyen nyelvűek, és egy néma eltűnés rosszabb lenne, mint a korábbi viselkedés.
+     */
+    @Query(
+        "SELECT name FROM favorite_meals WHERE language = :language OR language = '' " +
+            "ORDER BY addedAtMillis DESC LIMIT :limit"
+    )
+    suspend fun recentNames(language: String, limit: Int): List<String>
 
     @Query("SELECT COUNT(*) FROM favorite_meals")
     suspend fun count(): Int

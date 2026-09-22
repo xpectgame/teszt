@@ -5,6 +5,7 @@ import hu.mealpilot.app.data.local.FavoriteIngredientEntity
 import hu.mealpilot.app.data.local.FavoriteMealEntity
 import hu.mealpilot.app.data.local.FavoriteWithIngredients
 import hu.mealpilot.app.data.local.MealWithIngredients
+import hu.mealpilot.core.i18n.AppLanguage
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 
@@ -14,6 +15,12 @@ import kotlinx.coroutines.flow.map
  * A kedvenc MÁSOLAT, nem hivatkozás a terv fogására. A tervek törölhetők, a fogásaik a
  * tervvel együtt szűnnek meg — egy kedvenc, ami a terv törlésekor eltűnik, nem kedvenc.
  * Ezért kerül át a recept és a hozzávalólista is.
+ *
+ * A kedvenc a NYELVÉT is viszi. A neve bemegy a tervezési promptba („ezek közül
+ * tegyél be néhányat") — nyelv nélkül a magyar kedvencek nevei egy angol terv
+ * kérésébe is bekerültek, magyarul. Az angol tervben pedig nincs semmi, ami a magyar
+ * maradványt elkapná: a [hu.mealpilot.core.ai.LanguageChecker] szándékosan csak
+ * fordítva néz.
  *
  * Az azonosság a NÉVEN áll (kisbetűsen, levágva), nem a fogás azonosítóján. A „Shakshuka"
  * hétfőn és pénteken két külön `meals` sor, a felhasználónak viszont ugyanaz az étel: ha
@@ -39,8 +46,10 @@ class FavoriteRepository(private val dao: FavoriteDao) {
      * Korlátozva: a promptba nem mehet be nyitott számú sor, és a régi kedvenc kevésbé
      * mond valamit a mai ízlésről, mint a tegnapi.
      */
-    suspend fun namesForPlanning(limit: Int = PLANNING_LIMIT): List<String> =
-        dao.recentNames(limit)
+    suspend fun namesForPlanning(
+        language: AppLanguage,
+        limit: Int = PLANNING_LIMIT,
+    ): List<String> = dao.recentNames(language.name, limit)
 
     /**
      * Megjelöli vagy leveszi a jelölést. Az új állapotot adja vissza (igaz = kedvenc lett).
@@ -48,7 +57,16 @@ class FavoriteRepository(private val dao: FavoriteDao) {
      * Szándékosan kapcsoló: a felületen egyetlen szív van, és a felhasználónak nem kell
      * tudnia, épp melyik művelet fut.
      */
-    suspend fun toggle(data: MealWithIngredients, nowMillis: Long): Boolean {
+    suspend fun toggle(
+        data: MealWithIngredients,
+        nowMillis: Long,
+        /**
+         * Annak a tervnek a nyelve, amelyikből a fogás jön — nem a felületé. A kész
+         * terv a saját nyelvén marad, tehát a belőle mentett kedvenc neve is azon a
+         * nyelven áll.
+         */
+        language: AppLanguage,
+    ): Boolean {
         val existing = dao.idOf(key(data.meal.name))
         if (existing != null) {
             dao.deleteById(existing)
@@ -65,6 +83,7 @@ class FavoriteRepository(private val dao: FavoriteDao) {
                 servings = meal.servings,
                 nutrients = meal.nutrients,
                 recipeStepsJson = meal.recipeStepsJson,
+                language = language.name,
                 addedAtMillis = nowMillis,
             )
         )

@@ -20,7 +20,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         FavoriteMealEntity::class,
         FavoriteIngredientEntity::class,
     ],
-    version = 5,
+    version = 6,
     exportSchema = true,
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -156,6 +156,20 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        /**
+         * A kedvenc nyelve.
+         *
+         * Üres alapértékkel, ugyanabból az okból, mint a terveknél: a MEGLÉVŐ
+         * kedvencekről nem tudjuk, milyen nyelvű tervből kerültek ide. Az üres érték
+         * a tervezési promptban mindkét nyelvhez átmegy — ez a korábbi viselkedés,
+         * és egy néma eltűnés rosszabb lenne nála.
+         */
+        private val MIGRATION_5_6 = object : Migration(5, 6) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE `favorite_meals` ADD COLUMN `language` TEXT NOT NULL DEFAULT ''")
+            }
+        }
+
         @Volatile
         private var instance: AppDatabase? = null
 
@@ -169,7 +183,7 @@ abstract class AppDatabase : RoomDatabase() {
          */
         internal fun builder(context: Context, name: String = NAME) =
             Room.databaseBuilder(context.applicationContext, AppDatabase::class.java, name)
-                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6)
                 .setJournalMode(RoomDatabase.JournalMode.WRITE_AHEAD_LOGGING)
 
         fun get(context: Context): AppDatabase = instance ?: synchronized(this) {

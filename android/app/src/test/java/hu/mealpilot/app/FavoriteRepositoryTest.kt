@@ -11,6 +11,7 @@ import hu.mealpilot.app.data.local.MealWithIngredients
 import hu.mealpilot.app.data.local.NutrientsColumns
 import hu.mealpilot.app.data.local.PlanEntity
 import hu.mealpilot.app.data.repo.FavoriteRepository
+import hu.mealpilot.core.i18n.AppLanguage
 import kotlinx.coroutines.test.runTest
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -86,7 +87,7 @@ class FavoriteRepositoryTest {
     @Test
     fun `a favourite keeps the whole recipe, not just the name`() = runTest {
         val meal = insertMeal(insertPlan(), "Grillcsirke barna rizzsel")
-        assertTrue(favorites.toggle(meal, NOW))
+        assertTrue(favorites.toggle(meal, NOW, AppLanguage.HU))
 
         val saved = db.favoriteDao().idOf("grillcsirke barna rizzsel")
         assertNotNull("Be kellett kerülnie", saved)
@@ -106,7 +107,7 @@ class FavoriteRepositoryTest {
         // kell élnie, különben minden új terv kisöpörné az egészet.
         val planId = insertPlan()
         val meal = insertMeal(planId, "Shakshuka")
-        favorites.toggle(meal, NOW)
+        favorites.toggle(meal, NOW, AppLanguage.HU)
         assertEquals(1, favorites.count())
 
         db.planDao().delete(planId)
@@ -125,20 +126,20 @@ class FavoriteRepositoryTest {
         val monday = insertMeal(planId, "Shakshuka", dayIndex = 0)
         val friday = insertMeal(planId, "shakshuka ", dayIndex = 4)
 
-        assertTrue(favorites.toggle(monday, NOW))
+        assertTrue(favorites.toggle(monday, NOW, AppLanguage.HU))
         assertTrue("A pénteki ugyanaz az étel", favorites.isFavorite(friday.meal.name))
         assertEquals(1, favorites.count())
 
         // És a péntekin koppintva LEKERÜL, nem duplázódik.
-        assertFalse(favorites.toggle(friday, NOW))
+        assertFalse(favorites.toggle(friday, NOW, AppLanguage.HU))
         assertEquals(0, favorites.count())
     }
 
     @Test
     fun `toggling twice leaves nothing behind`() = runTest {
         val meal = insertMeal(insertPlan(), "Chana masala")
-        favorites.toggle(meal, NOW)
-        favorites.toggle(meal, NOW)
+        favorites.toggle(meal, NOW, AppLanguage.HU)
+        favorites.toggle(meal, NOW, AppLanguage.HU)
 
         assertEquals(0, favorites.count())
         // A hozzávalók a kaszkádon keresztül mennek — ha nem mennek, árva sorok
@@ -149,12 +150,47 @@ class FavoriteRepositoryTest {
     @Test
     fun `the planner gets the newest favourites first`() = runTest {
         val planId = insertPlan()
-        favorites.toggle(insertMeal(planId, "Első", dayIndex = 0), NOW)
-        favorites.toggle(insertMeal(planId, "Második", dayIndex = 1), NOW + 1000)
-        favorites.toggle(insertMeal(planId, "Harmadik", dayIndex = 2), NOW + 2000)
+        favorites.toggle(insertMeal(planId, "Első", dayIndex = 0), NOW, AppLanguage.HU)
+        favorites.toggle(insertMeal(planId, "Második", dayIndex = 1), NOW + 1000, AppLanguage.HU)
+        favorites.toggle(insertMeal(planId, "Harmadik", dayIndex = 2), NOW + 2000, AppLanguage.HU)
 
-        assertEquals(listOf("Harmadik", "Második", "Első"), favorites.namesForPlanning())
-        assertEquals(listOf("Harmadik", "Második"), favorites.namesForPlanning(limit = 2))
+        assertEquals(
+            listOf("Harmadik", "Második", "Első"),
+            favorites.namesForPlanning(AppLanguage.HU),
+        )
+        assertEquals(
+            listOf("Harmadik", "Második"),
+            favorites.namesForPlanning(AppLanguage.HU, limit = 2),
+        )
+    }
+
+    @Test
+    fun `an English plan does not get the Hungarian favourites' names`() = runTest {
+        // A kedvenc neve SZÓ SZERINT bemegy a promptba („ezek közül tegyél be
+        // néhányat"). Nyelvszűrés nélkül a magyar nevek egy angol kérésbe is
+        // bekerültek, magyarul — és az angol tervben nincs semmi, ami a magyar
+        // maradványt elkapná: a LanguageChecker szándékosan csak fordítva néz.
+        val planId = insertPlan()
+        favorites.toggle(insertMeal(planId, "Rakott krumpli", dayIndex = 0), NOW, AppLanguage.HU)
+        favorites.toggle(insertMeal(planId, "Chicken salad", dayIndex = 1), NOW + 1000, AppLanguage.EN)
+
+        assertEquals(listOf("Rakott krumpli"), favorites.namesForPlanning(AppLanguage.HU))
+        assertEquals(listOf("Chicken salad"), favorites.namesForPlanning(AppLanguage.EN))
+    }
+
+    @Test
+    fun `a favourite from before the migration still counts in both languages`() = runTest {
+        // A migráció előtt megjelölt kedvencekről nem tudjuk, milyen nyelvűek.
+        // Kitalálni rosszabb lenne, mint bevallani: ott marad a korábbi viselkedés.
+        db.favoriteDao().insert(
+            hu.mealpilot.app.data.local.FavoriteMealEntity(
+                name = "Régi kedvenc", nameKey = "régi kedvenc", slot = "LUNCH",
+                language = "", addedAtMillis = NOW,
+            )
+        )
+
+        assertEquals(listOf("Régi kedvenc"), favorites.namesForPlanning(AppLanguage.HU))
+        assertEquals(listOf("Régi kedvenc"), favorites.namesForPlanning(AppLanguage.EN))
     }
 
     private companion object {

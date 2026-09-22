@@ -112,7 +112,9 @@ class MealDetailViewModel(
 
     /** Megjelöli vagy leveszi a jelölést; az új állapotot adja vissza. */
     fun toggleFavorite(data: MealWithIngredients, onDone: (Boolean) -> Unit) = viewModelScope.launch {
-        onDone(container.favoriteRepository.toggle(data, System.currentTimeMillis()))
+        // A TERV nyelvén mentjük, nem a felületén: a fogás neve onnan másolódik.
+        val language = container.planRepository.contentLanguageOf(data.meal.planId, container.language)
+        onDone(container.favoriteRepository.toggle(data, System.currentTimeMillis(), language))
     }
 
     fun log(mealId: Long, status: LogStatus) = viewModelScope.launch {

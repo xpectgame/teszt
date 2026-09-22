@@ -99,7 +99,15 @@ class PlanRepository(
         language: AppLanguage = AppLanguage.DEFAULT,
         onProgress: (GenerationProgress) -> Unit = {},
     ): Result<PlanGenerationOutcome> {
-        val previousNames = planDao.activePlan()?.let { mealDao.namesInPlan(it.id) } ?: emptyList()
+        // Az „ezeket ne ismételd" lista az ELŐZŐ tervből jön — ami más nyelvű is lehet.
+        // Magyar nevekkel egy angol kérésben a lista semmit nem tiltana le (a modell
+        // nem tudja összepárosítani őket azzal, amit írni fog), viszont magyar szavakat
+        // tenne egy angol promptba. Inkább üres, mint félrevezető.
+        val previous = planDao.activePlan()
+        val previousNames = previous
+            ?.takeIf { contentLanguage(it, language) == language }
+            ?.let { mealDao.namesInPlan(it.id) }
+            ?: emptyList()
 
         val request = PlanRequest(
             profile = profile,
@@ -109,7 +117,10 @@ class PlanRepository(
             totalDays = days,
             freeText = freeText,
             avoidRecipes = previousNames.takeLast(40),
-            favoriteRecipes = favoriteDao.recentNames(FavoriteRepository.PLANNING_LIMIT),
+            // Csak az AZONOS nyelvű kedvencek. A nevük szó szerint bemegy a promptba
+            // („ezek közül tegyél be néhányat"), és egy angol tervben a magyar
+            // maradványt semmi nem kapná el: a LanguageChecker csak fordítva néz.
+            favoriteRecipes = favoriteDao.recentNames(language.name, FavoriteRepository.PLANNING_LIMIT),
             startWeekday = startDate.weekdayName(language),
             // Egy hónapos terv percekig készül. Ha a felhasználó közben nyelvet vált,
             // a maradék szakaszok másik nyelven érkeznének UGYANABBA a tervbe: a
@@ -267,6 +278,15 @@ class PlanRepository(
      *
      * A migráció előtt készült terveknél üres a mező: ott marad a korábbi viselkedés.
      */
+    /**
+     * Milyen nyelven állnak EBBEN a tervben a szövegek.
+     *
+     * Kívülről is kell: a kedvencnél is a terv nyelve számít, nem a felületé — a
+     * kedvenc neve onnan másolódik, és később egy tervezési promptba kerül.
+     */
+    suspend fun contentLanguageOf(planId: Long, uiLanguage: AppLanguage): AppLanguage =
+        planDao.byId(planId)?.let { contentLanguage(it, uiLanguage) } ?: uiLanguage
+
     private fun contentLanguage(plan: PlanEntity, uiLanguage: AppLanguage): AppLanguage =
         plan.language.takeIf { it.isNotBlank() }
             ?.let { name -> AppLanguage.entries.firstOrNull { it.name == name } }
@@ -310,7 +330,7 @@ class PlanRepository(
 
         // A TERV nyelvén írunk bele, nem a felületén. A kizárásszűrő is ezt kapja: a
         // kulcsszólistának ahhoz a nyelvhez kell illeszkednie, amelyiken a nevek állnak.
-        val planLanguage = planDao.byId(meal.planId)?.let { contentLanguage(it, language) } ?: language
+        val planLanguage = contentLanguageOf(meal.planId, language)
 
         val template = MealSwap.next(
             slot = slot,

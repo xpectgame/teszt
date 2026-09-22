@@ -316,6 +316,10 @@ class AppContainer(context: Context) {
         telemetry.clearAll()
         languageStore.clear()
         CrashReporter.clear(appContext)
-        secureKeyStore.setApiKey(null)
+        // Nem csak a kulcsot: a telepítési azonosítót IS. Az köti ezt a készüléket a
+        // szerverhez, és a helyi számlálók nullázása mellett a régi azonosító azt
+        // jelentette, hogy az app három ingyenes tervet mutat, a szerver meg mindet
+        // elutasítja.
+        secureKeyStore.clear()
     }
 }
