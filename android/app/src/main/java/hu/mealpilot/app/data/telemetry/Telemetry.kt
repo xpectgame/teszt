@@ -80,29 +80,50 @@ class Telemetry(
         if (count <= 0) return
         scope.launch {
             if (!enabled()) return@launch
-            val today = LocalDate.now().toString()
-            store.edit { prefs ->
-                val storedDay = prefs[K_DAY]
-                if (storedDay == null) prefs[K_DAY] = today
-                val key = intPreferencesKey(PREFIX + event.key)
-                prefs[key] = (prefs[key] ?: 0) + count
-            }
+            recordOn(LocalDate.now().toString(), event, count)
         }
     }
 
+    /**
+     * A tényleges könyvelés, megadott napra.
+     *
+     * `internal`, mert a NAP szerepét csak így lehet megmérni: a hiba akkor jelentkezik,
+     * ha egy adag több napon át bent ragad, és ezt a rendszeróra átállítása nélkül
+     * másképp nem lehet előállítani.
+     */
+    internal suspend fun recordOn(day: String, event: TelemetryEvent, count: Int = 1) {
+        store.edit { prefs ->
+            val key = keyFor(day, event.key)
+            prefs[key] = (prefs[key] ?: 0) + count
+        }
+    }
+
+    /**
+     * A LEGRÉGEBBI még fel nem töltött nap adagja.
+     *
+     * Naponta külön számlálók, mert egy adag egy naphoz tartozik. Korábban egyetlen
+     * közös számlálókészlet volt, a nap pedig egy külön mezőben, amit csak akkor
+     * állítottunk be, ha üres volt — vagyis amíg egy feltöltés nem sikerült (nincs
+     * hálózat, nem futott le a háttérmunka), a KÖVETKEZŐ napok eseményei is a régi
+     * nap rovatába gyűltek. A szerver így három nap eseményeit egy napra könyvelte,
+     * a másik kettőről meg azt hitte, hogy senki nem használta az appot.
+     *
+     * Egy futás egy napot visz. A háttérmunka indításkor is fut, tehát a torlódás
+     * gyorsan leürül.
+     */
     suspend fun snapshot(): TelemetrySnapshot {
         val prefs = store.data.first()
-        val counts = prefs.asMap()
-            .mapNotNull { (key, value) ->
-                val name = key.name.removePrefix(PREFIX).takeIf { it != key.name } ?: return@mapNotNull null
-                val count = value as? Int ?: return@mapNotNull null
-                name to count
-            }
-            .toMap()
-        val day = prefs[K_DAY] ?: LocalDate.now().toString()
+        val byDay = sortedMapOf<String, MutableMap<String, Int>>()
+        prefs.asMap().forEach { (key, value) ->
+            val parsed = parseKey(key.name) ?: return@forEach
+            val count = value as? Int ?: return@forEach
+            byDay.getOrPut(parsed.first) { mutableMapOf() }[parsed.second] = count
+        }
+        val oldest = byDay.entries.firstOrNull()
+        val day = oldest?.key ?: LocalDate.now().toString()
         return TelemetrySnapshot(
             day = day,
-            counts = counts,
+            counts = oldest?.value.orEmpty(),
             firstToday = prefs[K_COUNTED_DAY] != day,
         )
     }
@@ -111,11 +132,10 @@ class Telemetry(
     suspend fun clear(snapshot: TelemetrySnapshot) {
         store.edit { prefs ->
             snapshot.counts.forEach { (name, uploaded) ->
-                val key = intPreferencesKey(PREFIX + name)
+                val key = keyFor(snapshot.day, name)
                 val remaining = (prefs[key] ?: 0) - uploaded
                 if (remaining > 0) prefs[key] = remaining else prefs.remove(key)
             }
-            prefs.remove(K_DAY)
             // Innentől ezt a napot már jelentettük: a további feltöltések nem
             // növelhetik a napi felhasználószámot.
             prefs[K_COUNTED_DAY] = snapshot.day
@@ -128,7 +148,19 @@ class Telemetry(
 
     private companion object {
         const val PREFIX = "evt_"
-        val K_DAY = stringPreferencesKey("day")
+
+        /** `evt_2026-09-24_app_open` — a nap mindig tíz karakter, tehát egyértelmű. */
+        const val DAY_LENGTH = 10
+
         val K_COUNTED_DAY = stringPreferencesKey("counted_day")
+
+        fun keyFor(day: String, event: String) = intPreferencesKey("$PREFIX${day}_$event")
+
+        /** (nap, esemény), vagy null, ha nem számlálókulcs. */
+        fun parseKey(name: String): Pair<String, String>? {
+            val rest = name.removePrefix(PREFIX).takeIf { it != name } ?: return null
+            if (rest.length <= DAY_LENGTH + 1 || rest[DAY_LENGTH] != '_') return null
+            return rest.take(DAY_LENGTH) to rest.substring(DAY_LENGTH + 1)
+        }
     }
 }
