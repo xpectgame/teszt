@@ -1,5 +1,6 @@
 package hu.mealpilot.app.ui.screens
 
+import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.os.Build
@@ -41,6 +42,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
+import androidx.core.app.NotificationManagerCompat
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -422,6 +424,24 @@ fun SettingsScreen(
 
         Spacer(Modifier.height(12.dp))
         SectionCard(title = stringResource(R.string.settings_reminders)) {
+            // Egy KIKAPCSOLT rendszerértesítés mellett az összes alábbi kapcsoló
+            // hatástalan: az emlékeztető kimegy, a rendszer eldobja, és sehol nem
+            // látszik. A felhasználó ebből annyit érzékelt, hogy nem jön értesítés —
+            // és az appon belül semmi nem mondta meg, miért, se azt, hol javíthatja.
+            //
+            // Az engedélykérést Android 13-tól a második elutasítás után a rendszer
+            // végleg letiltja, tehát a gombnak a RENDSZERBEÁLLÍTÁSBA kell vinnie,
+            // nem egy újabb párbeszédhez, ami már nem jelenik meg.
+            if ((current.remindersEnabled || current.dailySummaryEnabled) &&
+                !NotificationManagerCompat.from(context).areNotificationsEnabled()
+            ) {
+                WarningNote(stringResource(R.string.settings_notifications_blocked))
+                Spacer(Modifier.height(6.dp))
+                OutlinedButton(onClick = { context.openNotificationSettings() }) {
+                    Text(stringResource(R.string.settings_open_notification_settings))
+                }
+                Spacer(Modifier.height(10.dp))
+            }
             SettingSwitch(
                 label = stringResource(R.string.settings_meal_reminders),
                 checked = current.remindersEnabled,
@@ -693,5 +713,28 @@ private fun SettingSwitch(label: String, checked: Boolean, onChange: (Boolean) -
     ) {
         Text(label, style = MaterialTheme.typography.bodyMedium)
         Switch(checked = checked, onCheckedChange = onChange)
+    }
+}
+
+/**
+ * A MealPilot értesítési beállításai a RENDSZERBEN.
+ *
+ * Nem újabb engedélykérés: azt Android 13-tól a második elutasítás után a rendszer
+ * végleg letiltja, és a `launch` onnantól némán tér vissza. Innen viszont a
+ * felhasználó mindig vissza tudja kapcsolni.
+ */
+private fun Context.openNotificationSettings() {
+    val intent = Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS)
+        .putExtra(Settings.EXTRA_APP_PACKAGE, packageName)
+        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+    // Egy hiányzó beállítóképernyő nem omolhat össze: ilyenkor az alkalmazás
+    // adatlapja is megteszi.
+    runCatching { startActivity(intent) }.onFailure {
+        runCatching {
+            startActivity(
+                Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.fromParts("package", packageName, null))
+                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            )
+        }
     }
 }

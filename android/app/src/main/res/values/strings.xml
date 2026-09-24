@@ -222,6 +222,8 @@
     <string name="settings_language_note">This also sets the language of your meal plans: dish names, ingredients and the shopping list are written in it. A plan that already exists is not translated — it stays in the language it was made in.</string>
     <string name="settings_reminders">Reminders</string>
     <string name="settings_meal_reminders">Meal reminders</string>
+    <string name="settings_notifications_blocked">Notifications are switched off for MealPilot, so no reminder can arrive. Turn them on in the system settings.</string>
+    <string name="settings_open_notification_settings">Notification settings</string>
     <string name="settings_evening_summary">Evening summary</string>
     <string name="settings_summary_time">Summary at: %1$d:00</string>
     <string name="settings_lead_minutes">Remind me %1$d minutes ahead</string>

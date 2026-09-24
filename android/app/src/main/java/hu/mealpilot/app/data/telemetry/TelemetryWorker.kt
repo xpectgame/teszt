@@ -26,15 +26,19 @@ class TelemetryWorker(
 
     override suspend fun doWork(): Result {
         val container = applicationContext.appContainer
-        val backend = container.backendClient ?: return Result.success()
         val telemetry = container.telemetry
 
+        // A KIKAPCSOLÁS vizsgálata előbb, mint a backend megléte. Fordítva egy backend
+        // nélküli buildben a takarítás soha nem futott le: ami a kapcsoló átállítása
+        // előtt összegyűlt, az ott maradt a készüléken, örökre.
         if (!container.settings.currentSettings().telemetryEnabled) {
             // Kikapcsolták: ami esetleg még bent maradt, azt eldobjuk, nem küldjük el.
             telemetry.clearAll()
             CrashReporter.clear(applicationContext)
             return Result.success()
         }
+
+        val backend = container.backendClient ?: return Result.success()
 
         val crashes = CrashReporter.pending(applicationContext)
         val snapshot = telemetry.snapshot()

@@ -34,6 +34,8 @@ import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -153,6 +155,25 @@ class AppContainer(context: Context) {
      */
     val telemetry: Telemetry by lazy {
         Telemetry(appContext, backgroundScope) { settings.currentSettings().telemetryEnabled }
+    }
+
+    /**
+     * A telemetria kapcsolójának átvezetése az összeomlás-jelentőnek.
+     *
+     * A beállítás a DataStore-ban él, az összeomláskezelő viszont akkor fut, amikor a
+     * folyamat haldoklik — ott nincs hol megvárni egy felfüggesztett olvasást. Ezért
+     * tükrözzük egy szinkron olvasható tárolóba.
+     *
+     * A FOLYAMOT figyeljük, nem a mentés helyét: így egyetlen hívási hely sem tudja
+     * elfelejteni, bárhonnan is állítják át a kapcsolót.
+     */
+    fun mirrorCrashReportingSetting() {
+        backgroundScope.launch {
+            settings.settings
+                .map { it.telemetryEnabled }
+                .distinctUntilChanged()
+                .collect { CrashReporter.setEnabled(appContext, it) }
+        }
     }
 
     /**
@@ -352,7 +373,7 @@ class AppContainer(context: Context) {
         entitlements.clearAll()
         telemetry.clearAll()
         languageStore.clear()
-        CrashReporter.clear(appContext)
+        CrashReporter.clearAll(appContext)
         // Nem csak a kulcsot: a telepítési azonosítót IS. Az köti ezt a készüléket a
         // szerverhez, és a helyi számlálók nullázása mellett a régi azonosító azt
         // jelentette, hogy az app három ingyenes tervet mutat, a szerver meg mindet

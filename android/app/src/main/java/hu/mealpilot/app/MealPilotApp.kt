@@ -20,6 +20,9 @@ class MealPilotApp : Application() {
         CrashReporter.install(this)
 
         container = AppContainer(this)
+        // A telemetria kapcsolójának tükrözése: az összeomláskezelő ebből tudja
+        // szinkron módon, hogy szabad-e egyáltalán gyűjtenie.
+        container.mirrorCrashReportingSetting()
         Notifications.ensureChannels(this)
         ReminderRefreshWorker.enqueuePeriodic(this)
 

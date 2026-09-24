@@ -21,6 +21,24 @@ object CrashReporter {
     private const val TAG = "CrashReporter"
     private const val DIR = "crashes"
 
+    /**
+     * A kikapcsolás TÜKRE, sima SharedPreferences-ben.
+     *
+     * Az adatkezelési tájékoztató (3a. pont) és a támogatási oldal is azt ígéri, hogy
+     * kikapcsolva „az alkalmazás nem is gyűjti ezeket, nem csak a küldést hagyja el".
+     * A napi számlálóknál ez állt is: a `Telemetry.record` megnézi a kapcsolót. Az
+     * összeomlás-jelentés viszont a kapcsolótól FÜGGETLENÜL fájlba írt, és csak a
+     * napi háttérmunka dobta el — ha egyáltalán lefutott (backend nélküli buildben
+     * soha).
+     *
+     * Miért nem a DataStore-ból olvassuk: a kezelő akkor fut, amikor a folyamat éppen
+     * haldoklik. Ott nincs hol megvárni egy felfüggesztett olvasást, és egy korutin
+     * elindítására sincs garancia. Ez a tükör szinkron olvasható, és túléli az
+     * újraindítást is — ugyanaz a megfontolás, mint a [hu.mealpilot.app.i18n.LanguageStore]-nál.
+     */
+    private const val SETTING_FILE = "mealpilot_crash_reporting"
+    private const val SETTING_KEY = "enabled"
+
     /** Ennél több nem gyűlhet fel: egy hibaciklus különben tele írná a tárhelyet. */
     private const val MAX_FILES = 20
 
@@ -30,6 +48,25 @@ object CrashReporter {
     private const val MAX_CAUSE_FRAMES = 15
 
     private val json = Json { ignoreUnknownKeys = true; encodeDefaults = true }
+
+    /**
+     * A kapcsoló állásának átvezetése. A beállítás a DataStore-ban él; ide azért kerül
+     * át, hogy az összeomláskezelő szinkron el tudja olvasni.
+     */
+    fun setEnabled(context: Context, enabled: Boolean) {
+        val prefs = context.applicationContext
+            .getSharedPreferences(SETTING_FILE, Context.MODE_PRIVATE)
+        if (prefs.getBoolean(SETTING_KEY, true) == enabled) return
+        prefs.edit().putBoolean(SETTING_KEY, enabled).apply()
+        // A kikapcsolás a MÁR összegyűlt jelentésekre is vonatkozik. Aki most kapcsolta
+        // ki, az most akar csendet, nem a következő háttérmunka után.
+        if (!enabled) clear(context)
+    }
+
+    /** Alapértéke igaz — ugyanaz, mint az `AppSettings.telemetryEnabled`-é. */
+    fun isEnabled(context: Context): Boolean = context.applicationContext
+        .getSharedPreferences(SETTING_FILE, Context.MODE_PRIVATE)
+        .getBoolean(SETTING_KEY, true)
 
     fun install(context: Context) {
         val appContext = context.applicationContext
@@ -42,7 +79,15 @@ object CrashReporter {
         }
     }
 
-    private fun write(context: Context, thread: Thread, error: Throwable) {
+    /**
+     * `internal`, nem `private`: a modul tesztjeinek látniuk kell. Az a kérdés, hogy a
+     * kikapcsolt kapcsoló mellett TÉNYLEG nem születik-e fájl — ezt egy tesztbe
+     * bemásolt változaton nem lehet megmérni.
+     */
+    internal fun write(context: Context, thread: Thread, error: Throwable) {
+        // Kikapcsolva NEM GYŰJTÜNK, nem csak nem küldünk — ezt a tájékoztató szó
+        // szerint így ígéri.
+        if (!isEnabled(context)) return
         val dir = File(context.filesDir, DIR).apply { mkdirs() }
         if ((dir.listFiles()?.size ?: 0) >= MAX_FILES) return
 
@@ -117,6 +162,14 @@ object CrashReporter {
 
     fun clear(context: Context) {
         File(context.filesDir, DIR).listFiles()?.forEach { it.delete() }
+    }
+
+    /** Az adattörléshez: a tükör is a felhasználó beállítása. */
+    fun clearAll(context: Context) {
+        clear(context)
+        context.applicationContext
+            .getSharedPreferences(SETTING_FILE, Context.MODE_PRIVATE)
+            .edit().clear().apply()
     }
 
     val device: String get() = "${Build.MANUFACTURER} ${Build.MODEL}"

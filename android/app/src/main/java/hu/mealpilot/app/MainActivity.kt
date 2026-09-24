@@ -14,9 +14,11 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.lifecycleScope
 import hu.mealpilot.app.i18n.LanguageStore
 import hu.mealpilot.app.ui.AppRoot
 import hu.mealpilot.app.ui.theme.MealPilotTheme
+import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
 
@@ -38,13 +40,7 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         pendingMealId = intent.mealIdExtra()
 
-        // Csak akkor kérdezünk, ha még nincs meg — így nem villan fel minden indításkor.
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
-            ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) !=
-            PackageManager.PERMISSION_GRANTED
-        ) {
-            notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
-        }
+        askForNotificationPermissionInContext()
 
         setContent {
             MealPilotTheme {
@@ -54,6 +50,35 @@ class MainActivity : ComponentActivity() {
                     onMealOpened = { pendingMealId = null },
                 )
             }
+        }
+    }
+
+    /**
+     * Az értesítési engedély bekérése — AKKOR, amikor van értelme.
+     *
+     * Eddig ez a legelső indításkor, az adatfelvétel előtt futott le: a felhasználó
+     * még azt sem tudta, mit csinál az app, és már egy rendszerpárbeszéd állt előtte.
+     * Aki ilyenkor reflexből elutasítja, az Android 13-tól a MÁSODIK elutasítás után
+     * végleg kizárja a kérdést — a `launch` onnantól némán, párbeszéd nélkül tér
+     * vissza. Az emlékeztetők így az app egyik fő funkciójából csendben halott
+     * funkcióvá váltak, és az appon belül semmi nem mondta meg, miért.
+     *
+     * Most az adatfelvétel UTÁN kérdezünk, és csak akkor, ha az emlékeztetők
+     * egyáltalán be vannak kapcsolva. A blokkolt állapotot a Beállítások képernyő
+     * külön kiírja, és onnan a rendszerbeállítás is elérhető.
+     */
+    private fun askForNotificationPermissionInContext() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) ==
+            PackageManager.PERMISSION_GRANTED
+        ) {
+            return
+        }
+        lifecycleScope.launch {
+            val settings = (application as MealPilotApp).container.settings.currentSettings()
+            if (!settings.onboardingDone) return@launch
+            if (!settings.remindersEnabled && !settings.dailySummaryEnabled) return@launch
+            notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
         }
     }
 

@@ -221,6 +221,8 @@
     <string name="settings_language_note">Ez az étrend nyelvét is meghatározza: a fogásnevek, a hozzávalók és a bevásárlólista is ezen a nyelven készül. A már elkészült terv nem fordítódik le — az a nyelvén marad, amin készült.</string>
     <string name="settings_reminders">Emlékeztetők</string>
     <string name="settings_meal_reminders">Étkezési emlékeztetők</string>
+    <string name="settings_notifications_blocked">A MealPilot értesítései ki vannak kapcsolva, így egyetlen emlékeztető sem tud megérkezni. A rendszer beállításaiban kapcsolhatod be.</string>
+    <string name="settings_open_notification_settings">Értesítési beállítások</string>
     <string name="settings_evening_summary">Esti összefoglaló</string>
     <string name="settings_summary_time">Összefoglaló ideje: %1$d:00</string>
     <string name="settings_lead_minutes">Előre szóljon: %1$d perccel</string>
