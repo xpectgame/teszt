@@ -10,6 +10,12 @@ const SUBSCRIPTION_CACHE_MS = 6 * 60 * 60 * 1000
 /** Hálózati hiba esetén ennyi ideig még elhisszük a korábbi, érvényes ellenőrzést. */
 const SUBSCRIPTION_GRACE_MS = 72 * 60 * 60 * 1000
 
+/**
+ * Ennél hosszabb előfizetés-láncot nem követünk. Egy valódi lánc egy-két lépés
+ * (váltás, újrafeliratkozás); a korlát a hibás vagy körkörös adat ellen véd.
+ */
+const MAX_LINK_DEPTH = 10
+
 export class AuthError extends Error {
   constructor(
     message: string,
@@ -94,6 +100,33 @@ export function secretMatches(provided: string, expected: string): boolean {
   return diff === 0
 }
 
+/**
+ * Az előfizetés GYÖKERE: a legelső vásárlás hashe a váltások láncában.
+ *
+ * Csomagváltáskor (és egy lemondott, de még le nem járt előfizetés újraindításakor)
+ * a Play ÚJ vásárlási tokent ad, és a régit a `linkedPurchaseToken` mezőben jelöli
+ * meg. Ezt eddig elmentettük (`linked_from`), de soha senki nem olvasta. A kvóta
+ * alanya így a mindenkori token hashe volt — vagyis egy váltás után a havi
+ * tokenplafon NULLÁRÓL indult újra ugyanannak az előfizetőnek, ugyanabban a
+ * hónapban. A Play saját útmutatása is azt mondja: a régi token helyére az új lép,
+ * ugyanannak az előfizetésnek.
+ *
+ * Ha a régi token sora nincs meg nálunk, a lánc ott ér véget — a hashe akkor is jó
+ * alany: a régi tokennel indított hívások pont ezen a néven könyvelődtek.
+ */
+export async function subscriptionRoot(env: Env, purchaseHash: string): Promise<string> {
+  let current = purchaseHash
+  const seen = new Set([current])
+  for (let step = 0; step < MAX_LINK_DEPTH; step++) {
+    const row = await readSubscription(env, current)
+    const previous = row?.linked_from
+    if (!previous || seen.has(previous)) break
+    seen.add(previous)
+    current = previous
+  }
+  return current
+}
+
 export async function resolveCaller(env: Env, request: Request): Promise<Caller> {
   const installToken = readInstallToken(request)
   const userId = await sha256Hex(installToken)
@@ -174,13 +207,17 @@ export async function resolveCaller(env: Env, request: Request): Promise<Caller>
     await bindPurchase(env, userId, purchaseHash)
   }
 
+  // A kvóta prémiumnál az ELŐFIZETÉSHEZ tartozik, nem a telepítéshez: egy előfizetésből
+  // nem lehet több készülék újratelepítésével többszörös keretet csinálni. És nem is a
+  // mindenkori TOKENHEZ: egy csomagváltás új tokent ad, a keret viszont ugyanaz marad.
+  const subject =
+    entitled && purchaseHash ? `sub:${await subscriptionRoot(env, purchaseHash)}` : `user:${userId}`
+
   return {
     userId,
     tier,
     limits: limitsFor(env, tier),
-    // A kvóta prémiumnál az ELŐFIZETÉSHEZ tartozik, nem a telepítéshez: egy előfizetésből
-    // nem lehet több készülék újratelepítésével többszörös keretet csinálni.
-    subject: entitled && purchaseHash ? `sub:${purchaseHash}` : `user:${userId}`,
+    subject,
     subscriptionState: state,
     expiresAt,
     appVersion,
