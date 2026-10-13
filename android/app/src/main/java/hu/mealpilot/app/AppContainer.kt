@@ -74,6 +74,8 @@ class AppContainer(context: Context) {
         PlanRepository(
             database.planDao(), database.mealDao(), database.shoppingDao(),
             database.mealLogDao(), database.favoriteDao(),
+            onPlanCreated = { settings.recordPlanCreated() },
+            onShoppingListsArchived = { settings.recordArchivedShoppingLists(it) },
         )
     }
 
@@ -198,6 +200,8 @@ class AppContainer(context: Context) {
             planDao = database.planDao(),
             shoppingDao = database.shoppingDao(),
             achievementDao = database.achievementDao(),
+            plansCreated = { settings.plansCreated() },
+            archivedShoppingLists = { settings.archivedShoppingLists() },
         )
     }
 

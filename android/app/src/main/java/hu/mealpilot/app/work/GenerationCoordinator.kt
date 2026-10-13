@@ -11,6 +11,8 @@ import hu.mealpilot.core.ai.GenerationProgress
 import hu.mealpilot.core.billing.PaidFeature
 import hu.mealpilot.core.energy.EnergyCalculator
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -90,13 +92,44 @@ class GenerationCoordinator(private val container: AppContainer) {
         return quota.upgradeOffered
     }
 
-    private var job: Job? = null
+    @Volatile private var job: Job? = null
 
     val isBusy: Boolean get() = job?.isActive == true
 
+    /**
+     * Elindít egy munkát, és CSAK UTÁNA engedi futni, hogy a [job] már rá mutasson.
+     *
+     * A sorrend azért számít, mert a munka a saját lezárásakor megnézi, ő-e még a
+     * jelenlegi (lásd [isCurrent]). Egy azonnal elbukó munka különben a `job = …`
+     * értékadás ELŐTT érhetne a végére, és nem ismerné fel önmagát.
+     */
+    private fun startJob(block: suspend CoroutineScope.() -> Unit) {
+        val launched = container.backgroundScope.launch(start = CoroutineStart.LAZY, block = block)
+        job = launched
+        launched.start()
+    }
+
+    /**
+     * A munka még a sajátja-e a koordinátornak.
+     *
+     * A [cancel] a felület kedvéért AZONNAL lezár: nullázza az állapotot, és szabad
+     * utat ad egy új munkának. A megszakított munka viszont csak a következő
+     * felfüggesztési pontján áll meg — egy hálózati olvasásban ez másodpercekbe is
+     * telhet. Ha közben a felhasználó újraindította a tervezést, a régi munka késve
+     * lefutó lezárása eddig az ÚJ munka állapotát nullázta és az előtérben futó
+     * szolgáltatását állította le: a tervezés csendben futott tovább, értesítés és
+     * haladásjelző nélkül, a rendszer pedig bármikor leállíthatta. A régi eredménye
+     * ráadásul az újéra írt rá.
+     */
+    private fun isCurrent(self: Job?): Boolean {
+        val current = job
+        return current == null || current === self
+    }
+
     fun generatePlan(days: Int, startTomorrow: Boolean, freeText: String) {
         if (isBusy) return
-        job = container.backgroundScope.launch {
+        startJob {
+            val self = coroutineContext[Job]
             // A kvótát a munka MEGKEZDÉSE előtt nézzük meg: egy elutasított kérésért ne
             // fusson le a drága rész, és ne is fogyjon a keret.
             val entitlement = container.entitlements.current()
@@ -125,7 +158,7 @@ class GenerationCoordinator(private val container: AppContainer) {
                     days = allowedDays,
                     freeText = freeText,
                     language = container.language,
-                    onProgress = { progress -> publish(progress, allowedDays) },
+                    onProgress = { progress -> if (isCurrent(self)) publish(progress, allowedDays) },
                 )
                 val result = raw.map { it.copy(usedFallback = daysFromService >= 0) }
                 result.onSuccess {
@@ -137,12 +170,24 @@ class GenerationCoordinator(private val container: AppContainer) {
                         container.entitlements.recordPlanGenerated()
                         container.telemetry.record(TelemetryEvent.PLAN_GENERATED)
                     }
+                    // A terv maga is achievement („Első terv", „Tervezőmester"). Eddig
+                    // csak a következő naplózás értékelte ki, tehát a jutalom nem akkor
+                    // jött, amikor kiérdemelte, hanem órákkal később, egy pipára. A
+                    // bejelentést az `AppRoot` figyelője intézi.
+                    try {
+                        container.statsRepository.refreshAndCollectNew(budget.target.kcal, budget.target.proteinG)
+                    } catch (cancelled: CancellationException) {
+                        throw cancelled
+                    } catch (error: Exception) {
+                        // A terv elkészült; egy elmaradt kiértékelés miatt ne tűnjön hibának.
+                        Log.w(TAG, "Az achievementek kiértékelése nem sikerült.", error)
+                    }
                 }
                 result.onFailure { error ->
                     container.telemetry.record(TelemetryEvent.PLAN_FAILED)
                     offerUpgradeIfQuota(error)
                 }
-                _lastOutcome.value = result
+                if (isCurrent(self)) _lastOutcome.value = result
             } catch (cancelled: CancellationException) {
                 // A `catch (Throwable)` a MEGSZAKÍTÁST is elkapta, és a kivétel
                 // üzenetét tette ki a képernyőre: a felhasználó a saját Mégse
@@ -152,17 +197,19 @@ class GenerationCoordinator(private val container: AppContainer) {
                 //
                 // Telemetria sem megy: a megszakítás nem tervezési hiba, és ha
                 // annak számolnánk, a hibaarány a felhasználó döntéseitől romlana.
-                _lastOutcome.value = Result.failure(
-                    CancelledByUserException(container.strings[R.string.gen_action_cancelled])
-                )
+                if (isCurrent(self)) {
+                    _lastOutcome.value = Result.failure(
+                        CancelledByUserException(container.strings[R.string.gen_action_cancelled])
+                    )
+                }
                 throw cancelled
             } catch (error: Throwable) {
                 Log.e(TAG, "A tervezés megszakadt.", error)
                 container.telemetry.record(TelemetryEvent.PLAN_FAILED)
                 offerUpgradeIfQuota(error)
-                _lastOutcome.value = Result.failure(error)
+                if (isCurrent(self)) _lastOutcome.value = Result.failure(error)
             } finally {
-                end()
+                if (isCurrent(self)) end()
             }
         }
     }
@@ -173,27 +220,30 @@ class GenerationCoordinator(private val container: AppContainer) {
      */
     fun runAction(headline: String, block: suspend (progress: (GenerationProgress) -> Unit) -> String) {
         if (isBusy) return
-        job = container.backgroundScope.launch {
+        startJob {
+            val self = coroutineContext[Job]
             // A begin() a try-on BELÜL van. Kívül állva az innen induló kivétel
             // kezeletlenül szállt volna fel a háttérhatókörből, ami az app azonnali
             // kilépését jelenti — épp abban a pillanatban, amikor a felhasználó
             // jóváhagyta a műveletet.
             try {
                 begin(totalDays = 0, headline = headline)
-                val message = block { progress -> publish(progress, _status.value.totalDays) }
-                _actionResult.value = message
+                val message = block { progress -> if (isCurrent(self)) publish(progress, _status.value.totalDays) }
+                if (isCurrent(self)) _actionResult.value = message
             } catch (cancelled: CancellationException) {
                 // A `catch (Throwable)` ezt is elkapná, és a felhasználó a saját
                 // Mégse gombjára azt a választ kapná, hogy „StandaloneCoroutine was
                 // cancelled". A megszakítás nem hiba: a felhasználó kérte.
-                _actionResult.value = container.strings[R.string.gen_action_cancelled]
+                if (isCurrent(self)) _actionResult.value = container.strings[R.string.gen_action_cancelled]
                 throw cancelled
             } catch (error: Throwable) {
                 Log.e(TAG, "A művelet megszakadt.", error)
                 offerUpgradeIfQuota(error)
-                _actionResult.value = error.message ?: container.strings[R.string.gen_action_failed]
+                if (isCurrent(self)) {
+                    _actionResult.value = error.message ?: container.strings[R.string.gen_action_failed]
+                }
             } finally {
-                end()
+                if (isCurrent(self)) end()
             }
         }
     }

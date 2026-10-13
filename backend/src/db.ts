@@ -12,19 +12,22 @@ export interface UserRow {
   purchase_hash: string | null
 }
 
-export async function touchUser(env: Env, userId: string, appVersion: string | null): Promise<UserRow> {
-  const now = Date.now()
-  await env.DB.prepare(
-    `INSERT INTO users (id, created_at, last_seen_at, app_version)
+/**
+ * A felhasználó sorának frissítése ÉS kiolvasása, egyetlen utasításban.
+ *
+ * Minden hitelesített kérés ezzel kezd. Eddig két D1-kör volt (upsert, aztán egy
+ * külön SELECT), és mindkettő az első bájt előtt — a `RETURNING` ugyanazt egy körben
+ * adja. A valódi motoron a `tools/check-migrations.py` futtatja.
+ */
+// TOUCH_USER_SQL_BEGIN
+export const TOUCH_USER_SQL = `INSERT INTO users (id, created_at, last_seen_at, app_version)
      VALUES (?1, ?2, ?2, ?3)
-     ON CONFLICT(id) DO UPDATE SET last_seen_at = ?2, app_version = COALESCE(?3, users.app_version)`,
-  )
-    .bind(userId, now, appVersion)
-    .run()
+     ON CONFLICT(id) DO UPDATE SET last_seen_at = ?2, app_version = COALESCE(?3, users.app_version)
+     RETURNING id, purchase_hash`
+// TOUCH_USER_SQL_END
 
-  const row = await env.DB.prepare('SELECT id, purchase_hash FROM users WHERE id = ?1')
-    .bind(userId)
-    .first<UserRow>()
+export async function touchUser(env: Env, userId: string, appVersion: string | null): Promise<UserRow> {
+  const row = await env.DB.prepare(TOUCH_USER_SQL).bind(userId, Date.now(), appVersion).first<UserRow>()
   return row ?? { id: userId, purchase_hash: null }
 }
 

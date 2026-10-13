@@ -137,6 +137,35 @@ class SettingsRepository(context: Context) {
         store.edit { it[K_ONBOARDING] = done }
     }
 
+    /**
+     * Hány tervet készített a felhasználó összesen — a „Készíts 5 étrendet"
+     * achievement ebből számol.
+     *
+     * Külön számláló kell, mert a tervek táblája erre alkalmatlan: minden új terv
+     * TÖRLI a korábbiakat (átfedő dátumoknál különben duplán látszanának az
+     * étkezések), tehát a táblában legfeljebb egy kész terv van. Az achievement a
+     * sorok számából számolt, és így soha nem oldódhatott fel.
+     *
+     * Itt él, mert ez a tároló a „Minden adat törlése" része, és a mentésbe is
+     * bekerül — ugyanúgy, mint a terv, amiről szól.
+     */
+    suspend fun recordPlanCreated() {
+        store.edit { it[K_PLANS_CREATED] = (it[K_PLANS_CREATED] ?: 0) + 1 }
+    }
+
+    suspend fun plansCreated(): Int = store.data.first()[K_PLANS_CREATED] ?: 0
+
+    /**
+     * A törölt tervekkel eltűnt KÉSZ bevásárlólisták száma. Ugyanaz az ok, mint a
+     * [recordPlanCreated]-nél: a listák a tervhez tartoznak, és vele együtt törlődnek.
+     */
+    suspend fun recordArchivedShoppingLists(count: Int) {
+        if (count <= 0) return
+        store.edit { it[K_LISTS_ARCHIVED] = (it[K_LISTS_ARCHIVED] ?: 0) + count }
+    }
+
+    suspend fun archivedShoppingLists(): Int = store.data.first()[K_LISTS_ARCHIVED] ?: 0
+
     /** A feltételek és az adatkezelési tájékoztató elfogadásának rögzítése. */
     suspend fun recordConsent(version: String, atMillis: Long = System.currentTimeMillis()) {
         store.edit {
@@ -214,5 +243,7 @@ class SettingsRepository(context: Context) {
         val K_TERMS_VERSION = stringPreferencesKey("accepted_terms_version")
         val K_TERMS_AT = longPreferencesKey("accepted_terms_at")
         val K_TELEMETRY = booleanPreferencesKey("telemetry_enabled")
+        val K_PLANS_CREATED = intPreferencesKey("plans_created_total")
+        val K_LISTS_ARCHIVED = intPreferencesKey("shopping_lists_completed_archived")
     }
 }

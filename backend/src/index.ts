@@ -256,7 +256,13 @@ app.post('/v1/generate', async (c) => {
   }
 
   const period = periodFor(caller.tier)
-  const usage = await readUsage(c.env, caller.subject, period)
+  const today = dayKey()
+  // A két számláló független egymástól: egy körben olvassuk ki őket, nem kettőben.
+  // Ez az első bájt ELŐTTI út, minden D1-kör itt a felhasználó várakozása.
+  const [usage, globalUsage] = await Promise.all([
+    readUsage(c.env, caller.subject, period),
+    caller.tier === 'OWNER' ? Promise.resolve(null) : readUsage(c.env, GLOBAL_SUBJECT, today),
+  ])
   const requestedDays = Number.isFinite(body.days) ? Number(body.days) : 1
   const chunkIndex = Number.isFinite(body.chunk_index) ? Number(body.chunk_index) : 0
   const isRetry = body.is_retry === true
@@ -284,9 +290,7 @@ app.post('/v1/generate', async (c) => {
   // A közös napi keret. A tulajdonos átmehet rajta: az ő fogyasztását a havi
   // OWNER plafon már korlátozza, és egy incidens közben pont ő az, akinek látnia
   // kell, mi történik — a saját szolgáltatásából kizárva ezt nem tudná megtenni.
-  const today = dayKey()
-  if (caller.tier !== 'OWNER') {
-    const globalUsage = await readUsage(c.env, GLOBAL_SUBJECT, today)
+  if (globalUsage) {
     const ceiling = Number(c.env.DAILY_OUTPUT_TOKEN_CEILING ?? '')
     if (globalCeilingReached(globalUsage.outputTokens, ceiling)) {
       return c.json(

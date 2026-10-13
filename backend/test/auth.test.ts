@@ -27,7 +27,7 @@ function envWithSubscriptions(subscriptions: Record<string, SubscriptionFixture>
         bind: (...args: unknown[]) => ({
           run: async () => ({ meta: { changes: 1 } }),
           first: async () => {
-            if (sql.includes('FROM users')) return { id: args[0], purchase_hash: null }
+            if (sql.includes('INTO users')) return { id: args[0], purchase_hash: null }
             if (sql.includes('FROM subscriptions')) {
               const hash = String(args[0])
               reads.push(hash)

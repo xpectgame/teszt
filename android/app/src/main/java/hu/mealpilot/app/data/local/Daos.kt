@@ -334,6 +334,34 @@ interface ShoppingDao {
         """
     )
     suspend fun completedListCount(): Int
+
+    /** A [completedListCount] része: a megadott terven KÍVÜLI kész listák. */
+    @Query(
+        """
+        SELECT COUNT(*) FROM (
+            SELECT planId
+            FROM shopping_items
+            WHERE planId != :keepPlanId
+            GROUP BY planId, fromEpochDay, toEpochDay
+            HAVING SUM(CASE WHEN checked = 0 THEN 1 ELSE 0 END) = 0
+        )
+        """
+    )
+    suspend fun completedListCountExcept(keepPlanId: Long): Int
+
+    /** A [completedListCount] része: egyetlen terv kész listái. */
+    @Query(
+        """
+        SELECT COUNT(*) FROM (
+            SELECT planId
+            FROM shopping_items
+            WHERE planId = :planId
+            GROUP BY planId, fromEpochDay, toEpochDay
+            HAVING SUM(CASE WHEN checked = 0 THEN 1 ELSE 0 END) = 0
+        )
+        """
+    )
+    suspend fun completedListCountFor(planId: Long): Int
 }
 
 @Dao

@@ -26,6 +26,10 @@ class StatsRepository(
     private val planDao: PlanDao,
     private val shoppingDao: ShoppingDao,
     private val achievementDao: AchievementDao,
+    /** Az összes valaha elkészült terv száma — lásd `SettingsRepository.recordPlanCreated`. */
+    private val plansCreated: suspend () -> Int = { 0 },
+    /** A már törölt tervekkel eltűnt kész bevásárlólisták — lásd `PlanRepository`. */
+    private val archivedShoppingLists: suspend () -> Int = { 0 },
 ) {
 
     fun observeUnlocked(): Flow<List<AchievementEntity>> = achievementDao.observeAll()
@@ -95,8 +99,14 @@ class StatsRepository(
             proteinGoalDays = proteinDays,
             weightEntries = weights.size,
             kgLost = kgLost,
-            plansGenerated = planDao.count(),
-            shoppingListsCompleted = shoppingDao.completedListCount(),
+            // A tábla legfeljebb egy kész tervet tart (az új törli a régieket), tehát
+            // önmagában soha nem érne el ötig. A `maxOf` a számláló bevezetése ELŐTT
+            // készült tervet is beszámítja: annak a felhasználónak a számlálója nulla.
+            plansGenerated = maxOf(plansCreated(), planDao.count()),
+            // Ugyanaz a csapda, mint a terveknél: a lista a tervvel együtt törlődik, tehát a
+            // táblában csak az aktuális terv listái vannak. Heti tervekkel a harmadik kész
+            // lista így soha nem jött össze.
+            shoppingListsCompleted = archivedShoppingLists() + shoppingDao.completedListCount(),
             distinctRecipesEaten = mealLogs
                 .filter { it.status == LogStatus.EATEN.name || it.status == LogStatus.REPLACED.name }
                 .map { it.name.trim().lowercase() }

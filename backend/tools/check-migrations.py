@@ -19,7 +19,9 @@ Amit ellenőriz:
     SQL szövege tartalmazza a feltételt, hanem a motor be is tartja;
   - a 0006 foglalótáblája és indexe létrejön, és a kvótafoglalás — az a SQL, amit a
     `src/db.ts` TÉNYLEG elküld, onnan kiolvasva — egyszerre érkező kéréseknél is
-    betartja a keretet.
+    betartja a keretet;
+  - a felhasználó upsertje (`TOUCH_USER_SQL`, szintén a `db.ts`-ből) a RETURNING-gel
+    ütközésnél is a meglévő sort adja vissza.
 """
 import re
 import sqlite3
@@ -31,24 +33,28 @@ MIGRATIONS = ROOT / 'backend/migrations'
 DB_TS = ROOT / 'backend/src/db.ts'
 
 
-def reserve_sql() -> str:
-    """A foglalás SQL-je, a `db.ts`-ből kiolvasva.
+def sql_from_db_ts(name: str) -> str:
+    """Egy SQL a `db.ts`-ből kiolvasva, a `// <NAME>_BEGIN` / `_END` jelölők közül.
 
     Nem másolat: ha a szkript a saját példányát futtatná, a kód SQL-je bármivé
     válhatna, és ez az ellenőrzés akkor is zöld maradna.
     """
     text = DB_TS.read_text(encoding='utf-8')
     match = re.search(
-        r'// RESERVE_SQL_BEGIN\s*export const RESERVE_SQL = `(.*?)`\s*// RESERVE_SQL_END',
+        rf'// {name}_BEGIN\s*export const {name} = `(.*?)`\s*// {name}_END',
         text,
         re.S,
     )
     if not match:
         raise SystemExit(
-            'Nem találom a RESERVE_SQL-t a db.ts-ben a két jelölő között — a szkript nem '
+            f'Nem találom a {name}-t a db.ts-ben a két jelölő között — a szkript nem '
             'tudja, mit kellene ellenőriznie.'
         )
     return match.group(1)
+
+
+def reserve_sql() -> str:
+    return sql_from_db_ts('RESERVE_SQL')
 
 CAPPED_INSERT = """
 INSERT INTO reports (id, user_id, kind, reason, detail, payload, app_version, created_at)
@@ -103,6 +109,7 @@ def main() -> int:
                         'kérésnél végigolvasná a táblát')
 
     problems += check_reservation(con)
+    problems += check_touch_user(con)
 
     if problems:
         print('A migrációk lefutnak, de az eredmény nem az elvárt:\n', file=sys.stderr)
@@ -114,6 +121,30 @@ def main() -> int:
           'korlátot a motor be is tartja, és a kvótafoglalás egyszerre érkező kéréseknél is '
           'betartja a keretet.')
     return 0
+
+
+def check_touch_user(con: sqlite3.Connection) -> list:
+    """A felhasználó upsertje RETURNING-gel: új sornál és ütközésnél is a sort adja.
+
+    Az ütközéses ág a fontos: ott a MEGLÉVŐ `purchase_hash`-nek kell visszajönnie,
+    különben a bekötött előfizetés a következő kérésnél eltűnne.
+    """
+    sql = sql_from_db_ts('TOUCH_USER_SQL')
+    problems = []
+    try:
+        first = con.execute(sql, ('felhasznalo', 1, '1.0')).fetchall()
+        con.execute("UPDATE users SET purchase_hash = 'elofizetes' WHERE id = 'felhasznalo'")
+        again = con.execute(sql, ('felhasznalo', 2, None)).fetchall()
+    except sqlite3.Error as error:
+        return [f'a touchUser SQL-je nem fut le: {error}']
+    if first != [('felhasznalo', None)]:
+        problems.append(f'a touchUser új felhasználónál nem a sort adja vissza: {first}')
+    if again != [('felhasznalo', 'elofizetes')]:
+        problems.append(f'a touchUser ütközésnél nem a meglévő előfizetést adja vissza: {again}')
+    version = con.execute("SELECT app_version, last_seen_at FROM users WHERE id = 'felhasznalo'").fetchone()
+    if version != ('1.0', 2):
+        problems.append(f'a touchUser elrontja a verziót vagy az utolsó látogatást: {version}')
+    return problems
 
 
 def check_reservation(con: sqlite3.Connection) -> list:

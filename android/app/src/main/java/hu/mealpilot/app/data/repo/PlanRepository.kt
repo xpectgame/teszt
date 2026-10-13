@@ -27,7 +27,9 @@ import hu.mealpilot.core.energy.EnergyBudget
 import hu.mealpilot.core.model.DietRestriction
 import hu.mealpilot.core.model.UserProfile
 import hu.mealpilot.core.shopping.ShoppingListBuilder
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.builtins.ListSerializer
@@ -71,6 +73,18 @@ class PlanRepository(
      * számítana: a felhasználó nem tudná, mikor működik.
      */
     private val favoriteDao: FavoriteDao,
+    /**
+     * Egy terv elkészült (legalább egy nap bekerült). Itt, és nem a hívóknál: két
+     * út is tervet készít (a Terv képernyő és a beszélgetés), és egyik sem
+     * felejtheti el.
+     */
+    private val onPlanCreated: suspend () -> Unit = {},
+    /**
+     * Ennyi KÉSZ bevásárlólista tűnik el egy terv törlésével. A lista a tervhez
+     * tartozik (a sorai vele együtt törlődnek), az achievement viszont azt számolja,
+     * hányat pipált ki valaki összesen — a törlés előtt ezért itt adjuk le őket.
+     */
+    private val onShoppingListsArchived: suspend (Int) -> Unit = {},
 ) {
 
     fun observeActivePlan(): Flow<PlanEntity?> = planDao.observeActive()
@@ -158,40 +172,51 @@ class PlanRepository(
         var savedDays = 0
         val coachNotes = mutableListOf<String>()
 
-        val result = ai.generatePlan(
-            request = request,
-            onProgress = onProgress,
-            onChunk = { chunk ->
-                val isFirstChunk = savedDays == 0
-                chunk.days.forEach { day -> insertDay(planId, startDate, day) }
-                savedDays += chunk.days.size
-                coachNotes += chunk.coachNotes
+        val result = try {
+            ai.generatePlan(
+                request = request,
+                onProgress = onProgress,
+                onChunk = { chunk ->
+                    val isFirstChunk = savedDays == 0
+                    chunk.days.forEach { day -> insertDay(planId, startDate, day) }
+                    savedDays += chunk.days.size
+                    coachNotes += chunk.coachNotes
 
-                planDao.byId(planId)?.let { current ->
-                    planDao.update(
-                        current.copy(
-                            title = current.title.takeIf { it != placeholderTitle }
-                                ?: chunk.planTitle.ifBlank {
-                                    if (language == AppLanguage.EN) "Meal plan – $startDate"
-                                    else "Étrend – $startDate"
-                                },
-                            summary = current.summary.ifBlank { chunk.summary },
-                            coachNotesJson = encodeStrings(coachNotes.distinct().take(4)),
-                            isActive = true,
+                    planDao.byId(planId)?.let { current ->
+                        planDao.update(
+                            current.copy(
+                                title = current.title.takeIf { it != placeholderTitle }
+                                    ?: chunk.planTitle.ifBlank {
+                                        if (language == AppLanguage.EN) "Meal plan – $startDate"
+                                        else "Étrend – $startDate"
+                                    },
+                                summary = current.summary.ifBlank { chunk.summary },
+                                coachNotesJson = encodeStrings(coachNotes.distinct().take(4)),
+                                isActive = true,
+                            )
                         )
-                    )
-                }
+                    }
 
-                // Az első kész szakasznál váltunk: innentől ez az aktív terv, a korábbiak
-                // pedig törlődnek. A régit nem elég deaktiválni — a naplózás és a napi
-                // nézet átfedő dátumoknál egyébként duplán mutatná az étkezéseket.
-                if (isFirstChunk) {
-                    detachLogsOfOtherPlans(planId)
-                    planDao.deleteOthers(planId)
-                }
-                rebuildShoppingList(planId, startDate.toEpochDay(), startDate.toEpochDay() + days - 1)
-            },
-        )
+                    // Az első kész szakasznál váltunk: innentől ez az aktív terv, a korábbiak
+                    // pedig törlődnek. A régit nem elég deaktiválni — a naplózás és a napi
+                    // nézet átfedő dátumoknál egyébként duplán mutatná az étkezéseket.
+                    if (isFirstChunk) {
+                        detachLogsOfOtherPlans(planId)
+                        archiveCompletedLists(shoppingDao.completedListCountExcept(planId))
+                        planDao.deleteOthers(planId)
+                    }
+                    rebuildShoppingList(planId, startDate.toEpochDay(), startDate.toEpochDay() + days - 1)
+                },
+            )
+        } catch (cancelled: CancellationException) {
+            // A megszakítás eddig átrepült a lenti takarításon: az első nap előtt
+            // megszakított tervezés egy üres, „Étrend készül…" című sort hagyott maga
+            // után, ami a következő sikeres tervig az adatkivitelben is ott állt.
+            // A megszakított coroutine-ban a törlés maga is megszakadna — ezért
+            // NonCancellable.
+            if (savedDays == 0) withContext(NonCancellable) { planDao.delete(planId) }
+            throw cancelled
+        }
 
         val error = result.exceptionOrNull()
         if (savedDays == 0) {
@@ -204,6 +229,7 @@ class PlanRepository(
             )
         }
 
+        onPlanCreated()
         return Result.success(
             PlanGenerationOutcome(
                 planId = planId,
@@ -565,6 +591,10 @@ class PlanRepository(
         ranges.forEach { rebuildShoppingList(planId, it.fromEpochDay, it.toEpochDay) }
     }
 
+    private suspend fun archiveCompletedLists(count: Int) {
+        if (count > 0) onShoppingListsArchived(count)
+    }
+
     /** Egy tartomány listáját csak akkor gyártjuk le, ha még nem létezik — a pipák így megmaradnak. */
     suspend fun rebuildShoppingListIfMissing(planId: Long, fromEpochDay: Long, toEpochDay: Long) {
         if (shoppingDao.countInRange(planId, fromEpochDay, toEpochDay) == 0) {
@@ -574,6 +604,7 @@ class PlanRepository(
 
     suspend fun deletePlan(planId: Long) {
         detachLogsOfPlan(planId)
+        archiveCompletedLists(shoppingDao.completedListCountFor(planId))
         planDao.delete(planId)
     }
 
