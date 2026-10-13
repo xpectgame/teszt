@@ -104,7 +104,7 @@ hol tart és mennyi van hátra.
 - **részlegesen kész terv**: a lista alján látszódjon, hogy még töltődnek napok
 
 ### 4.4 Bevásárlás
-- tartományváltó: következő 7 nap / teljes terv
+- tartományváltó: aktuális hét (a terv hete) / teljes terv
 - haladás: „3 / 18 megvan" + sáv
 - polcok szerint csoportosított lista (9 kategória), soronként pipa, név, mennyiség,
   és opcionális megjegyzés

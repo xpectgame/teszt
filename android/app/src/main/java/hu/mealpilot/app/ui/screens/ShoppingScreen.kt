@@ -142,11 +142,25 @@ class ShoppingViewModel(private val container: AppContainer) : ViewModel() {
     }
 }
 
-/** A hét nézet a mától (vagy a terv kezdetétől) számított 7 napot fedi le. */
-private fun rangeBounds(planStart: Long, planEnd: Long, range: ShoppingRange): Pair<Long, Long> = when (range) {
+/**
+ * A hét nézet a TERV hete, amelyikbe a mai nap esik: 1–7. nap, 8–14. nap, …
+ *
+ * Korábban a mától számított 7 nap volt — vagyis minden nap egy MÁSIK lista. A pipák
+ * csak ugyanazon a tartományon belül öröklődnek, így aki hétfőn bevásárolt és mindent
+ * kipipált, kedden egy pipa nélküli, részben más listát kapott. Minden megnyitott
+ * napból ráadásul egy újabb lista maradt az adatbázisban, és egy fogáscsere mind
+ * újraépítette őket. Egy bevásárlólista egy bevásárláshoz tartozik: a hét rögzített.
+ */
+internal fun rangeBounds(
+    planStart: Long,
+    planEnd: Long,
+    range: ShoppingRange,
+    today: Long = LocalDate.now().toEpochDay(),
+): Pair<Long, Long> = when (range) {
     ShoppingRange.ALL -> planStart to planEnd
     ShoppingRange.WEEK -> {
-        val from = maxOf(planStart, LocalDate.now().toEpochDay()).coerceAtMost(planEnd)
+        val week = (today.coerceIn(planStart, planEnd) - planStart) / 7
+        val from = planStart + week * 7
         from to minOf(from + 6, planEnd)
     }
 }

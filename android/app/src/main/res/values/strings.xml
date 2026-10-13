@@ -11,7 +11,7 @@
     <string name="channel_generation_name">Building your plan</string>
     <string name="channel_generation_desc">Progress while your plan is put together.</string>
     <string name="shopping_title">Shopping list</string>
-    <string name="shopping_range_week">Next 7 days</string>
+    <string name="shopping_range_week">Current week</string>
     <string name="shopping_range_all">Whole plan</string>
     <string name="shopping_empty_title">No active plan</string>
     <string name="shopping_empty_message">The shopping list is built from the ingredients of your planned meals — make a plan first.</string>

@@ -9,7 +9,7 @@
     <string name="channel_generation_name">Étrend készítése</string>
     <string name="channel_generation_desc">Haladás, amíg a terved összeáll.</string>
     <string name="shopping_title">Bevásárlólista</string>
-    <string name="shopping_range_week">Következő 7 nap</string>
+    <string name="shopping_range_week">Aktuális hét</string>
     <string name="shopping_range_all">Teljes terv</string>
     <string name="shopping_empty_title">Nincs aktív terv</string>
     <string name="shopping_empty_message">A bevásárlólista a tervezett ételek hozzávalóiból áll össze — előbb készíts étrendet.</string>
