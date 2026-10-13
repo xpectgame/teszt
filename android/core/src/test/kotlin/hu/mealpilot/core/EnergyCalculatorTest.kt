@@ -298,18 +298,16 @@ class EnergyCalculatorTest {
     }
 
     @Test
-    fun `an underweight target weight is flagged and the estimate stops at the healthy range`() {
-        // 178 cm, 80 kg, célsúly 55 kg (BMI 17,4). A deficit most még jár, de a becslés
-        // nem számolhat egy olyan célig, ahová az app nem is visz el.
+    fun `an underweight target weight is flagged and gets no arrival estimate`() {
+        // 178 cm, 80 kg, célsúly 55 kg (BMI 17,4). A deficit most még jár, de a felület
+        // nem ígérheti, hogy „a célsúlyt N nap múlva éred el": oda az app nem visz el.
         val profile = male.copy(heightCm = 178.0, weightKg = 80.0, targetWeightKg = 55.0)
         val budget = EnergyCalculator.budget(profile)
 
         assertTrue("Most még van deficit", budget.appliedDeficit > 0)
         assertTrue(budget.warnings.joinToString(), budget.warnings.any { it.contains("célsúly", ignoreCase = true) })
-        val floorKg = EnergyCalculator.minHealthyWeightKg(profile)
-        val expected = ((80.0 - floorKg) * 7700.0 / budget.appliedDeficit).toInt()
-        val days = EnergyCalculator.daysToTarget(profile, budget)!!
-        assertTrue("A becslés a BMI 18,5-ös súlyig tart ($expected), nem 55 kg-ig ($days)", abs(days - expected) <= 1)
+        assertNull(EnergyCalculator.daysToTarget(profile, budget))
+        assertNotNull("Egy egészséges célnál marad a becslés", EnergyCalculator.daysToTarget(profile.copy(targetWeightKg = 70.0), budget))
     }
 
     @Test

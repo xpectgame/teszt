@@ -219,8 +219,8 @@ tartsd magasan a fehérjét, hosszabb távon orvos). Korlátozás helyett tájé
 
 Egy kivétel van, ahol nem tájékoztatunk, hanem korlátozunk: **alulsúlynál (BMI 18,5
 alatt) nincs deficit**, akármilyen ütemet állított be a felhasználó — a cél ilyenkor a
-napi felhasználás. A normál tartomány alá vivő célsúlyt az app jelzi, és a deficit (meg
-a „hány nap a célig" becslés) a BMI 18,5-höz tartozó súlynál megáll. Itt a kockázat nem
+napi felhasználás. A normál tartomány alá vivő célsúlyt az app jelzi, a deficit a BMI
+18,5-höz tartozó súlynál megáll, és ilyen célhoz „hány nap a célig" becslést sem ad. Itt a kockázat nem
 lassuló anyagcsere, hanem evészavar. Ugyanezért fogad el a profil életkort csak 18
 évtől: az ÁSZF szerint az app felnőtteknek szól.
 

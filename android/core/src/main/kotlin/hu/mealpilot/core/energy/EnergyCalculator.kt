@@ -284,11 +284,14 @@ object EnergyCalculator {
     /**
      * Hány nap alatt érhető el a célsúly a jelenlegi deficittel. Null, ha nincs cél vagy nincs deficit.
      *
-     * Az alulsúlyos célt nem számoljuk végig: a deficit a normál tartomány alján megáll
-     * (lásd [UNDERWEIGHT_BMI]), tehát ott ér véget a becslés is.
+     * Alulsúlyos célnál is null: a deficit a normál tartomány alján megáll (lásd
+     * [UNDERWEIGHT_BMI]), tehát a célsúlyt az app nem éri el — a felület mondata pedig
+     * („A célsúlyt kb. N nap múlva éred el") pont ezt állítaná. Hogy hol áll meg, azt
+     * a [budget] figyelmeztetése mondja meg.
      */
     fun daysToTarget(profile: UserProfile, budget: EnergyBudget): Int? {
-        val target = maxOf(profile.targetWeightKg ?: return null, minHealthyWeightKg(profile))
+        val target = profile.targetWeightKg ?: return null
+        if (target < minHealthyWeightKg(profile) - 0.05) return null
         val toLose = profile.weightKg - target
         if (toLose <= 0 || budget.appliedDeficit <= 0) return null
         return (toLose * KCAL_PER_KG_FAT / budget.appliedDeficit).roundToInt()
