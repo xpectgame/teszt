@@ -138,7 +138,7 @@ class GenerationCoordinator(private val container: AppContainer) {
             // pont abban a pillanatban, amikor fizetést kérünk tőle.
             entitlement.blockReason(PaidFeature.PLAN_GENERATION, language = container.language)?.let { reason ->
                 requestPaywall(reason)
-                return@launch
+                return@startJob
             }
             val allowedDays = entitlement.allowedPlanDays(days)
 
