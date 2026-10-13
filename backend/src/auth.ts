@@ -114,12 +114,22 @@ export function secretMatches(provided: string, expected: string): boolean {
  * Ha a régi token sora nincs meg nálunk, a lánc ott ér véget — a hashe akkor is jó
  * alany: a régi tokennel indított hívások pont ezen a néven könyvelődtek.
  */
-export async function subscriptionRoot(env: Env, purchaseHash: string): Promise<string> {
+export async function subscriptionRoot(
+  env: Env,
+  purchaseHash: string,
+  /**
+   * A kiinduló sor `linked_from`-ja, ha a hívó már ismeri. A `resolveCaller` épp most
+   * olvasta be (vagy írta) azt a sort; egy második olvasás minden prémium kérésnél
+   * felesleges D1-kör lenne. `undefined`: nem ismert, olvassuk be.
+   */
+  knownLink?: string | null,
+): Promise<string> {
   let current = purchaseHash
   const seen = new Set([current])
+  let next = knownLink
   for (let step = 0; step < MAX_LINK_DEPTH; step++) {
-    const row = await readSubscription(env, current)
-    const previous = row?.linked_from
+    const previous = next !== undefined ? next : (await readSubscription(env, current))?.linked_from
+    next = undefined
     if (!previous || seen.has(previous)) break
     seen.add(previous)
     current = previous
@@ -154,6 +164,8 @@ export async function resolveCaller(env: Env, request: Request): Promise<Caller>
   let purchaseHash: string | null = null
   let state: SubscriptionState | null = null
   let expiresAt: number | null = null
+  // A `purchaseHash` sorának `linked_from`-ja, ahogy most láttuk — lásd [subscriptionRoot].
+  let linkedFrom: string | null | undefined
 
   if (purchaseToken) {
     purchaseHash = await sha256Hex(purchaseToken)
@@ -163,22 +175,27 @@ export async function resolveCaller(env: Env, request: Request): Promise<Caller>
     if (fresh && cached) {
       state = cached.state as SubscriptionState
       expiresAt = cached.expires_at
+      linkedFrom = cached.linked_from ?? null
     } else {
       try {
         const verified = await verifySubscription(env, purchaseToken)
         if (verified) {
           state = verified.state
           expiresAt = verified.expiresAt
+          const link = verified.linkedPurchaseToken ? await sha256Hex(verified.linkedPurchaseToken) : null
           await writeSubscription(env, {
             purchase_hash: purchaseHash,
             state: verified.state,
             expires_at: verified.expiresAt,
             first_user_id: userId,
-            linkedFrom: verified.linkedPurchaseToken ? await sha256Hex(verified.linkedPurchaseToken) : null,
+            linkedFrom: link,
           })
+          // Ugyanaz a COALESCE, amit az írás csinál: a régi láncszemet nem töröljük.
+          linkedFrom = link ?? cached?.linked_from ?? null
         } else if (cached) {
           state = cached.state as SubscriptionState
           expiresAt = cached.expires_at
+          linkedFrom = cached.linked_from ?? null
         }
       } catch {
         // A Google elérhetetlen. Egy korábbi, még nem túl régi ellenőrzést elfogadunk:
@@ -186,6 +203,7 @@ export async function resolveCaller(env: Env, request: Request): Promise<Caller>
         if (cached && now - cached.verified_at < SUBSCRIPTION_GRACE_MS) {
           state = cached.state as SubscriptionState
           expiresAt = cached.expires_at
+          linkedFrom = cached.linked_from ?? null
         }
       }
     }
@@ -197,6 +215,7 @@ export async function resolveCaller(env: Env, request: Request): Promise<Caller>
       purchaseHash = cached.purchase_hash
       state = cached.state as SubscriptionState
       expiresAt = cached.expires_at
+      linkedFrom = cached.linked_from ?? null
     }
   }
 
@@ -211,7 +230,9 @@ export async function resolveCaller(env: Env, request: Request): Promise<Caller>
   // nem lehet több készülék újratelepítésével többszörös keretet csinálni. És nem is a
   // mindenkori TOKENHEZ: egy csomagváltás új tokent ad, a keret viszont ugyanaz marad.
   const subject =
-    entitled && purchaseHash ? `sub:${await subscriptionRoot(env, purchaseHash)}` : `user:${userId}`
+    entitled && purchaseHash
+      ? `sub:${await subscriptionRoot(env, purchaseHash, linkedFrom)}`
+      : `user:${userId}`
 
   return {
     userId,

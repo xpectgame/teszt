@@ -38,17 +38,20 @@ jar() {
   printf '%s' "$found"
 }
 
-STDLIB=$(jar 'kotlin-stdlib-2*.jar')
-COMPILER=$(jar 'kotlin-compiler-embeddable-2*.jar')
-SER_PLUGIN=$(jar 'kotlin-serialization-compiler-plugin-embeddable-2*.jar')
-ANNOTATIONS=$(jar 'annotations-13.0.jar')
-TROVE=$(jar 'trove4j-*.jar')
-COROUTINES=$(jar 'kotlinx-coroutines-core-jvm-*.jar')
-COROUTINES_TEST=$(jar 'kotlinx-coroutines-test-jvm-*.jar')
-SER_CORE=$(jar 'kotlinx-serialization-core-jvm-*.jar')
-SER_JSON=$(jar 'kotlinx-serialization-json-jvm-*.jar')
-JUNIT=$(jar 'junit-4*.jar')
-HAMCREST=$(jar 'hamcrest-core-*.jar')
+# A `|| exit 1` nem díszítés: a `$( … )` alhéj, és az `exit` a `jar`-ban csak AZT
+# zárja be. Enélkül egy hiányzó jar után a szkript üres útvonallal ment tovább, és
+# a „HIÁNYZIK" üzenet helyett egy érthetetlen ClassNotFoundException lett a vége.
+STDLIB=$(jar 'kotlin-stdlib-2*.jar') || exit 1
+COMPILER=$(jar 'kotlin-compiler-embeddable-2*.jar') || exit 1
+SER_PLUGIN=$(jar 'kotlin-serialization-compiler-plugin-embeddable-2*.jar') || exit 1
+ANNOTATIONS=$(jar 'annotations-13.0.jar') || exit 1
+TROVE=$(jar 'trove4j-*.jar') || exit 1
+COROUTINES=$(jar 'kotlinx-coroutines-core-jvm-*.jar') || exit 1
+COROUTINES_TEST=$(jar 'kotlinx-coroutines-test-jvm-*.jar') || exit 1
+SER_CORE=$(jar 'kotlinx-serialization-core-jvm-*.jar') || exit 1
+SER_JSON=$(jar 'kotlinx-serialization-json-jvm-*.jar') || exit 1
+JUNIT=$(jar 'junit-4*.jar') || exit 1
+HAMCREST=$(jar 'hamcrest-core-*.jar') || exit 1
 
 # Amire magának a fordítónak van szüksége a FUTÁSHOZ (nem amit fordít).
 COMPILER_CP="$COMPILER:$STDLIB:$COROUTINES:$ANNOTATIONS:$TROVE"

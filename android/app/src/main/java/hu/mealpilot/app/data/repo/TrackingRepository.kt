@@ -107,5 +107,8 @@ class TrackingRepository(
     suspend fun latestWeight(): WeightLogEntity? = weightLogDao.latest()
 
     suspend fun allMealLogs(): List<MealLogEntity> = mealLogDao.all()
+
+    /** Egyetlen nap naplója — ahol csak a mai nap kell, ne a teljes előzmény jöjjön be. */
+    suspend fun mealLogsOn(date: LocalDate): List<MealLogEntity> = mealLogDao.forDay(date.toEpochDay())
     suspend fun allWeights(): List<WeightLogEntity> = weightLogDao.all()
 }

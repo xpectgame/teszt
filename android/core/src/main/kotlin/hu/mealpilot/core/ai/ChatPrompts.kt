@@ -193,6 +193,12 @@ A single JSON object, with no prose and no code fences:
 }
 """.trimIndent()
 
+    /**
+     * Ennyi korábbi üzenet kerül a promptba. A hívó is ehhez igazodik: csak ennyit
+     * olvas be az adatbázisból, nem a teljes, hónapok óta gyűlő előzményt.
+     */
+    const val HISTORY_TURNS = 12
+
     fun system(language: AppLanguage): String =
         if (language == AppLanguage.EN) SYSTEM_EN else SYSTEM
 
@@ -254,7 +260,7 @@ A single JSON object, with no prose and no code fences:
 
         if (history.isNotEmpty()) {
             appendLine(s("KORÁBBI BESZÉLGETÉS", "EARLIER IN THIS CONVERSATION"))
-            history.takeLast(12).forEach { turn ->
+            history.takeLast(HISTORY_TURNS).forEach { turn ->
                 val who = if (turn.role == ChatTurn.Role.USER) s("Felhasználó", "User") else s("Te", "You")
                 appendLine("$who: ${turn.text.take(600)}")
             }

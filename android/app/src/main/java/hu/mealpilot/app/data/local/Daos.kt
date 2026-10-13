@@ -140,6 +140,9 @@ interface MealLogDao {
     @Query("SELECT * FROM meal_logs ORDER BY epochDay")
     suspend fun all(): List<MealLogEntity>
 
+    @Query("SELECT * FROM meal_logs WHERE epochDay = :epochDay ORDER BY loggedAtMillis")
+    suspend fun forDay(epochDay: Long): List<MealLogEntity>
+
     /**
      * Van-e MÁR bármilyen naplóbejegyzés erre a fogásra.
      *
@@ -375,6 +378,13 @@ interface ChatDao {
 
     @Query("SELECT * FROM chat_messages ORDER BY sentAtMillis, id")
     suspend fun all(): List<ChatMessageEntity>
+
+    /** A legutóbbi [limit] üzenet, időrendben. */
+    @Query(
+        "SELECT * FROM (SELECT * FROM chat_messages ORDER BY sentAtMillis DESC, id DESC LIMIT :limit) " +
+            "ORDER BY sentAtMillis, id"
+    )
+    suspend fun recent(limit: Int): List<ChatMessageEntity>
 
     @Query("UPDATE chat_messages SET pendingAction = 0 WHERE id = :id")
     suspend fun clearPending(id: Long)

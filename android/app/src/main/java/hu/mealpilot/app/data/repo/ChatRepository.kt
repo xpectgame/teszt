@@ -10,6 +10,7 @@ import hu.mealpilot.app.data.local.LogStatus
 import hu.mealpilot.app.data.prefs.SettingsRepository
 import hu.mealpilot.core.ai.AiChatResponse
 import hu.mealpilot.core.ai.ChatContext
+import hu.mealpilot.core.ai.ChatPrompts
 import hu.mealpilot.core.ai.ChatTurn
 import hu.mealpilot.core.ai.MealAi
 import hu.mealpilot.core.ai.PlanParser
@@ -91,7 +92,9 @@ class ChatRepository(
             )
         )
 
-        val history = chatDao.all().dropLast(1).map { entity ->
+        // A prompt úgyis csak az utolsó néhány üzenetet viszi; a +1 az imént beírt
+        // üzenet, ami nem előzmény, hanem maga a kérdés.
+        val history = chatDao.recent(ChatPrompts.HISTORY_TURNS + 1).dropLast(1).map { entity ->
             ChatTurn(
                 role = runCatching { ChatTurn.Role.valueOf(entity.role) }.getOrDefault(ChatTurn.Role.USER),
                 text = entity.body,
@@ -197,7 +200,7 @@ class ChatRepository(
             }
         }
 
-        val todayLogs = tracking.allMealLogs().filter { it.epochDay == today.toEpochDay() }
+        val todayLogs = tracking.mealLogsOn(today)
         val eaten = todayLogs.filter {
             it.status == LogStatus.EATEN.name ||
                 it.status == LogStatus.REPLACED.name ||

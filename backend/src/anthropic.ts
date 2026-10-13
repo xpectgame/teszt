@@ -42,7 +42,7 @@ const PRICES: Record<string, Price> = {
 /** Ismeretlen modellnél inkább felül becsülünk: a meglepetés drágább, mint az óvatosság. */
 const DEFAULT_PRICE: Price = { input: 5, output: 25 }
 
-/** A cache-ből olvasott bemenet a listaár tizede, a cache írása másfélszerese. */
+/** A cache-ből olvasott bemenet a listaár tizede, a cache írása (5 perces) 1,25-szöröse. */
 export function costMicros(model: string, usage: Usage): number {
   const price = PRICES[model] ?? DEFAULT_PRICE
   const input = usage.inputTokens * price.input

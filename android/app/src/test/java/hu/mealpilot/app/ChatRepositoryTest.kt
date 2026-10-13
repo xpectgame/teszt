@@ -5,11 +5,16 @@ import android.content.Context
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import hu.mealpilot.app.data.local.AppDatabase
+import hu.mealpilot.app.data.local.ChatMessageEntity
+import hu.mealpilot.app.data.local.LogStatus
+import hu.mealpilot.app.data.local.MealLogEntity
+import hu.mealpilot.app.data.local.NutrientsColumns
 import hu.mealpilot.app.data.prefs.SettingsRepository
 import hu.mealpilot.app.data.repo.ChatRepository
 import hu.mealpilot.app.data.repo.PlanRepository
 import hu.mealpilot.app.data.repo.TrackingRepository
 import hu.mealpilot.app.i18n.AppStrings
+import hu.mealpilot.core.ai.ChatPrompts
 import hu.mealpilot.core.ai.ChatTurn
 import hu.mealpilot.core.i18n.AppLanguage
 import kotlinx.coroutines.test.runTest
@@ -20,6 +25,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
+import java.time.LocalDate
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
@@ -131,5 +137,49 @@ class ChatRepositoryTest {
         assertEquals(2, messages.size)
         assertEquals("nincs hálózat", messages.last().body)
         assertFalse(messages.last().pendingAction)
+    }
+
+    @Test
+    fun `az előzményből csak a legutóbbi üzenetek mennek ki, időrendben`() = runTest {
+        // A prompt úgyis csak ennyit visz; a teljes, hónapok óta gyűlő előzményt
+        // minden üzenetnél beolvasni felesleges munka volt.
+        repeat(30) { i ->
+            db.chatDao().insert(
+                ChatMessageEntity(
+                    role = if (i % 2 == 0) ChatTurn.Role.USER.name else ChatTurn.Role.ASSISTANT.name,
+                    body = "üzenet $i",
+                    // Szándékosan azonos időbélyegek: a sorrendet ilyenkor az azonosító dönti el.
+                    sentAtMillis = 1_000L + i / 3,
+                )
+            )
+        }
+        val ai = FakeMealAi()
+
+        repository.send(ai, "a mostani kérdés", AppLanguage.HU)
+
+        assertEquals(
+            (30 - ChatPrompts.HISTORY_TURNS until 30).map { "üzenet $it" },
+            ai.lastHistory.map { it.text },
+        )
+    }
+
+    @Test
+    fun `a mai összesítő csak a mai naplót számolja`() = runTest {
+        val today = LocalDate.now().toEpochDay()
+        fun log(day: Long, status: LogStatus, kcal: Double) = MealLogEntity(
+            epochDay = day,
+            loggedAtMillis = 0,
+            status = status.name,
+            name = "étel",
+            nutrients = NutrientsColumns(kcal = kcal, proteinG = 10.0),
+        )
+        db.mealLogDao().insert(log(today - 1, LogStatus.EATEN, 900.0))
+        db.mealLogDao().insert(log(today, LogStatus.EATEN, 400.0))
+        db.mealLogDao().insert(log(today, LogStatus.SKIPPED, 700.0))
+        db.mealLogDao().insert(log(today + 1, LogStatus.EXTRA, 300.0))
+
+        val summary = repository.buildContext(AppLanguage.HU).todaySummary
+
+        assertTrue(summary, summary.startsWith("Eddig 400 kcal és 10 g fehérje 1 naplózott"))
     }
 }

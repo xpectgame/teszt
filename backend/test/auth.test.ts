@@ -19,7 +19,7 @@ interface SubscriptionFixture {
   linked_from?: string | null
 }
 
-function envWithSubscriptions(subscriptions: Record<string, SubscriptionFixture>) {
+function envWithSubscriptions(subscriptions: Record<string, SubscriptionFixture>, reads: string[] = []) {
   return {
     ANDROID_PACKAGE: 'hu.mealpilot.app',
     DB: {
@@ -30,6 +30,7 @@ function envWithSubscriptions(subscriptions: Record<string, SubscriptionFixture>
             if (sql.includes('FROM users')) return { id: args[0], purchase_hash: null }
             if (sql.includes('FROM subscriptions')) {
               const hash = String(args[0])
+              reads.push(hash)
               const row = subscriptions[hash]
               return row ? { purchase_hash: hash, first_user_id: null, ...row } : null
             }
@@ -122,5 +123,39 @@ describe('a kvóta alanya a kérés útján', () => {
 
     expect(caller.tier).toBe('FREE')
     expect(caller.subject.startsWith('user:')).toBe(true)
+  })
+
+  it('a már beolvasott sort nem olvassa be újra', async () => {
+    // Minden prémium kérés ezen az úton megy át: egy felesleges D1-kör itt a
+    // forgalommal arányos késés és költség.
+    const hash = await sha256Hex('vasarlasi-token')
+    const reads: string[] = []
+    const env = envWithSubscriptions(
+      { [hash]: { state: 'ACTIVE', expires_at: future, verified_at: now, linked_from: null } },
+      reads,
+    )
+
+    const caller = await resolveCaller(env, request('vasarlasi-token'))
+
+    expect(caller.subject).toBe(`sub:${hash}`)
+    expect(reads).toEqual([hash])
+  })
+
+  it('váltás után csak a lánc régi szemét olvassa be pluszban', async () => {
+    const oldHash = await sha256Hex('regi-vasarlasi-token')
+    const newHash = await sha256Hex('uj-vasarlasi-token')
+    const reads: string[] = []
+    const env = envWithSubscriptions(
+      {
+        [newHash]: { state: 'ACTIVE', expires_at: future, verified_at: now, linked_from: oldHash },
+        [oldHash]: { state: 'EXPIRED', expires_at: now - 1000, verified_at: now, linked_from: null },
+      },
+      reads,
+    )
+
+    const caller = await resolveCaller(env, request('uj-vasarlasi-token'))
+
+    expect(caller.subject).toBe(`sub:${oldHash}`)
+    expect(reads).toEqual([newHash, oldHash])
   })
 })

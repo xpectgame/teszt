@@ -151,8 +151,8 @@ class MealReminderReceiver : BroadcastReceiver() {
         val today = LocalDate.now()
 
         val plan = container.planRepository.activePlan()
-        val eaten = container.trackingRepository.allMealLogs()
-            .filter { it.epochDay == today.toEpochDay() && it.status != LogStatus.SKIPPED.name }
+        val eaten = container.trackingRepository.mealLogsOn(today)
+            .filter { it.status != LogStatus.SKIPPED.name }
         val consumed = eaten.sumOf { it.nutrients.kcal }.roundToInt()
         val protein = eaten.sumOf { it.nutrients.proteinG }.roundToInt()
         val target = plan?.targetKcal ?: 0
