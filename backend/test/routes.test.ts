@@ -84,7 +84,7 @@ describe('útvonalak', () => {
 
     it('lefuttatatlan migrációt megkülönböztet az elérhetetlen adatbázistól', async () => {
       const missing = await health(
-        envWith({ ANTHROPIC_API_KEY: 'x' }, 'D1_ERROR: no such table: events'),
+        envWith({ ANTHROPIC_API_KEY: 'x' }, 'D1_ERROR: no such table: reservations'),
       )
       expect(missing.status).toBe(503)
       expect(missing.body.database).toBe('nincs migrálva')
@@ -126,7 +126,8 @@ describe('globális napi mennyezet a kérés útján', () => {
       DB: {
         prepare: (sql: string) => ({
           bind: (...args: unknown[]) => ({
-            run: async () => ({}),
+            // A valódi D1 is visszaadja, hány sort érintett az utasítás.
+            run: async () => ({ meta: { changes: 1 } }),
             first: async () => {
               if (sql.includes('FROM usage')) {
                 // Csak a közös alany áll a plafonon; a hívó saját kerete érintetlen.
@@ -218,7 +219,7 @@ describe('a bejelentés és az összeomlás napi korlátja', () => {
       args,
       run: async () => {
         statements.push({ sql, args })
-        return {}
+        return { meta: { changes: 1 } }
       },
       first: async () => null,
       all: async () => ({ results: [] }),

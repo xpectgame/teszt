@@ -35,7 +35,9 @@ function envRecording(writes: Recorded[]) {
         bind: (...args: unknown[]) => ({
           run: async () => {
             writes.push({ subject: String(args[0]), sql, args })
-            return {}
+            // A valódi D1 is visszaadja, hány sort érintett az utasítás — a foglalás
+            // ebből tudja meg, hogy belefért-e a keretbe.
+            return { meta: { changes: 1 } }
           },
           first: async () =>
             sql.includes('FROM usage')
@@ -230,5 +232,201 @@ describe('a kérésnapló hibamezője', () => {
     expect(stored).not.toContain('96 kg')
     // ok = 0: a hívás elbukott, és ez nyomot hagy.
     expect(request!.args[9]).toBe(0)
+  })
+})
+
+/**
+ * Egyszerre futó kérések és a keret.
+ *
+ * A kvótát az előszűrő ELŐRE olvassa ki, a könyvelés viszont a hívás UTÁN jön — és a
+ * kettő között percek telhetnek el. Eddig ezalatt minden további kérés ugyanazt a
+ * régi számlálót látta: egyszerre indított kérések mind átmentek, három ingyenes terv
+ * helyett annyi, ahány egyszerre futott. A tokenplafon és a közös napi mennyezet
+ * ugyanezzel a réssel működött.
+ *
+ * Itt a VÉGPONT viselkedését mérjük: mit tesz, ha a foglalás nem fér bele. Hogy a
+ * foglalás feltétele valódi SQLite motoron tényleg korlátoz-e, azt a
+ * `tools/check-migrations.py` méri — ugyanazon a SQL szövegen, amit a kód küld.
+ */
+describe('a foglalás egyszerre futó kéréseknél', () => {
+  interface Statement {
+    sql: string
+    args: unknown[]
+  }
+
+  function envReserving(options: {
+    statements: Statement[]
+    /** Melyik alany foglalása fér bele. */
+    accept: (subject: string) => boolean
+    /** A friss újraolvasásnál a saját terv-számláló. */
+    plansUsed?: number
+    /** Ha igaz, a foglalótábla hiányzik — elmaradt migráció. */
+    missingTable?: boolean
+  }) {
+    return {
+      ANDROID_PACKAGE: 'hu.mealpilot.app',
+      ANTHROPIC_API_KEY: 'nem-hasznaljuk',
+      PLAN_MODEL: 'claude-sonnet-5',
+      CHAT_MODEL: 'claude-sonnet-5',
+      DAILY_OUTPUT_TOKEN_CEILING: '250000',
+      DB: {
+        prepare: (sql: string) => ({
+          bind: (...args: unknown[]) => ({
+            run: async () => {
+              options.statements.push({ sql, args })
+              if (sql.includes('reservations') && options.missingTable) {
+                throw new Error('D1_ERROR: no such table: reservations')
+              }
+              if (sql.includes('INSERT INTO reservations')) {
+                return { meta: { changes: options.accept(String(args[1])) ? 1 : 0 } }
+              }
+              return { meta: { changes: 1 } }
+            },
+            first: async () =>
+              sql.includes('FROM usage')
+                ? {
+                    plans: String(args[0]).startsWith('user:') ? (options.plansUsed ?? 0) : 0,
+                    messages: 0,
+                    input_tokens: 0,
+                    output_tokens: 0,
+                  }
+                : null,
+            all: async () => ({ results: [] }),
+          }),
+        }),
+      },
+    } as any
+  }
+
+  /** Igaz, ha a kérés eljutott a modellig — vagyis pénzbe került. */
+  function trackAnthropic() {
+    const state = { called: false }
+    const original = globalThis.fetch
+    globalThis.fetch = (async (input: any, init: any) => {
+      if (String(input?.url ?? input).includes('anthropic.com')) state.called = true
+      return original(input, init)
+    }) as typeof fetch
+    return { state, restore: () => { globalThis.fetch = original } }
+  }
+
+  it('ha egy másik kérés még fut, várakozásra kér — nem fizetőfalat mutat', async () => {
+    const statements: Statement[] = []
+    const tracker = trackAnthropic()
+    try {
+      const r = await generate(envReserving({ statements, accept: (s) => !s.startsWith('user:') }))
+      const body = (await r.json()) as { error: string }
+
+      expect(r.status, 'ez nem kvótahiba: a 402 fizetőfalat nyitna').toBe(429)
+      expect(body.error).toBe('RATE_LIMIT')
+      expect(tracker.state.called, 'a modellt nem szabad hívni').toBe(false)
+    } finally {
+      tracker.restore()
+    }
+  })
+
+  it('ha közben a keret tényleg elfogyott, azt mondja meg', async () => {
+    const statements: Statement[] = []
+    const tracker = trackAnthropic()
+    try {
+      // Az előszűrő még 2-t látott (belefért), a foglaláskor viszont egy egyszerre
+      // futó kérés már elvitte a harmadikat.
+      let reads = 0
+      const env = envReserving({ statements, accept: (s) => !s.startsWith('user:') })
+      const prepare = env.DB.prepare
+      env.DB.prepare = (sql: string) => {
+        const statement = prepare(sql)
+        return {
+          bind: (...args: unknown[]) => {
+            const bound = statement.bind(...args)
+            return {
+              ...bound,
+              first: async () => {
+                if (sql.includes('FROM usage') && String(args[0]).startsWith('user:')) {
+                  reads++
+                  return { plans: reads === 1 ? 2 : 3, messages: 0, input_tokens: 0, output_tokens: 0 }
+                }
+                return bound.first()
+              },
+            }
+          },
+        }
+      }
+      const r = await generate(env)
+      const body = (await r.json()) as { error: string }
+
+      expect(r.status).toBe(402)
+      expect(body.error).toBe('PLAN_QUOTA')
+      expect(tracker.state.called).toBe(false)
+    } finally {
+      tracker.restore()
+    }
+  })
+
+  it('ha a közös mennyezet nem fér bele, a saját foglalást is visszaadja', async () => {
+    const statements: Statement[] = []
+    const tracker = trackAnthropic()
+    try {
+      const r = await generate(envReserving({ statements, accept: (s) => s !== 'global:daily' }))
+      await r.text()
+
+      expect(r.status).toBe(503)
+      expect(tracker.state.called).toBe(false)
+
+      const own = statements.find(
+        (s) => s.sql.includes('INSERT INTO reservations') && String(s.args[1]).startsWith('user:'),
+      )
+      const released = statements.some(
+        (s) => s.sql.includes('DELETE FROM reservations WHERE id') && s.args[0] === own!.args[0],
+      )
+      expect(released, 'különben lejáratig elvenné a felhasználó keretét').toBe(true)
+    } finally {
+      tracker.restore()
+    }
+  })
+
+  it('a foglalás a könyvelés UTÁN oldódik, és mindkettő', async () => {
+    const statements: Statement[] = []
+    const restore = fakeAnthropic({ deltas: 3, deltaChars: 20, finalOutputTokens: 500 })
+    try {
+      const r = await generate(envReserving({ statements, accept: () => true }))
+      await r.text()
+      await new Promise((res) => setTimeout(res, 50))
+    } finally {
+      restore()
+    }
+
+    const reservations = statements
+      .filter((s) => s.sql.includes('INSERT INTO reservations'))
+      .map((s) => s.args[0])
+    expect(reservations.length, 'a saját és a közös foglalás').toBe(2)
+
+    const releaseIndex = (id: unknown) =>
+      statements.findIndex((s) => s.sql.includes('DELETE FROM reservations WHERE id') && s.args[0] === id)
+    const lastUsageWrite = statements.map((s) => s.sql).lastIndexOf(
+      statements.filter((s) => s.sql.includes('INSERT INTO usage')).at(-1)!.sql,
+    )
+    for (const id of reservations) {
+      expect(releaseIndex(id), 'minden foglalás feloldódik').toBeGreaterThan(-1)
+      // Fordítva egy pillanatig SEMMI nem számítana, és egy közben érkező kérés
+      // átcsúszhatna.
+      expect(releaseIndex(id), 'és csak a könyvelés után').toBeGreaterThan(lastUsageWrite)
+    }
+  })
+
+  it('egy elmaradt migráció nem állítja le a tervezést', async () => {
+    // Ha a deploynál nem pipálták be a migrációt, a foglalótábla nincs meg. Ez nem
+    // lehet ok arra, hogy MINDEN felhasználónál elhasaljon a tervezés: a foglalás
+    // kimarad, és marad a korábbi előszűrő — ami sosem rosszabb a javítás előttinél.
+    const statements: Statement[] = []
+    const restore = fakeAnthropic({ deltas: 2, deltaChars: 20, finalOutputTokens: 300 })
+    try {
+      const r = await generate(envReserving({ statements, accept: () => true, missingTable: true }))
+      const text = await r.text()
+
+      expect(r.status).toBe(200)
+      expect(text).toContain('"type":"done"')
+    } finally {
+      restore()
+    }
   })
 })

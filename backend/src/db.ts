@@ -38,6 +38,8 @@ export interface SubscriptionRow {
   expires_at: number | null
   verified_at: number
   first_user_id: string | null
+  /** Előfizetés-csere (váltás, újrafeliratkozás) esetén a korábbi token hashe. */
+  linked_from?: string | null
 }
 
 export async function readSubscription(env: Env, purchaseHash: string): Promise<SubscriptionRow | null> {
@@ -150,4 +152,130 @@ export async function logRequest(
       Date.now(),
     )
     .run()
+}
+
+/**
+ * Meddig él egy foglalás.
+ *
+ * A leghosszabb hívás egy tervszakasz: 24 000 kimeneti token streamelve, gondolkodással
+ * együtt is jóval tíz perc alatt. Ennél tovább csak az a foglalás él, amelyiknek a
+ * könyvelése elmaradt — az viszont nem eheti meg örökre a keretet.
+ */
+export const RESERVATION_TTL_MS = 20 * 60 * 1000
+
+/**
+ * Az atomi foglalás.
+ *
+ * EGYETLEN feltételes beszúrás: a motor egy utasításon belül adja össze a már
+ * elhasznált mennyiséget (`usage`) és a még folyamatban lévő foglalásokat, és csak
+ * akkor ír, ha a kért mennyiség belefér. Két egyszerre érkező kérés így nem láthatja
+ * ugyanazt a régi állapotot — pont ez volt a hiba.
+ *
+ * A feltételek ugyanazok, mint a `checkQuota`-ban:
+ *  - darabszám (terv, üzenet): csak akkor számít, ha a hívás tényleg fogyaszt belőle
+ *    (`?4 = 0` — egy folytatólagos szakasz vagy javító kör nem új terv), és a
+ *    meglévő + folyamatban lévő + új nem lépheti át a korlátot;
+ *  - token: a meglévő + folyamatban lévő legyen a plafon ALATT. Ugyanaz a szabály,
+ *    mint eddig egyetlen kérésnél (a plafon alatt még indulhat egy hívás) — csak most
+ *    a folyamatban lévők is beleszámítanak.
+ *
+ * A negatív korlát korlátlant jelent. A `tools/check-migrations.py` ezt a szöveget
+ * olvassa ki és futtatja le valódi SQLite motoron — ne írd át a két jelölő nélkül.
+ */
+// RESERVE_SQL_BEGIN
+export const RESERVE_SQL = `
+INSERT INTO reservations (id, subject, period, plans, messages, output_tokens, created_at)
+SELECT ?1, ?2, ?3, ?4, ?5, ?6, ?7
+WHERE
+  (?9 < 0 OR ?4 = 0 OR
+     COALESCE((SELECT plans FROM usage WHERE subject = ?2 AND period = ?3), 0)
+     + COALESCE((SELECT SUM(plans) FROM reservations WHERE subject = ?2 AND period = ?3 AND created_at > ?8), 0)
+     + ?4 <= ?9)
+  AND (?10 < 0 OR ?5 = 0 OR
+     COALESCE((SELECT messages FROM usage WHERE subject = ?2 AND period = ?3), 0)
+     + COALESCE((SELECT SUM(messages) FROM reservations WHERE subject = ?2 AND period = ?3 AND created_at > ?8), 0)
+     + ?5 <= ?10)
+  AND (?11 < 0 OR
+     COALESCE((SELECT output_tokens FROM usage WHERE subject = ?2 AND period = ?3), 0)
+     + COALESCE((SELECT SUM(output_tokens) FROM reservations WHERE subject = ?2 AND period = ?3 AND created_at > ?8), 0)
+     < ?11)
+`
+// RESERVE_SQL_END
+
+export interface ReservationRequest {
+  subject: string
+  period: string
+  plans: number
+  messages: number
+  outputTokens: number
+  /** -1 = korlátlan. */
+  planLimit: number
+  /** -1 = korlátlan. */
+  messageLimit: number
+  /** -1 = nincs plafon. */
+  outputTokenCap: number
+}
+
+/**
+ * Foglalás. Az azonosítót adja vissza, vagy `null`-t, ha nem fért bele.
+ *
+ * Ha maga a tábla hiányzik (a 0006 migráció nem futott le a deploy előtt), NEM
+ * tesszük tönkre a kérést: a foglalás kimarad, és marad a korábbi, előzetes
+ * ellenőrzés. Ez sosem rosszabb a javítás előtti állapotnál, egy elfelejtett
+ * migrációs pipa viszont nem állíthatja le a tervezést minden felhasználónak.
+ * A `/healthz` ilyenkor „nincs migrálva" állapotot jelez.
+ */
+export async function reserveUsage(
+  env: Env,
+  request: ReservationRequest,
+): Promise<{ reserved: true; id: string | null } | { reserved: false }> {
+  const id = crypto.randomUUID()
+  const now = Date.now()
+  try {
+    const result = await env.DB.prepare(RESERVE_SQL)
+      .bind(
+        id,
+        request.subject,
+        request.period,
+        request.plans,
+        request.messages,
+        request.outputTokens,
+        now,
+        now - RESERVATION_TTL_MS,
+        request.planLimit,
+        request.messageLimit,
+        request.outputTokenCap,
+      )
+      .run()
+    const changes = (result as { meta?: { changes?: number } })?.meta?.changes ?? 0
+    return changes > 0 ? { reserved: true, id } : { reserved: false }
+  } catch (error) {
+    if (/no such table/i.test(String(error))) {
+      console.error('A reservations tábla hiányzik — a 0006 migráció nem futott le.')
+      return { reserved: true, id: null }
+    }
+    throw error
+  }
+}
+
+/**
+ * A foglalás feloldása — a hívás könyvelése UTÁN.
+ *
+ * Előbb a tényleges fogyasztás kerül a `usage`-be, csak utána tűnik el a foglalás:
+ * a fordított sorrendben egy pillanatig SEMMI nem számítana, és egy közben érkező
+ * kérés átcsúszhatna. Így legfeljebb egy pillanatig duplán számít — az a szigorúbb
+ * irány.
+ *
+ * A lejárt, beragadt foglalásokat is itt takarítjuk, mellékesen.
+ */
+export async function releaseReservations(env: Env, ids: Array<string | null>): Promise<void> {
+  const cutoff = Date.now() - RESERVATION_TTL_MS
+  try {
+    for (const id of ids) {
+      if (id) await env.DB.prepare('DELETE FROM reservations WHERE id = ?1').bind(id).run()
+    }
+    await env.DB.prepare('DELETE FROM reservations WHERE created_at < ?1').bind(cutoff).run()
+  } catch (error) {
+    if (!/no such table/i.test(String(error))) throw error
+  }
 }

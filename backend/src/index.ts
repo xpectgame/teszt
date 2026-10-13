@@ -2,7 +2,16 @@ import { Hono } from 'hono'
 import { cors } from 'hono/cors'
 import { AnthropicError, costMicros, emptyUsage, failureLabel, streamMessage } from './anthropic.js'
 import { AuthError, resolveCaller, secretMatches, type Caller } from './auth.js'
-import { addUsage, logRequest, readSubscription, readUsage, sha256Hex, writeSubscription } from './db.js'
+import {
+  addUsage,
+  logRequest,
+  readSubscription,
+  readUsage,
+  releaseReservations,
+  reserveUsage,
+  sha256Hex,
+  writeSubscription,
+} from './db.js'
 import type { Env } from './env.js'
 import {
   checkQuota,
@@ -111,7 +120,11 @@ app.get('/healthz', async (c) => {
   const env = c.env
   let database: 'ok' | 'nincs migrálva' | 'elérhetetlen' = 'elérhetetlen'
   try {
-    await env.DB.prepare('SELECT 1 FROM events LIMIT 1').all()
+    // A LEGÚJABB migráció táblája. Eddig az `events`-et (0002) kérdezte, tehát egy
+    // később kimaradt migrációról semmit nem mondott. A foglalótábla nélkül a
+    // tervezés még működik — a kvótafoglalás kimarad, és csak az előszűrő marad —,
+    // de egyszerre futó kérések megint átléphetik a keretet. Ezt látni kell.
+    await env.DB.prepare('SELECT 1 FROM reservations LIMIT 1').all()
     database = 'ok'
   } catch (error) {
     // A hiányzó tábla más eset, mint az elérhetetlen adatbázis: az elsőt a migráció
@@ -288,6 +301,89 @@ app.post('/v1/generate', async (c) => {
     }
   }
 
+  // AZ ATOMI FOGLALÁS — a fenti két ellenőrzés csak előszűrő.
+  //
+  // A fenti ellenőrzések a kvótát ELŐRE olvassák ki, a könyvelés viszont a hívás
+  // UTÁN jön, és a kettő között percek telhetnek el. Eddig ezalatt minden további
+  // kérés ugyanazt a régi számlálót látta: egyszerre indított kérések mind átmentek
+  // — három ingyenes terv helyett annyi, ahány egyszerre futott —, és ugyanígy túl
+  // lehetett lépni a tokenplafont és a közös napi mennyezetet is. A /v1/report napi
+  // korlátja ezt a rést már egy feltételes beszúrással zárta; itt nem volt semmi.
+  //
+  // Az előszűrők maradnak: olcsók, és pontos hibakódot adnak a gyakori esetre (a
+  // keret tényleg elfogyott). A foglalás az, ami egyidejű kérésnél is betartja.
+  const delta = usageDelta(task, chunkIndex, isRetry)
+  const own = await reserveUsage(c.env, {
+    subject: caller.subject,
+    period,
+    plans: delta.plans,
+    messages: delta.messages,
+    // A hívás legfeljebb ennyit költhet; a tényleges számot a könyvelés írja be.
+    outputTokens: config.maxTokens,
+    planLimit: caller.limits.aiPlans,
+    messageLimit: caller.limits.chatMessages,
+    outputTokenCap: caller.limits.outputTokenCap,
+  })
+  if (!own.reserved) {
+    // Egy egyszerre futó másik kérés vitte el a helyet. Ha közben a keret tényleg
+    // elfogyott, azt mondjuk meg — az a fizetőfal. Ha csak egy másik kérés fut még,
+    // akkor azt, hogy várjon: ez nem kvótahiba, és nem is szabad annak mutatni.
+    const fresh = await readUsage(c.env, caller.subject, period)
+    const recheck = checkQuota({
+      tier: caller.tier,
+      limits: caller.limits,
+      usage: fresh,
+      task,
+      requestedDays,
+      chunkIndex,
+      isRetry,
+    })
+    if (!recheck.allowed) {
+      return c.json(
+        { error: recheck.code, message: recheck.message, tier: caller.tier, upgrade: caller.tier === 'FREE' },
+        402,
+      )
+    }
+    return c.json(
+      {
+        error: 'RATE_LIMIT',
+        message: 'Egy másik kérésed még fut. Várd meg, aztán próbáld újra.',
+        tier: caller.tier,
+        upgrade: false,
+      },
+      429,
+    )
+  }
+  const ownReservation = own.id
+
+  // A közös napi mennyezet foglalása. A tulajdonos ugyanúgy átmehet rajta, mint
+  // fent — de a foglalása MÁSOK számára számít: a számla az övé is.
+  const ceiling = Number(c.env.DAILY_OUTPUT_TOKEN_CEILING ?? '')
+  const shared = await reserveUsage(c.env, {
+    subject: GLOBAL_SUBJECT,
+    period: today,
+    plans: 0,
+    messages: 0,
+    outputTokens: config.maxTokens,
+    planLimit: -1,
+    messageLimit: -1,
+    outputTokenCap:
+      caller.tier === 'OWNER' || !Number.isFinite(ceiling) || ceiling <= 0 ? -1 : ceiling,
+  })
+  if (!shared.reserved) {
+    await releaseReservations(c.env, [ownReservation])
+    return c.json(
+      {
+        error: 'SERVICE_BUSY',
+        message: 'A szolgáltatás mára elérte a napi keretét. Próbáld újra holnap.',
+        tier: caller.tier,
+        upgrade: false,
+      },
+      503,
+    )
+  }
+  const sharedReservation = shared.id
+
   const model = task === 'CHAT' ? c.env.CHAT_MODEL : c.env.PLAN_MODEL
   // A Haiku nem fogadja el az effort paramétert.
   const effort = model.includes('haiku') ? null : c.env.PLAN_EFFORT
@@ -388,7 +484,6 @@ app.post('/v1/generate', async (c) => {
 
         // A könyvelés a `finally`-ben van, nem utána: így a megszakadt folyam is
         // hagy nyomot. Ezek a tokenek ugyanúgy ki vannak fizetve.
-        const delta = usageDelta(task, chunkIndex, isRetry)
         const cost = costMicros(model, tokens)
         defer(
           Promise.all([
@@ -421,7 +516,12 @@ app.post('/v1/generate', async (c) => {
               ok: completed,
               error: failure,
             }),
-          ]),
+          ])
+            // A foglalás a könyvelés UTÁN oldódik: fordítva egy pillanatig semmi nem
+            // számítana, és egy közben érkező kérés átcsúszhatna. Akkor is feloldjuk,
+            // ha a könyvelés elbukott — egy beragadt foglalás különben lejáratig
+            // elvenné a keretet.
+            .finally(() => releaseReservations(c.env, [ownReservation, sharedReservation]).catch(() => {})),
         )
       }
     },

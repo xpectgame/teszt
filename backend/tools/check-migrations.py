@@ -16,14 +16,39 @@ Amit ellenőriz:
   - a 0004 után tényleg nincs `crashes.message` oszlop;
   - a 0005 indexei tényleg létrejönnek;
   - és hogy a visszaélés elleni, FELTÉTELES beszúrás valóban korlátoz — nem csak a
-    SQL szövege tartalmazza a feltételt, hanem a motor be is tartja.
+    SQL szövege tartalmazza a feltételt, hanem a motor be is tartja;
+  - a 0006 foglalótáblája és indexe létrejön, és a kvótafoglalás — az a SQL, amit a
+    `src/db.ts` TÉNYLEG elküld, onnan kiolvasva — egyszerre érkező kéréseknél is
+    betartja a keretet.
 """
+import re
 import sqlite3
 import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 MIGRATIONS = ROOT / 'backend/migrations'
+DB_TS = ROOT / 'backend/src/db.ts'
+
+
+def reserve_sql() -> str:
+    """A foglalás SQL-je, a `db.ts`-ből kiolvasva.
+
+    Nem másolat: ha a szkript a saját példányát futtatná, a kód SQL-je bármivé
+    válhatna, és ez az ellenőrzés akkor is zöld maradna.
+    """
+    text = DB_TS.read_text(encoding='utf-8')
+    match = re.search(
+        r'// RESERVE_SQL_BEGIN\s*export const RESERVE_SQL = `(.*?)`\s*// RESERVE_SQL_END',
+        text,
+        re.S,
+    )
+    if not match:
+        raise SystemExit(
+            'Nem találom a RESERVE_SQL-t a db.ts-ben a két jelölő között — a szkript nem '
+            'tudja, mit kellene ellenőriznie.'
+        )
+    return match.group(1)
 
 CAPPED_INSERT = """
 INSERT INTO reports (id, user_id, kind, reason, detail, payload, app_version, created_at)
@@ -72,15 +97,80 @@ def main() -> int:
             '— a napi keret csak a SQL szövegében létezne'
         )
 
+    names = {row[1] for row in con.execute('PRAGMA index_list(reservations)')}
+    if 'idx_reservations_subject' not in names:
+        problems.append('hiányzik az idx_reservations_subject index — a foglalás minden '
+                        'kérésnél végigolvasná a táblát')
+
+    problems += check_reservation(con)
+
     if problems:
         print('A migrációk lefutnak, de az eredmény nem az elvárt:\n', file=sys.stderr)
         for problem in problems:
             print(f'  {problem}', file=sys.stderr)
         return 1
 
-    print(f'Rendben: mind a {len(files)} migráció lefut sorrendben, és a visszaélés elleni '
-          'korlátot a motor be is tartja.')
+    print(f'Rendben: mind a {len(files)} migráció lefut sorrendben, a visszaélés elleni '
+          'korlátot a motor be is tartja, és a kvótafoglalás egyszerre érkező kéréseknél is '
+          'betartja a keretet.')
     return 0
+
+
+def check_reservation(con: sqlite3.Connection) -> list:
+    """A kvótafoglalás valódi motoron: egyszerre érkező kérések, határesetek."""
+    sql = reserve_sql()
+    now = 1_700_000_000_000
+    ttl = 20 * 60 * 1000
+    counter = iter(range(10_000))
+
+    def reserve(subject, plans=0, messages=0, tokens=0, plan_limit=-1, message_limit=-1, cap=-1):
+        cursor = con.execute(sql, (
+            f'r{next(counter)}', subject, 'trial', plans, messages, tokens,
+            now, now - ttl, plan_limit, message_limit, cap,
+        ))
+        return cursor.rowcount
+
+    def usage(subject, **values):
+        cols = ', '.join(values)
+        marks = ', '.join('?' for _ in values)
+        con.execute(
+            f"INSERT INTO usage (subject, period, {cols}, updated_at) VALUES (?, 'trial', {marks}, 0)",
+            (subject, *values.values()),
+        )
+
+    problems = []
+
+    got = [reserve('user:a', plans=1, tokens=24_000, plan_limit=3, cap=10**9) for _ in range(5)]
+    if got != [1, 1, 1, 0, 0]:
+        problems.append(f'öt egyszerre érkező tervkérés, korlát 3: {got} — három mehet át, kettő nem')
+
+    usage('user:b', plans=2)
+    got = [reserve('user:b', plans=1, plan_limit=3) for _ in range(3)]
+    if got != [1, 0, 0]:
+        problems.append(f'2 elhasznált terv mellett csak egy fér még bele, itt: {got}')
+
+    usage('user:c', plans=5)
+    if reserve('user:c', plans=0, plan_limit=3) != 1:
+        problems.append('egy folytatólagos szakasz (nem új terv) nem akadhat el a tervkorláton')
+
+    usage('user:d', output_tokens=70_000)
+    got = [reserve('user:d', tokens=24_000, cap=80_000) for _ in range(2)]
+    if got != [1, 0]:
+        problems.append(f'tokenplafon: a plafon alatt EGY hívás indulhat, a második már nem — itt: {got}')
+
+    con.execute("INSERT INTO reservations VALUES ('lejart', 'user:e', 'trial', 9, 9, 999999, ?)", (now - ttl - 1,))
+    if reserve('user:e', plans=1, tokens=24_000, plan_limit=3, cap=80_000) != 1:
+        problems.append('egy lejárt, beragadt foglalás még mindig elveszi a keretet')
+
+    usage('user:f', messages=19)
+    got = [reserve('user:f', messages=1, message_limit=20) for _ in range(2)]
+    if got != [1, 0]:
+        problems.append(f'üzenetkorlát 20, 19 elhasználva: egy fér bele, itt: {got}')
+
+    if reserve('global:daily', tokens=24_000) != 1:
+        problems.append('korlát nélküli foglalás (a tulajdonos a közös mennyezeten) elutasítva')
+
+    return problems
 
 
 if __name__ == '__main__':
