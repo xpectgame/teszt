@@ -82,6 +82,7 @@ import hu.mealpilot.core.ai.PlanParser
 import hu.mealpilot.core.billing.PaidFeature
 import hu.mealpilot.core.energy.EnergyCalculator
 import hu.mealpilot.core.model.DietRestriction
+import hu.mealpilot.core.model.ProfileLimits
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -368,7 +369,8 @@ class ChatViewModel(private val container: AppContainer) : ViewModel() {
 
             ChatActionType.LOG_WEIGHT -> {
                 val kg = action.weightKg
-                if (kg !in 35.0..300.0) return text(R.string.chat_weight_unrealistic)
+                // Ugyanaz a tartomány, mint a profilűrlapon és a súlykártyán — egy forrásból.
+                if (!ProfileLimits.isValidWeight(kg)) return text(R.string.chat_weight_unrealistic)
                 container.trackingRepository.logWeight(LocalDate.now(), kg, null)
                 container.settings.updateWeight(kg, null)
                 text(R.string.weight_logged, "%.1f".format(kg))
