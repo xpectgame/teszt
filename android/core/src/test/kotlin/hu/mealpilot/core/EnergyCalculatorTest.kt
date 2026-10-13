@@ -4,6 +4,7 @@ import hu.mealpilot.core.i18n.AppLanguage
 import hu.mealpilot.core.energy.EnergyCalculator
 import hu.mealpilot.core.model.ActivityLevel
 import hu.mealpilot.core.model.MacroPreset
+import hu.mealpilot.core.model.ProfileLimits
 import hu.mealpilot.core.model.Sex
 import hu.mealpilot.core.model.UserProfile
 import org.junit.Assert.assertEquals
@@ -274,5 +275,52 @@ class EnergyCalculatorTest {
                 assertTrue("szénhidrát >= 0 (fat=$fat, weight=$weight)", b.target.carbsG >= 0)
             }
         }
+    }
+
+    // ---------------------------------------------------------------------------
+    // Alulsúly és életkor: itt nem tájékoztatunk, hanem korlátozunk.
+    // ---------------------------------------------------------------------------
+
+    @Test
+    fun `an underweight user gets no deficit, whatever pace was chosen`() {
+        // 165 cm, 48 kg: BMI 17,6. Korábban heti fél kilós ütemmel ugyanúgy deficitet
+        // kapott, csak egy figyelmeztetés mellé.
+        val thin = UserProfile(
+            sex = Sex.FEMALE, ageYears = 25, heightCm = 165.0, weightKg = 48.0,
+            activityLevel = ActivityLevel.MODERATE, targetRateKgPerWeek = 0.5,
+        )
+        val budget = EnergyCalculator.budget(thin)
+
+        assertEquals("Alulsúlynál nincs deficit", 0, budget.appliedDeficit)
+        assertEquals("A cél a napi felhasználás", budget.tdee, budget.target.kcal)
+        assertTrue(budget.warnings.joinToString(), budget.warnings.any { it.contains("18,5") || it.contains("18.5") })
+        assertNull("Nincs hova fogyni", EnergyCalculator.daysToTarget(thin.copy(targetWeightKg = 45.0), budget))
+    }
+
+    @Test
+    fun `an underweight target weight is flagged and the estimate stops at the healthy range`() {
+        // 178 cm, 80 kg, célsúly 55 kg (BMI 17,4). A deficit most még jár, de a becslés
+        // nem számolhat egy olyan célig, ahová az app nem is visz el.
+        val profile = male.copy(heightCm = 178.0, weightKg = 80.0, targetWeightKg = 55.0)
+        val budget = EnergyCalculator.budget(profile)
+
+        assertTrue("Most még van deficit", budget.appliedDeficit > 0)
+        assertTrue(budget.warnings.joinToString(), budget.warnings.any { it.contains("célsúly", ignoreCase = true) })
+        val floorKg = EnergyCalculator.minHealthyWeightKg(profile)
+        val expected = ((80.0 - floorKg) * 7700.0 / budget.appliedDeficit).toInt()
+        val days = EnergyCalculator.daysToTarget(profile, budget)!!
+        assertTrue("A becslés a BMI 18,5-ös súlyig tart ($expected), nem 55 kg-ig ($days)", abs(days - expected) <= 1)
+    }
+
+    @Test
+    fun `a healthy target gets no underweight warning`() {
+        val budget = EnergyCalculator.budget(male.copy(targetWeightKg = 80.0))
+        assertTrue(budget.warnings.joinToString(), budget.warnings.none { it.contains("18,5") || it.contains("18.5") })
+    }
+
+    @Test
+    fun `the profile only accepts adults, as the terms say`() {
+        assertTrue(17.0 !in ProfileLimits.AGE_YEARS)
+        assertTrue(18.0 in ProfileLimits.AGE_YEARS)
     }
 }

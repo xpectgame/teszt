@@ -12,7 +12,12 @@ package hu.mealpilot.core.model
  * Egy forrás, két felület — így nem tud újra szétcsúszni.
  */
 object ProfileLimits {
-    val AGE_YEARS = 14.0..100.0
+    /**
+     * 18-tól. Az ÁSZF szerint az app „18. életévüket betöltött személyek számára
+     * készült", az űrlap viszont 14 évtől elfogadta az életkort, és egy 15 évesnek
+     * ugyanúgy kalóriadeficitet tervezett. A Mifflin-St Jeor képlet is felnőttekre szól.
+     */
+    val AGE_YEARS = 18.0..100.0
     val HEIGHT_CM = 120.0..230.0
     val WEIGHT_KG = 35.0..300.0
 

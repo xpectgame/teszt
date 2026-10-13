@@ -1,5 +1,5 @@
-import { describe, expect, it } from 'vitest'
-import { isEntitled, readPurchase } from '../src/play.js'
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { isEntitled, readPurchase, resetAccessTokenCache, verifySubscription } from '../src/play.js'
 
 const NOW = Date.parse('2026-09-14T12:00:00Z')
 const LATER = '2026-10-14T12:00:00Z'
@@ -190,5 +190,83 @@ describe('a termékellenőrzés a hitelesítés útján is érvényes', () => {
     )
     expect(canceled.state).toBe('CANCELED')
     expect(entitledFromStoredState(canceled)).toBe(true)
+  })
+})
+
+describe('a Play hozzáférési token', () => {
+  /**
+   * A Google tokenje egy óráig él. Korábban minden ellenőrzés újat kért: egy
+   * RSA-aláírás és egy plusz hálózati kör a Play hívása előtt.
+   */
+  const original = globalThis.fetch
+  let tokenCalls = 0
+  let apiStatus = 200
+  let env: any
+
+  async function serviceAccountJson(): Promise<string> {
+    const pair = (await crypto.subtle.generateKey(
+      { name: 'RSASSA-PKCS1-v1_5', modulusLength: 2048, publicExponent: new Uint8Array([1, 0, 1]), hash: 'SHA-256' },
+      true,
+      ['sign', 'verify'],
+    )) as CryptoKeyPair
+    const pkcs8 = new Uint8Array(await crypto.subtle.exportKey('pkcs8', pair.privateKey) as ArrayBuffer)
+    let binary = ''
+    for (const byte of pkcs8) binary += String.fromCharCode(byte)
+    const pem = `-----BEGIN PRIVATE KEY-----\n${btoa(binary)}\n-----END PRIVATE KEY-----\n`
+    return JSON.stringify({ client_email: 'teszt@example.iam.gserviceaccount.com', private_key: pem })
+  }
+
+  beforeEach(async () => {
+    resetAccessTokenCache()
+    tokenCalls = 0
+    apiStatus = 200
+    env = {
+      ANDROID_PACKAGE: 'hu.mealpilot.app',
+      PREMIUM_PRODUCT_ID: PREMIUM,
+      PLAY_SERVICE_ACCOUNT_JSON: await serviceAccountJson(),
+    }
+    globalThis.fetch = (async (input: any) => {
+      const url = String(input?.url ?? input)
+      if (url.includes('oauth2.googleapis.com')) {
+        tokenCalls++
+        return Response.json({ access_token: `token-${tokenCalls}`, expires_in: 3599 })
+      }
+      if (apiStatus !== 200) return new Response('', { status: apiStatus })
+      return Response.json({
+        subscriptionState: 'SUBSCRIPTION_STATE_ACTIVE',
+        lineItems: [{ productId: PREMIUM, expiryTime: LATER }],
+      })
+    }) as typeof fetch
+  })
+
+  afterEach(() => {
+    globalThis.fetch = original
+    resetAccessTokenCache()
+  })
+
+  it('egy tokennel több ellenőrzés is lefut', async () => {
+    await verifySubscription(env, 'elso-token')
+    await verifySubscription(env, 'masodik-token')
+    await verifySubscription(env, 'harmadik-token')
+
+    expect(tokenCalls).toBe(1)
+  })
+
+  it('elutasított token után újat kér, nem ragad le vele egy órára', async () => {
+    await verifySubscription(env, 'elso-token')
+    apiStatus = 401
+    await expect(verifySubscription(env, 'masodik-token')).rejects.toThrow()
+    apiStatus = 200
+    await verifySubscription(env, 'harmadik-token')
+
+    expect(tokenCalls).toBe(2)
+  })
+
+  it('másik szolgáltatásfiók tokenjét nem használja', async () => {
+    await verifySubscription(env, 'elso-token')
+    const other = { ...env, PLAY_SERVICE_ACCOUNT_JSON: env.PLAY_SERVICE_ACCOUNT_JSON.replace('teszt@', 'masik@') }
+    await verifySubscription(other, 'masodik-token')
+
+    expect(tokenCalls).toBe(2)
   })
 })

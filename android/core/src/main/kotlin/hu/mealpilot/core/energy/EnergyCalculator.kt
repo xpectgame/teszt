@@ -16,6 +16,17 @@ const val KCAL_PER_KG_FAT = 7700.0
 /** Milyen szigorú lehet a deficit — a TDEE ennyi százalékánál nem megyünk lejjebb. */
 const val MAX_DEFICIT_RATIO = 0.25
 
+/**
+ * A normál BMI-tartomány alsó határa (WHO). Ez alatt NEM tervezünk deficitet.
+ *
+ * Ez az egyetlen pont, ahol nem tájékoztatunk, hanem korlátozunk. Az ütem a
+ * felhasználó döntése — de egy alulsúlyos ember további fogyását egy étrendtervező
+ * nem segítheti, akármit állított be: itt a kockázat nem lassuló anyagcsere, hanem
+ * evészavar. Korábban a kód ilyenkor is levonta a deficitet, és mellé csak annyit
+ * írt, hogy „inkább a testösszetétel javítása az értelmes cél".
+ */
+const val UNDERWEIGHT_BMI = 18.5
+
 data class EnergyBudget(
     val bmr: Int,
     val tdee: Int,
@@ -96,8 +107,21 @@ object EnergyCalculator {
         val maxByFloor = max(0.0, tdeeValue - floor)
         val allowedDeficit = min(maxByRatio, maxByFloor)
 
-        val appliedDeficit = min(requestedDeficit.toDouble(), allowedDeficit).coerceAtLeast(0.0)
-        if (appliedDeficit < requestedDeficit - 1) {
+        val underweight = profile.bmi < UNDERWEIGHT_BMI
+        val appliedDeficit =
+            if (underweight) 0.0 else min(requestedDeficit.toDouble(), allowedDeficit).coerceAtLeast(0.0)
+        if (underweight) {
+            warnings += s(
+                "A BMI-d ${"%.1f".format(profile.bmi)} — ez a normál tartomány " +
+                    "(${"%.1f".format(UNDERWEIGHT_BMI)}) alatt van, ezért nem tervezek kalóriadeficitet: " +
+                    "a napi célod a napi felhasználásod. Ha mégis fogyni szeretnél, előbb beszéld meg " +
+                    "orvossal vagy dietetikussal.",
+                "Your BMI is ${"%.1f".format(profile.bmi)} — below the healthy range " +
+                    "(${"%.1f".format(UNDERWEIGHT_BMI)}), so I won't plan a calorie deficit: your daily " +
+                    "target is your daily burn. If you still want to lose weight, talk to a doctor or " +
+                    "dietitian first.",
+            )
+        } else if (appliedDeficit < requestedDeficit - 1) {
             // MELYIK korlát fogott? A kettő mást jelent a felhasználónak, és mást lehet
             // tenni ellene — de egyik sem a felhasználó hibája. A régi szöveg úgy
             // fogalmazott, hogy „a kért ütem túl agresszív", ami azért hibáztatja, amit
@@ -166,7 +190,22 @@ object EnergyCalculator {
 
         val target = macroTarget(profile, targetKcal)
 
-        if (profile.bmi < 20.0) {
+        val targetWeight = profile.targetWeightKg
+        if (!underweight && targetWeight != null && targetWeight < minHealthyWeightKg(profile) - 0.05) {
+            val targetBmi = targetWeight / ((profile.heightCm / 100.0) * (profile.heightCm / 100.0))
+            warnings += s(
+                "A célsúlyod (${"%.1f".format(targetWeight)} kg) a normál BMI-tartomány alá vinne " +
+                    "(BMI ${"%.1f".format(targetBmi)}). Deficitet csak addig tervezek, amíg a BMI-d " +
+                    "${"%.1f".format(UNDERWEIGHT_BMI)} fölött van " +
+                    "(${"%.1f".format(minHealthyWeightKg(profile))} kg).",
+                "Your target weight (${"%.1f".format(targetWeight)} kg) would take you below the " +
+                    "healthy BMI range (BMI ${"%.1f".format(targetBmi)}). I only plan a deficit while " +
+                    "your BMI stays above ${"%.1f".format(UNDERWEIGHT_BMI)} " +
+                    "(${"%.1f".format(minHealthyWeightKg(profile))} kg).",
+            )
+        }
+
+        if (!underweight && profile.bmi < 20.0) {
             warnings += s(
                 "A BMI-d ${"%.1f".format(profile.bmi)} — ezen a szinten a fogyás helyett inkább " +
                     "a testösszetétel javítása (fehérje + erőedzés) az értelmes cél.",
@@ -236,9 +275,20 @@ object EnergyCalculator {
         return 25.0 * heightM * heightM
     }
 
-    /** Hány nap alatt érhető el a célsúly a jelenlegi deficittel. Null, ha nincs cél vagy nincs deficit. */
+    /** A normál BMI-tartomány alsó határához ([UNDERWEIGHT_BMI]) tartozó testsúly. */
+    fun minHealthyWeightKg(profile: UserProfile): Double {
+        val heightM = profile.heightCm / 100.0
+        return UNDERWEIGHT_BMI * heightM * heightM
+    }
+
+    /**
+     * Hány nap alatt érhető el a célsúly a jelenlegi deficittel. Null, ha nincs cél vagy nincs deficit.
+     *
+     * Az alulsúlyos célt nem számoljuk végig: a deficit a normál tartomány alján megáll
+     * (lásd [UNDERWEIGHT_BMI]), tehát ott ér véget a becslés is.
+     */
     fun daysToTarget(profile: UserProfile, budget: EnergyBudget): Int? {
-        val target = profile.targetWeightKg ?: return null
+        val target = maxOf(profile.targetWeightKg ?: return null, minHealthyWeightKg(profile))
         val toLose = profile.weightKg - target
         if (toLose <= 0 || budget.appliedDeficit <= 0) return null
         return (toLose * KCAL_PER_KG_FAT / budget.appliedDeficit).roundToInt()

@@ -5,7 +5,6 @@ import { AuthError, resolveCaller, secretMatches, type Caller } from './auth.js'
 import {
   addUsage,
   logRequest,
-  readSubscription,
   readUsage,
   releaseReservations,
   reserveUsage,
@@ -731,12 +730,13 @@ app.post('/v1/play/rtdn', async (c) => {
   try {
     const verified = await verifySubscription(c.env, purchaseToken)
     if (verified) {
-      const existing = await readSubscription(c.env, purchaseHash)
       await writeSubscription(c.env, {
         purchase_hash: purchaseHash,
         state: verified.state,
         expires_at: verified.expiresAt,
-        first_user_id: existing?.first_user_id ?? null,
+        // Nem kell előtte kiolvasni: az írás `COALESCE`-e a meglévő első felhasználót
+        // megtartja, új sornál pedig úgyis nincs kit beírni.
+        first_user_id: null,
         linkedFrom: verified.linkedPurchaseToken ? await sha256Hex(verified.linkedPurchaseToken) : null,
       })
     }

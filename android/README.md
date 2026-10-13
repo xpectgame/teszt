@@ -32,7 +32,7 @@ alkalmazza, és egy már kész napot is át tudsz íratni egy mondattal.
 ## Amit tudni kell a build előtt
 
 A `:core` modul (minden számítás, AI-séma, promptok, bevásárlólista, achievementek)
-tiszta Kotlin, és **245 unit teszt fut rá zölden**. Az app modul fordítását és az APK
+tiszta Kotlin, és **249 unit teszt fut rá zölden**. Az app modul fordítását és az APK
 építését a GitHub Actions végzi (`.github/workflows/android.yml`).
 
 **A legegyszerűbb telepítés: nem kell hozzá Android Studio.**
@@ -216,6 +216,13 @@ felhasználók nagy részét heti 0,3–0,4 kg-ra fogta vissza akkor is, ha ő f
 állított be — a saját testadatai miatt, a saját döntése ellenében. Ha a cél az
 alapanyagcsere alá kerül, az app elmondja, mivel jár (izomvesztés, lassuló anyagcsere,
 tartsd magasan a fehérjét, hosszabb távon orvos). Korlátozás helyett tájékoztatás.
+
+Egy kivétel van, ahol nem tájékoztatunk, hanem korlátozunk: **alulsúlynál (BMI 18,5
+alatt) nincs deficit**, akármilyen ütemet állított be a felhasználó — a cél ilyenkor a
+napi felhasználás. A normál tartomány alá vivő célsúlyt az app jelzi, és a deficit (meg
+a „hány nap a célig" becslés) a BMI 18,5-höz tartozó súlynál megáll. Itt a kockázat nem
+lassuló anyagcsere, hanem evészavar. Ugyanezért fogad el a profil életkort csak 18
+évtől: az ÁSZF szerint az app felnőtteknek szól.
 
 Deficitben a fehérje fix testsúlyarányos küszöb, a szénhidrát a maradék — így az
 izomvesztés esélye kisebb. A fehérje referenciasúlya a zsírmentes tömeg, annak híján a
